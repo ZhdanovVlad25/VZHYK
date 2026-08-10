@@ -8,6 +8,8 @@ import { Location } from '../modules/location/location.entity';
 import { Category } from '../modules/categories/category.entity';
 import { CategoryAttribute } from '../modules/attributes/category-attribute.entity';
 import { AppSetting } from '../modules/settings/app-setting.entity';
+import { Listing } from '../modules/listings/listing.entity';
+import { ListingAttributeValue } from '../modules/listings/listing-attribute-value.entity';
 
 dotenv.config({ path: '../../.env' });
 dotenv.config();
@@ -16,7 +18,17 @@ dotenv.config();
 export const AppDataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL ?? 'postgresql://vzhyk:vzhyk_dev_password@localhost:5432/vzhyk',
-  entities: [User, OtpCode, Profile, Location, Category, CategoryAttribute, AppSetting],
+  entities: [
+    User,
+    OtpCode,
+    Profile,
+    Location,
+    Category,
+    CategoryAttribute,
+    AppSetting,
+    Listing,
+    ListingAttributeValue,
+  ],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: false,
 });

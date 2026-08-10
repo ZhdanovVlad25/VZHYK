@@ -14,6 +14,9 @@ import { Location } from './modules/location/location.entity';
 import { Category } from './modules/categories/category.entity';
 import { CategoryAttribute } from './modules/attributes/category-attribute.entity';
 import { AppSetting } from './modules/settings/app-setting.entity';
+import { Listing } from './modules/listings/listing.entity';
+import { ListingAttributeValue } from './modules/listings/listing-attribute-value.entity';
+import { ListingsModule } from './modules/listings/listings.module';
 
 @Module({
   imports: [
@@ -26,7 +29,17 @@ import { AppSetting } from './modules/settings/app-setting.entity';
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         url: config.get<string>('DATABASE_URL'),
-        entities: [User, OtpCode, Profile, Location, Category, CategoryAttribute, AppSetting],
+        entities: [
+          User,
+          OtpCode,
+          Profile,
+          Location,
+          Category,
+          CategoryAttribute,
+          AppSetting,
+          Listing,
+          ListingAttributeValue,
+        ],
         synchronize: false, // структура БД керується виключно міграціями
         migrationsRun: false,
         ssl: config.get<string>('DATABASE_SSL') === 'true',
@@ -35,6 +48,7 @@ import { AppSetting } from './modules/settings/app-setting.entity';
     SettingsModule,
     AuthModule,
     CategoriesModule,
+    ListingsModule,
   ],
 })
 export class AppModule {}
