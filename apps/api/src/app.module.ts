@@ -3,11 +3,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
 import { AuthModule } from './modules/auth/auth.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 import { RedisModule } from './providers/redis.module';
-import { RolesGuard } from './shared/guards/roles.guard';
 import { User } from './modules/users/user.entity';
 import { OtpCode } from './modules/auth/otp-code.entity';
 import { Profile } from './modules/profiles/profile.entity';
@@ -35,7 +34,7 @@ import { AppSetting } from './modules/settings/app-setting.entity';
     }),
     SettingsModule,
     AuthModule,
+    CategoriesModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: RolesGuard }],
 })
 export class AppModule {}
