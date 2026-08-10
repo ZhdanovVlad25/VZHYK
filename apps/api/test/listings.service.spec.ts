@@ -39,6 +39,7 @@ describe('ListingsService', () => {
   let categories: MockRepo;
   let categoryAttributes: MockRepo;
   let settings: { getMaxActiveListingsPerUser: jest.Mock };
+  let search: { index: jest.Mock; remove: jest.Mock };
   let service: ListingsService;
 
   const leafCategory = { id: 'cat-1', deletedAt: null, isActive: true } as Category;
@@ -49,6 +50,7 @@ describe('ListingsService', () => {
     categories = mockRepo();
     categoryAttributes = mockRepo();
     settings = { getMaxActiveListingsPerUser: jest.fn().mockResolvedValue(5) };
+    search = { index: jest.fn().mockResolvedValue(undefined), remove: jest.fn().mockResolvedValue(undefined) };
 
     categories.findOne.mockResolvedValue(leafCategory);
     categories.count.mockResolvedValue(0); // без дочірніх — leaf
@@ -59,6 +61,7 @@ describe('ListingsService', () => {
       categories as never,
       categoryAttributes as never,
       settings as never,
+      search as never,
     );
   });
 
@@ -192,6 +195,7 @@ describe('ListingsService', () => {
 
       expect(result.status).toBe('ACTIVE');
       expect(result.publishedAt).toBeInstanceOf(Date);
+      expect(search.index).toHaveBeenCalledWith('l-1');
     });
   });
 
@@ -207,6 +211,7 @@ describe('ListingsService', () => {
 
       const result = await service.markSold('owner', 'l-1');
       expect(result.status).toBe('SOLD');
+      expect(search.remove).toHaveBeenCalledWith('l-1');
     });
   });
 

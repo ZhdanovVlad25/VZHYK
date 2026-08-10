@@ -7,11 +7,13 @@ import { CategoryAttribute } from '../attributes/category-attribute.entity';
 import { ListingsService } from './listings.service';
 import { ListingsController } from './listings.controller';
 import { SettingsModule } from '../settings/settings.module';
+import { SearchProviderModule } from '../../providers/search/search.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Listing, ListingAttributeValue, Category, CategoryAttribute]),
     SettingsModule,
+    SearchProviderModule,
   ],
   controllers: [ListingsController],
   providers: [ListingsService],

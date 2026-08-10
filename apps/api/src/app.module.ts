@@ -21,6 +21,7 @@ import { Media } from './modules/media/media.entity';
 import { MediaModule } from './modules/media/media.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 import { UsersModule } from './modules/users/users.module';
+import { SearchModule } from './modules/search/search.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { UsersModule } from './modules/users/users.module';
     MediaModule,
     ProfilesModule,
     UsersModule,
+    SearchModule,
   ],
 })
 export class AppModule {}

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, In, IsNull, OptimisticLockVersionMismatchError, Repository } from 'typeorm';
 import { Listing } from './listing.entity';
@@ -10,6 +10,7 @@ import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { AttributeValueInputDto } from './dto/attribute-value-input.dto';
 import { LISTING_STATUSES, LISTING_TYPES_WITHOUT_REQUIRED_PRICE, ListingStatus } from './listing.constants';
+import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-provider.interface';
 
 /** Статуси, видимі анонімному відвідувачу (docs/api.md §5 "GET /listings/:id | public"). */
 const PUBLICLY_VISIBLE_STATUSES: ListingStatus[] = ['ACTIVE', 'RESERVED', 'SOLD'];
@@ -34,6 +35,7 @@ export class ListingsService {
     @InjectRepository(Category) private readonly categories: Repository<Category>,
     @InjectRepository(CategoryAttribute) private readonly categoryAttributes: Repository<CategoryAttribute>,
     private readonly settings: SettingsService,
+    @Inject(SEARCH_PROVIDER) private readonly search: SearchProvider,
   ) {}
 
   async create(userId: string, dto: CreateListingDto): Promise<Listing & { attributes: ListingAttributeValue[] }> {
@@ -130,27 +132,34 @@ export class ListingsService {
     // TODO(Phase 4): замінити на реальний ModerationProvider.checkText() + чергу через PENDING_MODERATION.
     listing.status = 'ACTIVE';
     listing.publishedAt = new Date();
-    return this.saveWithConflictHandling(listing);
+    const saved = await this.saveWithConflictHandling(listing);
+    await this.search.index(saved.id);
+    return saved;
   }
 
   async archive(userId: string, id: string): Promise<Listing> {
     const listing = await this.findOwnedListing(userId, id);
     this.assertTransition(listing.status, ['ACTIVE', 'RESERVED'], 'ARCHIVED');
     listing.status = 'ARCHIVED';
-    return this.saveWithConflictHandling(listing);
+    const saved = await this.saveWithConflictHandling(listing);
+    await this.search.remove(saved.id);
+    return saved;
   }
 
   async markSold(userId: string, id: string): Promise<Listing> {
     const listing = await this.findOwnedListing(userId, id);
     this.assertTransition(listing.status, ['ACTIVE', 'RESERVED'], 'SOLD');
     listing.status = 'SOLD';
-    return this.saveWithConflictHandling(listing);
+    const saved = await this.saveWithConflictHandling(listing);
+    await this.search.remove(saved.id);
+    return saved;
   }
 
   async remove(userId: string, id: string): Promise<void> {
     const listing = await this.findOwnedListing(userId, id);
     listing.deletedAt = new Date();
     await this.saveWithConflictHandling(listing);
+    await this.search.remove(id);
   }
 
   async findVisible(id: string, requesterUserId?: string): Promise<Listing & { attributes: ListingAttributeValue[] }> {
