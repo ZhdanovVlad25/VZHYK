@@ -1,0 +1,41 @@
+import { join } from 'path';
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
+import { AuthModule } from './modules/auth/auth.module';
+import { SettingsModule } from './modules/settings/settings.module';
+import { RedisModule } from './providers/redis.module';
+import { RolesGuard } from './shared/guards/roles.guard';
+import { User } from './modules/users/user.entity';
+import { OtpCode } from './modules/auth/otp-code.entity';
+import { Profile } from './modules/profiles/profile.entity';
+import { Location } from './modules/location/location.entity';
+import { Category } from './modules/categories/category.entity';
+import { CategoryAttribute } from './modules/attributes/category-attribute.entity';
+import { AppSetting } from './modules/settings/app-setting.entity';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '../../../.env') }),
+    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), // базовий 100/хв на IP, docs/security.md §6
+    RedisModule,
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        url: config.get<string>('DATABASE_URL'),
+        entities: [User, OtpCode, Profile, Location, Category, CategoryAttribute, AppSetting],
+        synchronize: false, // структура БД керується виключно міграціями
+        migrationsRun: false,
+        ssl: config.get<string>('DATABASE_SSL') === 'true',
+      }),
+    }),
+    SettingsModule,
+    AuthModule,
+  ],
+  providers: [{ provide: APP_GUARD, useClass: RolesGuard }],
+})
+export class AppModule {}

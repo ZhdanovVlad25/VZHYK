@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --focus-ring: 2px solid #ea580c;
+  --focus-ring-offset: 2px;
+}
+
+/* Базова accessibility (decisions.md DEC-09): видимий focus state для будь-якого
+   інтерактивного елемента, а не лише для мишкового hover. */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+body {
+  color-scheme: light;
+}

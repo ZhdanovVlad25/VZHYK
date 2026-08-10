@@ -1,0 +1,103 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vzhyk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vzhyk
+      POSTGRES_PASSWORD: vzhyk_dev_password
+      POSTGRES_DB: vzhyk
+    ports:
+      - '5432:5432'
+    volumes:
+      - vzhyk_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U vzhyk -d vzhyk']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: vzhyk-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - vzhyk_redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: vzhyk-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: vzhyk_minio
+      MINIO_ROOT_PASSWORD: vzhyk_minio_password
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - vzhyk_minio_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    container_name: vzhyk-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://vzhyk:vzhyk_dev_password@postgres:5432/vzhyk
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+    ports:
+      - '3001:3001'
+    volumes:
+      - ./apps/api:/app/apps/api
+      - /app/apps/api/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: dev
+    container_name: vzhyk-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./apps/web:/app/apps/web
+      - /app/apps/web/node_modules
+    depends_on:
+      - api
+
+volumes:
+  vzhyk_postgres_data:
+  vzhyk_redis_data:
+  vzhyk_minio_data:

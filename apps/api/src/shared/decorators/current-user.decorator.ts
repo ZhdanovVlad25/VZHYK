@@ -1,0 +1,15 @@
+import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+
+export interface AuthenticatedUser {
+  id: string;
+  role: string;
+  phone?: string | null;
+}
+
+/** Витягує автентифікованого користувача з request (заповнюється JwtAuthGuard). */
+export const CurrentUser = createParamDecorator(
+  (_data: unknown, ctx: ExecutionContext): AuthenticatedUser => {
+    const request = ctx.switchToHttp().getRequest();
+    return request.user;
+  },
+);
