@@ -53,6 +53,12 @@ export class MediaService {
     return { ...saved, url: stored.url };
   }
 
+  /** Публічний список — фото самі по собі не чутливі, незалежно від статусу оголошення. */
+  async listForListing(listingId: string): Promise<(Media & { url: string })[]> {
+    const items = await this.media.find({ where: { listingId }, order: { sortOrder: 'ASC' } });
+    return Promise.all(items.map(async (item) => ({ ...item, url: await this.storage.getSignedUrl(item.storageKey) })));
+  }
+
   async update(userId: string, listingId: string, mediaId: string, dto: UpdateMediaDto): Promise<Media & { url: string }> {
     await this.listings.findOwnedListing(userId, listingId);
     const item = await this.getOwnedMediaOrThrow(listingId, mediaId);

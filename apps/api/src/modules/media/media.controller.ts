@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
@@ -18,13 +19,18 @@ import { UpdateMediaDto } from './dto/update-media.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 
-/** docs/api.md §6 Media — завантаження/керування фото оголошення (лише власник). */
+/** docs/api.md §6 Media — GET публічний, решта (upload/patch/delete) лише власник оголошення. */
 @Controller('listings/:listingId/media')
-@UseGuards(JwtAuthGuard)
 export class MediaController {
   constructor(private readonly media: MediaService) {}
 
+  @Get()
+  list(@Param('listingId') listingId: string) {
+    return this.media.listForListing(listingId);
+  }
+
   @Post()
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_MEDIA_SIZE_BYTES } }),
   )
@@ -37,6 +43,7 @@ export class MediaController {
   }
 
   @Patch(':mediaId')
+  @UseGuards(JwtAuthGuard)
   update(
     @CurrentUser() user: AuthenticatedUser,
     @Param('listingId') listingId: string,
@@ -47,6 +54,7 @@ export class MediaController {
   }
 
   @Delete(':mediaId')
+  @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(
     @CurrentUser() user: AuthenticatedUser,

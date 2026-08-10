@@ -136,4 +136,27 @@ describe('MediaService', () => {
       expect(media.remove).toHaveBeenCalledWith(item);
     });
   });
+
+  describe('listForListing', () => {
+    it('повертає фото у sortOrder з підписаними URL, без перевірки власності', async () => {
+      media.find.mockResolvedValue([
+        { id: 'm-1', listingId: 'l-1', storageKey: 'listings/l-1/a.jpg', sortOrder: 0 } as Media,
+        { id: 'm-2', listingId: 'l-1', storageKey: 'listings/l-1/b.jpg', sortOrder: 1 } as Media,
+      ]);
+
+      const result = await service.listForListing('l-1');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].url).toBe('https://signed.example/refresh.jpg');
+      expect(media.find).toHaveBeenCalledWith({ where: { listingId: 'l-1' }, order: { sortOrder: 'ASC' } });
+    });
+
+    it('повертає порожній масив, якщо фото немає', async () => {
+      media.find.mockResolvedValue([]);
+
+      const result = await service.listForListing('l-1');
+
+      expect(result).toEqual([]);
+    });
+  });
 });
