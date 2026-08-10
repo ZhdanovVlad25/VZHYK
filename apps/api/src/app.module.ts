@@ -19,6 +19,8 @@ import { ListingAttributeValue } from './modules/listings/listing-attribute-valu
 import { ListingsModule } from './modules/listings/listings.module';
 import { Media } from './modules/media/media.entity';
 import { MediaModule } from './modules/media/media.module';
+import { ProfilesModule } from './modules/profiles/profiles.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -53,6 +55,8 @@ import { MediaModule } from './modules/media/media.module';
     CategoriesModule,
     ListingsModule,
     MediaModule,
+    ProfilesModule,
+    UsersModule,
   ],
 })
 export class AppModule {}

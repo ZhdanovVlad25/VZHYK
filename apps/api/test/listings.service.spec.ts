@@ -210,6 +210,28 @@ describe('ListingsService', () => {
     });
   });
 
+  describe('findOwnListings', () => {
+    it('кидає LISTING_STATUS_INVALID для невідомого статусу-фільтра', async () => {
+      await expectHttpError(service.findOwnListings('owner', 'not-a-status'), 'LISTING_STATUS_INVALID');
+    });
+
+    it('приймає статус у нижньому регістрі й нормалізує до enum', async () => {
+      await service.findOwnListings('owner', 'active');
+
+      expect(listings.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ status: 'ACTIVE', userId: 'owner' }) }),
+      );
+    });
+
+    it('без фільтра повертає всі власні оголошення (включно з DRAFT)', async () => {
+      await service.findOwnListings('owner', undefined);
+
+      const call = listings.find.mock.calls[0][0];
+      expect(call.where.status).toBeUndefined();
+      expect(call.where.userId).toBe('owner');
+    });
+  });
+
   describe('findVisible', () => {
     it('кидає LISTING_NOT_FOUND (не 403), якщо чужий DRAFT переглядає не власник', async () => {
       listings.findOne.mockResolvedValue({ id: 'l-1', userId: 'owner', status: 'DRAFT' } as Listing);

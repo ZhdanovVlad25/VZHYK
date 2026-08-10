@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, OptimisticLockVersionMismatchError, Repository } from 'typeorm';
+import { FindOptionsWhere, In, IsNull, OptimisticLockVersionMismatchError, Repository } from 'typeorm';
 import { Listing } from './listing.entity';
 import { ListingAttributeValue } from './listing-attribute-value.entity';
 import { Category } from '../categories/category.entity';
@@ -9,7 +9,7 @@ import { SettingsService } from '../settings/settings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { AttributeValueInputDto } from './dto/attribute-value-input.dto';
-import { LISTING_TYPES_WITHOUT_REQUIRED_PRICE, ListingStatus } from './listing.constants';
+import { LISTING_STATUSES, LISTING_TYPES_WITHOUT_REQUIRED_PRICE, ListingStatus } from './listing.constants';
 
 /** Статуси, видимі анонімному відвідувачу (docs/api.md §5 "GET /listings/:id | public"). */
 const PUBLICLY_VISIBLE_STATUSES: ListingStatus[] = ['ACTIVE', 'RESERVED', 'SOLD'];
@@ -173,6 +173,24 @@ export class ListingsService {
     }
 
     return { ...listing, attributes };
+  }
+
+  /** docs/api.md §3 "GET /profiles/me/listings?status=" — усі статуси власника, не лише публічно видимі. */
+  async findOwnListings(userId: string, statusFilter?: string): Promise<Listing[]> {
+    const where: FindOptionsWhere<Listing> = { userId, deletedAt: IsNull() };
+
+    if (statusFilter) {
+      const normalized = statusFilter.toUpperCase() as ListingStatus;
+      if (!LISTING_STATUSES.includes(normalized)) {
+        throw new BadRequestException({
+          code: 'LISTING_STATUS_INVALID',
+          message: `Невідомий статус: ${statusFilter}`,
+        });
+      }
+      where.status = normalized;
+    }
+
+    return this.listings.find({ where, order: { createdAt: 'DESC' } });
   }
 
   /** Публічний для перевикористання ownership-перевірки в суміжних модулях (напр. MediaService). */
