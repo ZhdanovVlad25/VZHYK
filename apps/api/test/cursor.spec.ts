@@ -1,6 +1,6 @@
-import { decodeCursor, encodeCursor } from '../src/providers/search/search-cursor';
+import { decodeCursor, encodeCursor } from '../src/shared/pagination/cursor';
 
-describe('search-cursor', () => {
+describe('cursor', () => {
   it('encode → decode повертає той самий курсор', () => {
     const cursor = { v: '2026-08-10T12:00:00.000Z', id: '11111111-1111-1111-1111-111111111111' };
 

@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuthModule } from './modules/auth/auth.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { CategoriesModule } from './modules/categories/categories.module';
@@ -27,11 +28,16 @@ import { Favorite } from './modules/favorites/favorite.entity';
 import { FavoritesModule } from './modules/favorites/favorites.module';
 import { SavedSearch } from './modules/saved-searches/saved-search.entity';
 import { SavedSearchesModule } from './modules/saved-searches/saved-searches.module';
+import { Chat } from './modules/chat/chat.entity';
+import { ChatParticipant } from './modules/chat/chat-participant.entity';
+import { Message } from './modules/chat/message.entity';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '../../../.env') }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), // базовий 100/хв на IP, docs/security.md §6
+    EventEmitterModule.forRoot(), // ChatsService -> ChatGateway push, docs/architecture.md §2
     RedisModule,
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -53,6 +59,9 @@ import { SavedSearchesModule } from './modules/saved-searches/saved-searches.mod
           Media,
           Favorite,
           SavedSearch,
+          Chat,
+          ChatParticipant,
+          Message,
         ],
         synchronize: false, // структура БД керується виключно міграціями
         migrationsRun: false,
@@ -69,6 +78,7 @@ import { SavedSearchesModule } from './modules/saved-searches/saved-searches.mod
     SearchModule,
     FavoritesModule,
     SavedSearchesModule,
+    ChatModule,
   ],
 })
 export class AppModule {}

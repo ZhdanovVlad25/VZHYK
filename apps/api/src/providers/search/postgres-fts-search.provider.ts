@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { SearchFilters, SearchProvider, SearchResult, SearchResultItem, SearchSort } from './search-provider.interface';
-import { decodeCursor, encodeCursor } from './search-cursor';
+import { decodeCursor, encodeCursor } from '../../shared/pagination/cursor';
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;

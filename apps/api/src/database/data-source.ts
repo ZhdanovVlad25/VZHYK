@@ -14,6 +14,9 @@ import { Media } from '../modules/media/media.entity';
 import { Favorite } from '../modules/favorites/favorite.entity';
 import { PriceHistory } from '../modules/listings/price-history.entity';
 import { SavedSearch } from '../modules/saved-searches/saved-search.entity';
+import { Chat } from '../modules/chat/chat.entity';
+import { ChatParticipant } from '../modules/chat/chat-participant.entity';
+import { Message } from '../modules/chat/message.entity';
 
 dotenv.config({ path: '../../.env' });
 dotenv.config();
@@ -36,6 +39,9 @@ export const AppDataSource = new DataSource({
     Favorite,
     PriceHistory,
     SavedSearch,
+    Chat,
+    ChatParticipant,
+    Message,
   ],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: false,

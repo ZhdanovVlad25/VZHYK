@@ -1,5 +1,5 @@
 import { PostgresFtsSearchProvider } from '../src/providers/search/postgres-fts-search.provider';
-import { encodeCursor } from '../src/providers/search/search-cursor';
+import { encodeCursor } from '../src/shared/pagination/cursor';
 
 function mockDataSource(rows: Array<Record<string, unknown>> = []) {
   return { query: jest.fn().mockResolvedValue(rows) };
