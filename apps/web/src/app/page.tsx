@@ -1,17 +1,47 @@
-import { Button, Card } from '@/components/ui';
+import Link from 'next/link';
+import { getCategoryTree, search } from '@/lib/api';
+import { ListingCard } from '@/components/listings/ListingCard';
+import { EmptyState } from '@/components/ui';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [categories, listings] = await Promise.all([
+    getCategoryTree().catch(() => []),
+    search({ sort: 'newest', limit: 12 }).catch(() => ({ items: [], nextCursor: null })),
+  ]);
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-16">
-      <h1 className="text-3xl font-bold">Вжик</h1>
-      <p className="mt-2 text-gray-600">
-        Phase 1 — Foundation. Design system і базова автентифікація вже підключені.
-      </p>
-      <Card className="mt-8">
-        <h2 className="text-xl font-semibold">Наступний крок</h2>
-        <p className="mt-1 text-gray-600">Phase 2 — Marketplace Core (категорії, оголошення, пошук).</p>
-        <Button className="mt-4">Додати оголошення</Button>
-      </Card>
+    <div className="mx-auto max-w-6xl px-4 py-8">
+      <section aria-labelledby="categories-heading" className="mb-10">
+        <h2 id="categories-heading" className="mb-4 text-lg font-semibold text-gray-900">
+          Категорії
+        </h2>
+        <div className="flex flex-wrap gap-2">
+          {categories.map((category) => (
+            <Link
+              key={category.id}
+              href={`/search?category=${category.id}`}
+              className="rounded-full border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-brand-500 hover:text-brand-600 focus-visible:outline-none"
+            >
+              {category.nameUk}
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section aria-labelledby="newest-heading">
+        <h2 id="newest-heading" className="mb-4 text-lg font-semibold text-gray-900">
+          Нові оголошення
+        </h2>
+        {listings.items.length === 0 ? (
+          <EmptyState title="Поки немає оголошень" description="Скоро тут з'являться нові оголошення." />
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {listings.items.map((item) => (
+              <ListingCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
