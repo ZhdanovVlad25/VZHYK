@@ -22,6 +22,8 @@ import { MediaModule } from './modules/media/media.module';
 import { ProfilesModule } from './modules/profiles/profiles.module';
 import { UsersModule } from './modules/users/users.module';
 import { SearchModule } from './modules/search/search.module';
+import { Favorite } from './modules/favorites/favorite.entity';
+import { FavoritesModule } from './modules/favorites/favorites.module';
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { SearchModule } from './modules/search/search.module';
           Listing,
           ListingAttributeValue,
           Media,
+          Favorite,
         ],
         synchronize: false, // структура БД керується виключно міграціями
         migrationsRun: false,
@@ -59,6 +62,7 @@ import { SearchModule } from './modules/search/search.module';
     ProfilesModule,
     UsersModule,
     SearchModule,
+    FavoritesModule,
   ],
 })
 export class AppModule {}

@@ -23,3 +23,6 @@ export type ListingStatus = (typeof LISTING_STATUSES)[number];
 
 /** listing_type, для яких price не обов'язкове (docs/api.md §5) */
 export const LISTING_TYPES_WITHOUT_REQUIRED_PRICE: ListingType[] = ['buy', 'give_away'];
+
+/** Статуси, видимі анонімному відвідувачу/іншим користувачам (docs/api.md §5, §8). */
+export const PUBLICLY_VISIBLE_LISTING_STATUSES: ListingStatus[] = ['ACTIVE', 'RESERVED', 'SOLD'];

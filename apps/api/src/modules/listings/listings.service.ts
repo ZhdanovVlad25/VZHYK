@@ -9,11 +9,13 @@ import { SettingsService } from '../settings/settings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { AttributeValueInputDto } from './dto/attribute-value-input.dto';
-import { LISTING_STATUSES, LISTING_TYPES_WITHOUT_REQUIRED_PRICE, ListingStatus } from './listing.constants';
+import {
+  LISTING_STATUSES,
+  LISTING_TYPES_WITHOUT_REQUIRED_PRICE,
+  ListingStatus,
+  PUBLICLY_VISIBLE_LISTING_STATUSES,
+} from './listing.constants';
 import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-provider.interface';
-
-/** Статуси, видимі анонімному відвідувачу (docs/api.md §5 "GET /listings/:id | public"). */
-const PUBLICLY_VISIBLE_STATUSES: ListingStatus[] = ['ACTIVE', 'RESERVED', 'SOLD'];
 
 /**
  * Слоти "активного" оголошення для ліміту DEC-05 — статуси, які реально займають
@@ -169,7 +171,7 @@ export class ListingsService {
     }
 
     const isOwner = Boolean(requesterUserId) && listing.userId === requesterUserId;
-    if (!isOwner && !PUBLICLY_VISIBLE_STATUSES.includes(listing.status)) {
+    if (!isOwner && !PUBLICLY_VISIBLE_LISTING_STATUSES.includes(listing.status)) {
       // Не розкриваємо існування чужих чернеток/заблокованих оголошень.
       throw new NotFoundException({ code: 'LISTING_NOT_FOUND', message: 'Оголошення не знайдено' });
     }
