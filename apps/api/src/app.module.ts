@@ -25,6 +25,8 @@ import { UsersModule } from './modules/users/users.module';
 import { SearchModule } from './modules/search/search.module';
 import { Favorite } from './modules/favorites/favorite.entity';
 import { FavoritesModule } from './modules/favorites/favorites.module';
+import { SavedSearch } from './modules/saved-searches/saved-search.entity';
+import { SavedSearchesModule } from './modules/saved-searches/saved-searches.module';
 
 @Module({
   imports: [
@@ -50,6 +52,7 @@ import { FavoritesModule } from './modules/favorites/favorites.module';
           PriceHistory,
           Media,
           Favorite,
+          SavedSearch,
         ],
         synchronize: false, // структура БД керується виключно міграціями
         migrationsRun: false,
@@ -65,6 +68,7 @@ import { FavoritesModule } from './modules/favorites/favorites.module';
     UsersModule,
     SearchModule,
     FavoritesModule,
+    SavedSearchesModule,
   ],
 })
 export class AppModule {}
