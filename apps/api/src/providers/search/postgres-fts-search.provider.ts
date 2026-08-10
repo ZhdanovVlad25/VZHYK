@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { SearchFilters, SearchProvider, SearchResult, SearchResultItem, SearchSort } from './search-provider.interface';
 import { decodeCursor, encodeCursor } from '../../shared/pagination/cursor';
+import { STORAGE_PROVIDER, StorageProvider } from '../storage/storage-provider.interface';
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;
@@ -25,7 +26,10 @@ interface SortConfig {
  */
 @Injectable()
 export class PostgresFtsSearchProvider implements SearchProvider {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
+  ) {}
 
   async index(): Promise<void> {
     // no-op: search_vector підтримується DB-тригером (migration 1754800300000) — рядок завжди актуальний.
@@ -88,7 +92,8 @@ export class PostgresFtsSearchProvider implements SearchProvider {
     const sql = `
       SELECT l."id", l."title", l."price", l."currency", l."categoryId", l."locationId", l."publishedAt",
              ${rankExpr} AS "rank",
-             (SELECT m."id" FROM "media" m WHERE m."listingId" = l."id" AND m."isMain" = true LIMIT 1) AS "mainMediaId"
+             (SELECT m."id" FROM "media" m WHERE m."listingId" = l."id" AND m."isMain" = true LIMIT 1) AS "mainMediaId",
+             (SELECT m."storageKey" FROM "media" m WHERE m."listingId" = l."id" AND m."isMain" = true LIMIT 1) AS "mainMediaStorageKey"
       FROM "listings" l
       WHERE ${conditions.join(' AND ')}
       ORDER BY ${sortConfig.expr} ${sortConfig.direction}, l."id" ${sortConfig.direction}
@@ -99,7 +104,7 @@ export class PostgresFtsSearchProvider implements SearchProvider {
 
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
-    const items: SearchResultItem[] = page.map((row) => this.toItem(row));
+    const items: SearchResultItem[] = await Promise.all(page.map((row) => this.toItem(row)));
 
     let nextCursor: string | null = null;
     if (hasMore) {
@@ -159,7 +164,9 @@ export class PostgresFtsSearchProvider implements SearchProvider {
     }
   }
 
-  private toItem(row: Record<string, unknown>): SearchResultItem {
+  private async toItem(row: Record<string, unknown>): Promise<SearchResultItem> {
+    const mainMediaId = (row.mainMediaId as string | null) ?? null;
+    const mainStorageKey = (row.mainMediaStorageKey as string | null) ?? null;
     return {
       id: row.id as string,
       title: row.title as string,
@@ -168,7 +175,9 @@ export class PostgresFtsSearchProvider implements SearchProvider {
       categoryId: row.categoryId as string,
       locationId: (row.locationId as string | null) ?? null,
       publishedAt: row.publishedAt ? new Date(row.publishedAt as string).toISOString() : null,
-      mainMediaId: (row.mainMediaId as string | null) ?? null,
+      mainMediaId,
+      // Presign — локальний HMAC без мережевого виклику, тому дешево робити навіть для 50 елементів сторінки.
+      mainMediaUrl: mainStorageKey ? await this.storage.getSignedUrl(mainStorageKey) : null,
     };
   }
 }

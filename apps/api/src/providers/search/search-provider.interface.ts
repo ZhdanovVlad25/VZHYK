@@ -25,6 +25,8 @@ export interface SearchResultItem {
   locationId: string | null;
   publishedAt: string | null;
   mainMediaId: string | null;
+  /** Presigned GET URL для головного фото (StorageProvider) — null, якщо фото немає. */
+  mainMediaUrl: string | null;
 }
 
 export interface SearchResult {
