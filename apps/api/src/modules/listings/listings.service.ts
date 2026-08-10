@@ -67,7 +67,7 @@ export class ListingsService {
     id: string,
     dto: UpdateListingDto,
   ): Promise<Listing & { attributes: ListingAttributeValue[] }> {
-    const listing = await this.getOwnedOrThrow(userId, id);
+    const listing = await this.findOwnedListing(userId, id);
 
     if (['SOLD', 'ARCHIVED', 'BLOCKED'].includes(listing.status)) {
       throw new BadRequestException({
@@ -97,7 +97,7 @@ export class ListingsService {
   }
 
   async publish(userId: string, id: string): Promise<Listing> {
-    const listing = await this.getOwnedOrThrow(userId, id);
+    const listing = await this.findOwnedListing(userId, id);
 
     if (!['DRAFT', 'REJECTED'].includes(listing.status)) {
       throw new BadRequestException({
@@ -134,21 +134,21 @@ export class ListingsService {
   }
 
   async archive(userId: string, id: string): Promise<Listing> {
-    const listing = await this.getOwnedOrThrow(userId, id);
+    const listing = await this.findOwnedListing(userId, id);
     this.assertTransition(listing.status, ['ACTIVE', 'RESERVED'], 'ARCHIVED');
     listing.status = 'ARCHIVED';
     return this.saveWithConflictHandling(listing);
   }
 
   async markSold(userId: string, id: string): Promise<Listing> {
-    const listing = await this.getOwnedOrThrow(userId, id);
+    const listing = await this.findOwnedListing(userId, id);
     this.assertTransition(listing.status, ['ACTIVE', 'RESERVED'], 'SOLD');
     listing.status = 'SOLD';
     return this.saveWithConflictHandling(listing);
   }
 
   async remove(userId: string, id: string): Promise<void> {
-    const listing = await this.getOwnedOrThrow(userId, id);
+    const listing = await this.findOwnedListing(userId, id);
     listing.deletedAt = new Date();
     await this.saveWithConflictHandling(listing);
   }
@@ -175,7 +175,8 @@ export class ListingsService {
     return { ...listing, attributes };
   }
 
-  private async getOwnedOrThrow(userId: string, id: string): Promise<Listing> {
+  /** Публічний для перевикористання ownership-перевірки в суміжних модулях (напр. MediaService). */
+  async findOwnedListing(userId: string, id: string): Promise<Listing> {
     const listing = await this.listings.findOne({ where: { id, deletedAt: IsNull() } });
     if (!listing) {
       throw new NotFoundException({ code: 'LISTING_NOT_FOUND', message: 'Оголошення не знайдено' });

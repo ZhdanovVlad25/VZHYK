@@ -4,6 +4,7 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { randomUUID } from 'crypto';
@@ -14,6 +15,8 @@ import { randomUUID } from 'crypto';
  */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger('ExceptionsFilter');
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -37,6 +40,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         message = (b.message as string) ?? message;
         details = b.details ?? (Array.isArray(b.message) ? b.message : null);
       }
+    } else {
+      // Неочікувана (не-HttpException) помилка — клієнт бачить лише traceId, деталі йдуть у сервер-лог.
+      this.logger.error(
+        `[${traceId}] ${request.method} ${request.url} → ${(exception as Error)?.message ?? exception}`,
+        (exception as Error)?.stack,
+      );
     }
 
     response.status(status).json({
@@ -59,6 +68,8 @@ function defaultCodeForStatus(status: number): string {
       return 'CONFLICT';
     case HttpStatus.TOO_MANY_REQUESTS:
       return 'RATE_LIMITED';
+    case HttpStatus.PAYLOAD_TOO_LARGE:
+      return 'PAYLOAD_TOO_LARGE';
     default:
       return 'INTERNAL_ERROR';
   }

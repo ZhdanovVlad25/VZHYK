@@ -10,6 +10,7 @@ import { CategoryAttribute } from '../modules/attributes/category-attribute.enti
 import { AppSetting } from '../modules/settings/app-setting.entity';
 import { Listing } from '../modules/listings/listing.entity';
 import { ListingAttributeValue } from '../modules/listings/listing-attribute-value.entity';
+import { Media } from '../modules/media/media.entity';
 
 dotenv.config({ path: '../../.env' });
 dotenv.config();
@@ -28,6 +29,7 @@ export const AppDataSource = new DataSource({
     AppSetting,
     Listing,
     ListingAttributeValue,
+    Media,
   ],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: false,

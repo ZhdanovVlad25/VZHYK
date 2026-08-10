@@ -17,6 +17,8 @@ import { AppSetting } from './modules/settings/app-setting.entity';
 import { Listing } from './modules/listings/listing.entity';
 import { ListingAttributeValue } from './modules/listings/listing-attribute-value.entity';
 import { ListingsModule } from './modules/listings/listings.module';
+import { Media } from './modules/media/media.entity';
+import { MediaModule } from './modules/media/media.module';
 
 @Module({
   imports: [
@@ -39,6 +41,7 @@ import { ListingsModule } from './modules/listings/listings.module';
           AppSetting,
           Listing,
           ListingAttributeValue,
+          Media,
         ],
         synchronize: false, // структура БД керується виключно міграціями
         migrationsRun: false,
@@ -49,6 +52,7 @@ import { ListingsModule } from './modules/listings/listings.module';
     AuthModule,
     CategoriesModule,
     ListingsModule,
+    MediaModule,
   ],
 })
 export class AppModule {}
