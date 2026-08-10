@@ -221,3 +221,55 @@ export function verifyOtp(phone: string, code: string): Promise<AuthTokens> {
 export function getMe(token: string): Promise<Me> {
   return apiFetch('/auth/me', { token });
 }
+
+// ---- Listings (authenticated mutations) ----
+
+export interface AttributeValueInput {
+  categoryAttributeId: string;
+  value: unknown;
+}
+
+export interface CreateListingDto {
+  categoryId: string;
+  listingType: ListingType;
+  title: string;
+  description?: string;
+  price?: number;
+  currency?: string;
+  isNegotiable?: boolean;
+  condition?: 'new' | 'used' | 'for_parts';
+  attributes?: AttributeValueInput[];
+}
+
+export type UpdateListingDto = Partial<Omit<CreateListingDto, 'categoryId'>>;
+
+export function createListing(dto: CreateListingDto, token: string): Promise<Listing> {
+  return apiFetch('/listings', { method: 'POST', body: dto, token });
+}
+
+export function updateListing(id: string, dto: UpdateListingDto, token: string): Promise<Listing> {
+  return apiFetch(`/listings/${id}`, { method: 'PATCH', body: dto, token });
+}
+
+export function publishListing(id: string, token: string): Promise<Listing> {
+  return apiFetch(`/listings/${id}/publish`, { method: 'POST', token });
+}
+
+/** multipart/form-data — не через apiFetch (той завжди серіалізує body в JSON). */
+export async function uploadListingMedia(listingId: string, file: File, token: string): Promise<Media> {
+  const form = new FormData();
+  form.append('file', file);
+
+  const res = await fetch(`${API_URL}/listings/${listingId}/media`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = json?.error ?? {};
+    throw new ApiError(res.status, err.code ?? 'UNKNOWN_ERROR', err.message ?? res.statusText, err.details ?? null);
+  }
+  return json as Media;
+}

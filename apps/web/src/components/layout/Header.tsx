@@ -45,6 +45,9 @@ export function Header() {
         <nav className="flex items-center gap-3">
           {isLoading ? null : user ? (
             <>
+              <Link href="/listings/new">
+                <Button size="sm">+ Додати оголошення</Button>
+              </Link>
               <span className="text-sm text-gray-600">{user.phone}</span>
               <Button variant="ghost" size="sm" onClick={logout}>
                 Вийти
