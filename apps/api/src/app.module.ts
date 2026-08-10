@@ -16,6 +16,7 @@ import { CategoryAttribute } from './modules/attributes/category-attribute.entit
 import { AppSetting } from './modules/settings/app-setting.entity';
 import { Listing } from './modules/listings/listing.entity';
 import { ListingAttributeValue } from './modules/listings/listing-attribute-value.entity';
+import { PriceHistory } from './modules/listings/price-history.entity';
 import { ListingsModule } from './modules/listings/listings.module';
 import { Media } from './modules/media/media.entity';
 import { MediaModule } from './modules/media/media.module';
@@ -46,6 +47,7 @@ import { FavoritesModule } from './modules/favorites/favorites.module';
           AppSetting,
           Listing,
           ListingAttributeValue,
+          PriceHistory,
           Media,
           Favorite,
         ],

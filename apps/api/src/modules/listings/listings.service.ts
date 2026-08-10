@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, In, IsNull, OptimisticLockVersionMismatchError, Repository } from 'typeorm';
 import { Listing } from './listing.entity';
 import { ListingAttributeValue } from './listing-attribute-value.entity';
+import { PriceHistory } from './price-history.entity';
 import { Category } from '../categories/category.entity';
 import { CategoryAttribute } from '../attributes/category-attribute.entity';
 import { SettingsService } from '../settings/settings.service';
@@ -36,6 +37,7 @@ export class ListingsService {
     @InjectRepository(ListingAttributeValue) private readonly attributeValues: Repository<ListingAttributeValue>,
     @InjectRepository(Category) private readonly categories: Repository<Category>,
     @InjectRepository(CategoryAttribute) private readonly categoryAttributes: Repository<CategoryAttribute>,
+    @InjectRepository(PriceHistory) private readonly priceHistory: Repository<PriceHistory>,
     private readonly settings: SettingsService,
     @Inject(SEARCH_PROVIDER) private readonly search: SearchProvider,
   ) {}
@@ -80,6 +82,9 @@ export class ListingsService {
       });
     }
 
+    const priceChanging = dto.price !== undefined && dto.price !== listing.price;
+    const oldPrice = listing.price;
+
     Object.assign(listing, {
       listingType: dto.listingType ?? listing.listingType,
       title: dto.title ?? listing.title,
@@ -92,6 +97,17 @@ export class ListingsService {
     });
 
     const saved = await this.saveWithConflictHandling(listing);
+
+    if (priceChanging) {
+      await this.priceHistory.save(
+        this.priceHistory.create({
+          listingId: saved.id,
+          oldPrice,
+          newPrice: saved.price,
+          currency: saved.currency,
+        }),
+      );
+    }
 
     const attributes = dto.attributes
       ? await this.applyAttributeValues(saved.id, saved.categoryId, dto.attributes)
@@ -165,6 +181,26 @@ export class ListingsService {
   }
 
   async findVisible(id: string, requesterUserId?: string): Promise<Listing & { attributes: ListingAttributeValue[] }> {
+    const { listing } = await this.getVisibleOrThrow(id, requesterUserId);
+    const isOwner = Boolean(requesterUserId) && listing.userId === requesterUserId;
+
+    const attributes = await this.attributeValues.find({ where: { listingId: id } });
+
+    if (!isOwner) {
+      await this.listings.increment({ id }, 'viewsCount', 1);
+      listing.viewsCount += 1;
+    }
+
+    return { ...listing, attributes };
+  }
+
+  /** Не в docs/api.md буквально, але той самий "sibling resource" патерн, що й /listings/:id/media. */
+  async getPriceHistory(id: string, requesterUserId?: string): Promise<PriceHistory[]> {
+    await this.getVisibleOrThrow(id, requesterUserId);
+    return this.priceHistory.find({ where: { listingId: id }, order: { changedAt: 'DESC' } });
+  }
+
+  private async getVisibleOrThrow(id: string, requesterUserId?: string): Promise<{ listing: Listing; isOwner: boolean }> {
     const listing = await this.listings.findOne({ where: { id, deletedAt: IsNull() } });
     if (!listing) {
       throw new NotFoundException({ code: 'LISTING_NOT_FOUND', message: 'Оголошення не знайдено' });
@@ -176,14 +212,7 @@ export class ListingsService {
       throw new NotFoundException({ code: 'LISTING_NOT_FOUND', message: 'Оголошення не знайдено' });
     }
 
-    const attributes = await this.attributeValues.find({ where: { listingId: id } });
-
-    if (!isOwner) {
-      await this.listings.increment({ id }, 'viewsCount', 1);
-      listing.viewsCount += 1;
-    }
-
-    return { ...listing, attributes };
+    return { listing, isOwner };
   }
 
   /** docs/api.md §3 "GET /profiles/me/listings?status=" — усі статуси власника, не лише публічно видимі. */

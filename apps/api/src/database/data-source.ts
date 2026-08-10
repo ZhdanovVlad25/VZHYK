@@ -12,6 +12,7 @@ import { Listing } from '../modules/listings/listing.entity';
 import { ListingAttributeValue } from '../modules/listings/listing-attribute-value.entity';
 import { Media } from '../modules/media/media.entity';
 import { Favorite } from '../modules/favorites/favorite.entity';
+import { PriceHistory } from '../modules/listings/price-history.entity';
 
 dotenv.config({ path: '../../.env' });
 dotenv.config();
@@ -32,6 +33,7 @@ export const AppDataSource = new DataSource({
     ListingAttributeValue,
     Media,
     Favorite,
+    PriceHistory,
   ],
   migrations: [__dirname + '/migrations/*.{ts,js}'],
   synchronize: false,

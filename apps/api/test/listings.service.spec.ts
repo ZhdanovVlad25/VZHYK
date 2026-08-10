@@ -38,6 +38,7 @@ describe('ListingsService', () => {
   let attributeValues: MockRepo;
   let categories: MockRepo;
   let categoryAttributes: MockRepo;
+  let priceHistory: MockRepo;
   let settings: { getMaxActiveListingsPerUser: jest.Mock };
   let search: { index: jest.Mock; remove: jest.Mock };
   let service: ListingsService;
@@ -49,6 +50,7 @@ describe('ListingsService', () => {
     attributeValues = mockRepo();
     categories = mockRepo();
     categoryAttributes = mockRepo();
+    priceHistory = mockRepo();
     settings = { getMaxActiveListingsPerUser: jest.fn().mockResolvedValue(5) };
     search = { index: jest.fn().mockResolvedValue(undefined), remove: jest.fn().mockResolvedValue(undefined) };
 
@@ -60,6 +62,7 @@ describe('ListingsService', () => {
       attributeValues as never,
       categories as never,
       categoryAttributes as never,
+      priceHistory as never,
       settings as never,
       search as never,
     );
@@ -138,6 +141,71 @@ describe('ListingsService', () => {
       listings.findOne.mockResolvedValue({ id: 'l-1', userId: 'owner', status: 'SOLD' } as Listing);
 
       await expectHttpError(service.update('owner', 'l-1', { title: 'Нова назва тест' }), 'LISTING_NOT_EDITABLE');
+    });
+
+    it('записує price_history, коли ціна дійсно змінюється', async () => {
+      listings.findOne.mockResolvedValue({
+        id: 'l-1',
+        userId: 'owner',
+        status: 'DRAFT',
+        price: 1000,
+        currency: 'UAH',
+      } as Listing);
+
+      await service.update('owner', 'l-1', { price: 1500 });
+
+      expect(priceHistory.save).toHaveBeenCalledWith(
+        expect.objectContaining({ listingId: 'l-1', oldPrice: 1000, newPrice: 1500, currency: 'UAH' }),
+      );
+    });
+
+    it('не записує price_history, якщо ціна не передана в DTO', async () => {
+      listings.findOne.mockResolvedValue({
+        id: 'l-1',
+        userId: 'owner',
+        status: 'DRAFT',
+        price: 1000,
+        currency: 'UAH',
+      } as Listing);
+
+      await service.update('owner', 'l-1', { title: 'Нова назва тест' });
+
+      expect(priceHistory.save).not.toHaveBeenCalled();
+    });
+
+    it('не записує price_history, якщо нова ціна дорівнює старій', async () => {
+      listings.findOne.mockResolvedValue({
+        id: 'l-1',
+        userId: 'owner',
+        status: 'DRAFT',
+        price: 1000,
+        currency: 'UAH',
+      } as Listing);
+
+      await service.update('owner', 'l-1', { price: 1000 });
+
+      expect(priceHistory.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('getPriceHistory', () => {
+    it('кидає LISTING_NOT_FOUND, якщо чужу чернетку запитує не власник', async () => {
+      listings.findOne.mockResolvedValue({ id: 'l-1', userId: 'owner', status: 'DRAFT' } as Listing);
+
+      await expectHttpError(service.getPriceHistory('l-1', 'stranger'), 'LISTING_NOT_FOUND');
+    });
+
+    it('повертає історію для публічно видимого оголошення', async () => {
+      listings.findOne.mockResolvedValue({ id: 'l-1', userId: 'owner', status: 'ACTIVE' } as Listing);
+      priceHistory.find.mockResolvedValue([{ id: 'ph-1', oldPrice: 1000, newPrice: 1500 }]);
+
+      const result = await service.getPriceHistory('l-1', undefined);
+
+      expect(result).toHaveLength(1);
+      expect(priceHistory.find).toHaveBeenCalledWith({
+        where: { listingId: 'l-1' },
+        order: { changedAt: 'DESC' },
+      });
     });
   });
 
