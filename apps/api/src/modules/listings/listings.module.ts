@@ -9,12 +9,14 @@ import { ListingsService } from './listings.service';
 import { ListingsController } from './listings.controller';
 import { SettingsModule } from '../settings/settings.module';
 import { SearchProviderModule } from '../../providers/search/search.module';
+import { ModerationModule } from '../moderation/moderation.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Listing, ListingAttributeValue, PriceHistory, Category, CategoryAttribute]),
     SettingsModule,
     SearchProviderModule,
+    ModerationModule,
   ],
   controllers: [ListingsController],
   providers: [ListingsService],

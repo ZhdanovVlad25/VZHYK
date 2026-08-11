@@ -207,28 +207,54 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       LISTING/USER/CHAT + targetId + reason + опційний description),
       `GET /reports/mine`. Перевірка існування цілі перед створенням
       (для CHAT — ще й що репортер є учасником, як і решта chat-ендпоінтів).
-      Статус завжди стартує `PENDING` і нічим не змінюється — немає черги
-      модерації, яка б його обробляла (це наступний пункт нижче). 7 unit-тестів
+      Статус завжди стартує `PENDING` і нічим не змінюється — `GET /admin/reports`
+      (обробка скарг модератором) не реалізовано. **Це окрема черга від
+      moderation queue нижче**: `ModerationCase` — про публікацію оголошень
+      (`publish()` → PENDING_MODERATION), `Report` — про скарги користувачів;
+      різні таблиці, різні ендпоінти, спільного немає. 7 unit-тестів
       (`apps/api/test/reports.service.spec.ts`). Фронтенд: `ReportButton`
       (`apps/web/src/components/shared/ReportButton.tsx`) — на сторінці
       оголошення (LISTING) і в треді чату (CHAT). **Не зроблено**: UI для
       репорту USER (нема сторінки публічного профілю, звідки його викликати),
       `evidence`-поле з docs/api.md §10 (без upload-флоу для скарг), сторінка
       "Мої скарги" (`GET /reports/mine` є, списку в UI нема).
-- [ ] Moderation queue + ModerationCase + auto-rules (заборонені слова, дублікати).
+- [x] **Moderation queue** — `apps/api/src/modules/moderation`, міграція
+      `1754800900000-AddModerationCases`. `ListingsService.publish()` більше
+      **не авто-схвалює**: переводить у `PENDING_MODERATION` і створює
+      `ModerationCase` (пряма DI-залежність ListingsModule→ModerationModule,
+      не подія — рішення модератора має синхронно міняти статус listing в
+      межах одного HTTP-запиту). Auto-rule: короткий стоп-словник
+      (`BANNED_WORDS` у `moderation.constants.ts`, свідомо демонстраційний,
+      не production-словник) флагає `NEEDS_REVIEW` при збігу в title/description,
+      інакше `PENDING`. `GET /admin/moderation/queue?status=`,
+      `POST /admin/moderation/:caseId/decide` (APPROVED → listing ACTIVE +
+      publishedAt + search.index; REJECTED → listing REJECTED; NEEDS_REVIEW —
+      лише фіксує рішення, listing не займає). Захист `@UseGuards(JwtAuthGuard,
+      RolesGuard)` + `@Roles('moderator','admin')` **локально на контролері**
+      (не глобально — grabli #3 вище). 10 unit-тестів
+      (`apps/api/test/moderation.service.spec.ts`), existing `listings.service.spec.ts`
+      оновлено під новий контракт `publish()`. Дублікати — **не реалізовано**
+      (потребує fuzzy-порівняння заголовків, окрема задача).
+      Фронтенд: `/admin/moderation` — черга з фільтром за статусом,
+      Схвалити/Відхилити/Потребує уваги, видима в Header лише moderator/admin
+      (client-side гейт — реальна межа лишається на бекенді, підтверджено
+      403 FORBIDDEN_ROLE напряму через RolesGuard). **Не зроблено**: решта
+      Phase 5 Admin Panel (дашборд, users, listings admin CRUD, audit log UI) —
+      ця сторінка лише мінімально розблоковує чергу модерації, не весь Phase 5.
 - [ ] User blocking (адмін-рівень; chat-level block між двома юзерами вже є з Phase 3).
-- [ ] Audit log (усі admin/moderation дії).
+- [ ] Audit log (усі admin/moderation дії — зараз `decide()` не логується нікуди,
+      окрім `moderatorId`/`decidedAt` на самому case).
 - [ ] Anti-fraud basics: RiskSignal/RiskScore.
-- [ ] Реальний `ModerationProvider` замість поточного авто-approve у
-      `ListingsService.publish()` (позначено `TODO(Phase 4)` прямо в коді).
 
-## Phase 5 — Admin Panel ⬜ не розпочато
+## Phase 5 — Admin Panel 🟡 частково
 
 - [ ] Dashboard (метрики).
 - [ ] Users: пошук/перегляд/блокування/історія.
 - [ ] Listings: пошук/перегляд/редагування/блокування (адмінський, не власницький).
 - [ ] Categories/Attributes: повний CRUD UI (API вже є з Phase 2, UI нема).
-- [ ] Reports & Moderation UI.
+- [x] Moderation queue UI — `/admin/moderation` (див. Phase 4 вище). 🟡 лише
+      queue; **не зроблено**: Reports UI (`GET /admin/reports` навіть не
+      реалізований на бекенді).
 - [ ] Audit Log UI.
 
 ## Phase 6 — SEO & Performance ⬜ не розпочато
@@ -240,7 +266,7 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
 
 ## Phase 7 — Testing 🟡 частково (лише unit)
 
-- [x] Unit tests на бізнес-логіку кожного backend-модуля (130+ тестів,
+- [x] Unit tests на бізнес-логіку кожного backend-модуля (135 тестів,
       `npm run test --workspace=apps/api`).
 - [ ] Integration tests.
 - [ ] E2E (11 сценаріїв з вихідного документа).
@@ -262,15 +288,16 @@ Nova Poshta, онлайн-оплата, escrow, монетизація, рейт
 
 `auth`, `users`, `profiles`, `location`, `categories`, `attributes`, `settings`,
 `listings` (+ `price-history` всередині), `media`, `search` (+ `providers/search`),
-`favorites`, `saved-searches`, `chat`, `reports`. Спільна інфраструктура:
-`providers/storage` (S3), `providers/search`, `shared/guards` (`JwtAuthGuard`,
-`OptionalJwtAuthGuard`, `RolesGuard`), `shared/pagination/cursor.ts`
-(keyset-пагінація, спільна для Search і Chat).
+`favorites`, `saved-searches`, `chat`, `reports`, `moderation`. Спільна
+інфраструктура: `providers/storage` (S3), `providers/search`, `shared/guards`
+(`JwtAuthGuard`, `OptionalJwtAuthGuard`, `RolesGuard`),
+`shared/pagination/cursor.ts` (keyset-пагінація, спільна для Search і Chat).
 
 ## Наступний логічний крок
 
 Усі "API-без-UI" пункти з Phase 2/3 закриті, редагування опублікованого
-оголошення зроблено, Reports (громадянське репортування) зроблено. Далі в
-Phase 4: **Moderation queue** — без неї подані скарги (і `PENDING_MODERATION`
-оголошення після publish) нікуди не рухаються, це найбільша дірка з
-залишених. Або Google OAuth роутинг, якщо пріоритет — auth-полнота.
+оголошення зроблено, Reports і Moderation queue (Phase 4) зроблено —
+`ListingsService.publish()` більше не авто-схвалює, реально йде через чергу.
+З відомого лишається: **Google OAuth роутинг** (auth-полнота), **User
+blocking / Audit log** (решта Phase 4), або решта **Phase 5 Admin Panel**
+(dashboard, users/listings admin CRUD — зараз є лише moderation queue).

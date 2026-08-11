@@ -17,6 +17,7 @@ import {
   PUBLICLY_VISIBLE_LISTING_STATUSES,
 } from './listing.constants';
 import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-provider.interface';
+import { ModerationService } from '../moderation/moderation.service';
 
 /**
  * Слоти "активного" оголошення для ліміту DEC-05 — статуси, які реально займають
@@ -40,6 +41,7 @@ export class ListingsService {
     @InjectRepository(PriceHistory) private readonly priceHistory: Repository<PriceHistory>,
     private readonly settings: SettingsService,
     @Inject(SEARCH_PROVIDER) private readonly search: SearchProvider,
+    private readonly moderation: ModerationService,
   ) {}
 
   async create(userId: string, dto: CreateListingDto): Promise<Listing & { attributes: ListingAttributeValue[] }> {
@@ -147,11 +149,9 @@ export class ListingsService {
       });
     }
 
-    // TODO(Phase 4): замінити на реальний ModerationProvider.checkText() + чергу через PENDING_MODERATION.
-    listing.status = 'ACTIVE';
-    listing.publishedAt = new Date();
+    listing.status = 'PENDING_MODERATION';
     const saved = await this.saveWithConflictHandling(listing);
-    await this.search.index(saved.id);
+    await this.moderation.createCaseForListing(saved);
     return saved;
   }
 

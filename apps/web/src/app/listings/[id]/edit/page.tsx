@@ -135,8 +135,13 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
     setActionError(null);
     setIsPublishing(true);
     try {
+      /**
+       * publish() тепер переводить у PENDING_MODERATION, не ACTIVE — редірект на
+       * публічну /listings/:id зламався б (анонімний SSR-фетч не бачить непублічний
+       * статус). Лишаємось тут і перезавантажуємо дані, щоб побачити нову плашку.
+       */
       await publishListing(params.id, accessToken);
-      router.push(`/listings/${params.id}`);
+      await load();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Не вдалося опублікувати оголошення.');
     } finally {

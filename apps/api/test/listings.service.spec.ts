@@ -41,6 +41,7 @@ describe('ListingsService', () => {
   let priceHistory: MockRepo;
   let settings: { getMaxActiveListingsPerUser: jest.Mock };
   let search: { index: jest.Mock; remove: jest.Mock };
+  let moderation: { createCaseForListing: jest.Mock };
   let service: ListingsService;
 
   const leafCategory = { id: 'cat-1', deletedAt: null, isActive: true } as Category;
@@ -53,6 +54,7 @@ describe('ListingsService', () => {
     priceHistory = mockRepo();
     settings = { getMaxActiveListingsPerUser: jest.fn().mockResolvedValue(5) };
     search = { index: jest.fn().mockResolvedValue(undefined), remove: jest.fn().mockResolvedValue(undefined) };
+    moderation = { createCaseForListing: jest.fn().mockResolvedValue({ id: 'case-1', status: 'PENDING' }) };
 
     categories.findOne.mockResolvedValue(leafCategory);
     categories.count.mockResolvedValue(0); // без дочірніх — leaf
@@ -65,6 +67,7 @@ describe('ListingsService', () => {
       priceHistory as never,
       settings as never,
       search as never,
+      moderation as never,
     );
   });
 
@@ -230,7 +233,7 @@ describe('ListingsService', () => {
       listings.findOne.mockResolvedValue({ ...draft(), listingType: 'give_away', price: null });
 
       const result = await service.publish('owner', 'l-1');
-      expect(result.status).toBe('ACTIVE');
+      expect(result.status).toBe('PENDING_MODERATION');
     });
 
     it('кидає LISTING_ATTRIBUTES_INCOMPLETE, якщо не заповнені обов’язкові атрибути', async () => {
@@ -256,14 +259,15 @@ describe('ListingsService', () => {
       await expectHttpError(service.publish('owner', 'l-1'), 'LISTING_INVALID_TRANSITION');
     });
 
-    it('успішно публікує DRAFT → ACTIVE і виставляє publishedAt', async () => {
+    it('успішно переводить DRAFT → PENDING_MODERATION і створює moderation case', async () => {
       listings.findOne.mockResolvedValue(draft());
 
       const result = await service.publish('owner', 'l-1');
 
-      expect(result.status).toBe('ACTIVE');
-      expect(result.publishedAt).toBeInstanceOf(Date);
-      expect(search.index).toHaveBeenCalledWith('l-1');
+      expect(result.status).toBe('PENDING_MODERATION');
+      expect(moderation.createCaseForListing).toHaveBeenCalledWith(result);
+      // Індексація в пошуку і publishedAt — лише після ModerationService.decide('APPROVED'), не тут.
+      expect(search.index).not.toHaveBeenCalled();
     });
   });
 

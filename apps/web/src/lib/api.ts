@@ -420,6 +420,35 @@ export function getMyReports(token: string): Promise<Report[]> {
   return apiFetch('/reports/mine', { token });
 }
 
+// ---- Moderation (moderator/admin) ----
+
+export type ModerationCaseStatus = 'PENDING' | 'NEEDS_REVIEW' | 'APPROVED' | 'REJECTED';
+export type ModerationDecision = 'APPROVED' | 'REJECTED' | 'NEEDS_REVIEW';
+
+export interface ModerationQueueItem {
+  id: string;
+  listingId: string;
+  status: ModerationCaseStatus;
+  autoFlagReason: string | null;
+  moderatorId: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+  listing: { id: string; title: string; price: number | null; currency: string; userId: string } | null;
+}
+
+export function getModerationQueue(token: string, status?: ModerationCaseStatus): Promise<ModerationQueueItem[]> {
+  const qs = status ? `?status=${status}` : '';
+  return apiFetch(`/admin/moderation/queue${qs}`, { token });
+}
+
+export function decideModerationCase(
+  caseId: string,
+  decision: ModerationDecision,
+  token: string,
+): Promise<ModerationQueueItem> {
+  return apiFetch(`/admin/moderation/${caseId}/decide`, { method: 'POST', body: { decision }, token });
+}
+
 /** multipart/form-data — не через apiFetch (той завжди серіалізує body в JSON). */
 export async function uploadListingMedia(listingId: string, file: File, token: string): Promise<Media> {
   const form = new FormData();

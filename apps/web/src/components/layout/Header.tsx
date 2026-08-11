@@ -60,6 +60,11 @@ export function Header() {
               <Link href="/saved-searches" className="text-sm font-medium text-gray-700 hover:text-brand-600">
                 Збережені пошуки
               </Link>
+              {(user.role === 'moderator' || user.role === 'admin') && (
+                <Link href="/admin/moderation" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                  Модерація
+                </Link>
+              )}
               <span className="text-sm text-gray-600">{user.phone}</span>
               <Button variant="ghost" size="sm" onClick={logout}>
                 Вийти
