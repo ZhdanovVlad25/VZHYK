@@ -179,7 +179,19 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       `/search?q=&category=`), "Видалити". Лінк у Header. **Не переносить**
       priceMin/priceMax/condition/hasPhoto — на `/search` немає UI для цих
       фільтрів узагалі (лише q/category/sort), тож зберігати нічого.
-- [ ] **Chat UI** — і REST, і WS готові на бекенді, фронтенд-сторінки нема взагалі.
+- [x] **Chat UI** — `apps/web/src/app/chats/*` (layout з сайдбаром + `ChatProvider`
+      контекст для спільного Socket.IO-з'єднання, `/chats/[id]` тред). Список
+      чатів збагачується client-side (`GET /users/:id/public-profile` +
+      `GET /listings/:id`, бо `GET /chats` повертає лише ID). `StartChatButton`
+      на сторінці оголошення. Typing-індикатор, presence (online/offline),
+      блокування — все підключено. Повідомлення: історія + курсорна
+      пагінація "старіші", live push через `message:new`. **Відомі обмеження
+      (успадковані з бекенду, не з фронтенду)**: presence — лише push при
+      зміні статусу, немає snapshot при конекті (partner онлайн до твого
+      конекту — не побачиш, поки не буде наступного connect/disconnect);
+      read-receipts не існують (`Message.readAt` ніде не пишеться); фото в
+      повідомленнях нема. **Не зроблено**: бейдж непрочитаних у Header
+      (потребував би глобального WS-провайдера, а не лише в межах `/chats`).
 - [ ] Редагування вже опублікованого оголошення (зараз `/listings/[id]/edit`
       лише допомагає добити чернетку до публікації, не для правок після).
 - [ ] Google OAuth кнопка (бекенд-роутинг теж не готовий — див. Phase 1 нотатку).
@@ -241,7 +253,8 @@ Search і Chat).
 
 ## Наступний логічний крок
 
-"Мої оголошення", Favorites UI, Saved Searches UI зроблено (див. вище).
-Лишилось API-без-UI: Chat (найбільший шматок — і REST, і WS готові, фронтенду
-нема взагалі). Або Phase 4 (Trust & Safety), якщо пріоритет — безпека перед
-UI-повнотою.
+Усі "API-без-UI" пункти з Phase 2/3 закриті: Мої оголошення, Favorites,
+Saved Searches, Chat — усе має фронтенд. Далі логічно: Phase 4 (Trust &
+Safety — reports/moderation, зараз авто-approve у публікації), або
+"Редагування вже опублікованого оголошення" (зараз `/listings/[id]/edit`
+працює лише для чернеток), або Google OAuth роутинг.

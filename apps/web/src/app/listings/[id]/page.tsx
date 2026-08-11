@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { ApiError, getCategoryAttributes, getListing, getListingMedia } from '@/lib/api';
 import { Badge, Card } from '@/components/ui';
 import { FavoriteButton } from '@/components/listings/FavoriteButton';
+import { StartChatButton } from '@/components/listings/StartChatButton';
 
 function formatPrice(price: number | null, currency: string): string {
   if (price === null) {
@@ -81,6 +82,10 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
           <h1 className="text-2xl font-semibold text-gray-900">{listing.title}</h1>
           <p className="mt-2 text-3xl font-bold text-brand-600">{formatPrice(listing.price, listing.currency)}</p>
           {listing.isNegotiable && <p className="mt-1 text-sm text-gray-500">Торг можливий</p>}
+
+          <div className="mt-4">
+            <StartChatButton listingId={listing.id} ownerId={listing.userId} />
+          </div>
 
           {listing.description && (
             <p className="mt-6 whitespace-pre-wrap text-gray-700">{listing.description}</p>

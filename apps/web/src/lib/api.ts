@@ -189,6 +189,23 @@ export function getListing(id: string, token?: string): Promise<Listing> {
   return apiFetch(`/listings/${id}`, { token });
 }
 
+export interface PublicProfile {
+  userId: string;
+  displayName: string | null;
+  username: string | null;
+  avatarMediaId: string | null;
+  cityLocationId: string | null;
+  bio: string | null;
+  rating: number | null;
+  reviewsCount: number | null;
+  activeListingsCount: number;
+  memberSince: string;
+}
+
+export function getPublicProfile(userId: string): Promise<PublicProfile> {
+  return apiFetch(`/users/${userId}/public-profile`);
+}
+
 export function getListingMedia(id: string): Promise<Media[]> {
   return apiFetch(`/listings/${id}/media`);
 }
@@ -317,6 +334,59 @@ export function createSavedSearch(dto: CreateSavedSearchDto, token: string): Pro
 
 export function deleteSavedSearch(id: string, token: string): Promise<void> {
   return apiFetch(`/saved-searches/${id}`, { method: 'DELETE', token });
+}
+
+// ---- Chat ----
+
+export interface ChatDto {
+  id: string;
+  listingId: string | null;
+  lastMessageAt: string | null;
+  createdAt: string;
+}
+
+export interface ChatListItem {
+  chatId: string;
+  listingId: string | null;
+  otherUserId: string | null;
+  lastMessageAt: string | null;
+  unreadCount: number;
+}
+
+export interface Message {
+  id: string;
+  chatId: string;
+  senderId: string;
+  text: string;
+  mediaIds: string[];
+  createdAt: string;
+  readAt: string | null;
+}
+
+export interface MessagesPage {
+  items: Message[];
+  nextCursor: string | null;
+}
+
+export function createChat(otherUserId: string, listingId: string | undefined, token: string): Promise<ChatDto> {
+  return apiFetch('/chats', { method: 'POST', body: { otherUserId, listingId }, token });
+}
+
+export function listChats(token: string): Promise<ChatListItem[]> {
+  return apiFetch('/chats', { token });
+}
+
+export function getChatMessages(chatId: string, token: string, cursor?: string): Promise<MessagesPage> {
+  const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
+  return apiFetch(`/chats/${chatId}/messages${qs}`, { token });
+}
+
+export function sendChatMessage(chatId: string, text: string, token: string): Promise<Message> {
+  return apiFetch(`/chats/${chatId}/messages`, { method: 'POST', body: { text }, token });
+}
+
+export function blockChat(chatId: string, token: string): Promise<void> {
+  return apiFetch(`/chats/${chatId}/block`, { method: 'POST', token });
 }
 
 /** multipart/form-data — не через apiFetch (той завжди серіалізує body в JSON). */
