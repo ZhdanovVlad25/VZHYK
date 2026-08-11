@@ -24,6 +24,7 @@ describe('ReportsService', () => {
   let listings: MockRepo;
   let users: MockRepo;
   let chatParticipants: MockRepo;
+  let risk: { checkHighReportCount: jest.Mock };
   let service: ReportsService;
 
   beforeEach(() => {
@@ -31,7 +32,8 @@ describe('ReportsService', () => {
     listings = mockRepo();
     users = mockRepo();
     chatParticipants = mockRepo();
-    service = new ReportsService(reports as never, listings as never, users as never, chatParticipants as never);
+    risk = { checkHighReportCount: jest.fn().mockResolvedValue(undefined) };
+    service = new ReportsService(reports as never, listings as never, users as never, chatParticipants as never, risk as never);
   });
 
   describe('create — targetType LISTING', () => {
@@ -45,7 +47,7 @@ describe('ReportsService', () => {
     });
 
     it('створює скаргу зі статусом PENDING, коли оголошення існує', async () => {
-      listings.findOne.mockResolvedValue({ id: 'l-1', deletedAt: null } as Listing);
+      listings.findOne.mockResolvedValue({ id: 'l-1', userId: 'owner-1', deletedAt: null } as Listing);
 
       const result = await service.create('u-1', {
         targetType: 'LISTING',
@@ -62,6 +64,14 @@ describe('ReportsService', () => {
         description: 'Схоже на шахрайство',
       });
       expect(reports.save).toHaveBeenCalled();
+    });
+
+    it('перевіряє RiskService.checkHighReportCount для власника оголошення, не репортера', async () => {
+      listings.findOne.mockResolvedValue({ id: 'l-1', userId: 'owner-1', deletedAt: null } as Listing);
+
+      await service.create('u-1', { targetType: 'LISTING', targetId: 'l-1', reason: 'FRAUD' });
+
+      expect(risk.checkHighReportCount).toHaveBeenCalledWith('owner-1');
     });
   });
 
@@ -82,6 +92,7 @@ describe('ReportsService', () => {
       expect(reports.create).toHaveBeenCalledWith(
         expect.objectContaining({ reporterId: 'u-1', targetType: 'USER', targetId: 'u-2', reason: 'OFFENSIVE_CONTENT' }),
       );
+      expect(risk.checkHighReportCount).toHaveBeenCalledWith('u-2');
     });
   });
 
@@ -100,6 +111,7 @@ describe('ReportsService', () => {
       const result = await service.create('u-1', { targetType: 'CHAT', targetId: 'chat-1', reason: 'DUPLICATE' });
 
       expect(result).toMatchObject({ targetType: 'CHAT', targetId: 'chat-1' });
+      expect(risk.checkHighReportCount).not.toHaveBeenCalled();
     });
   });
 

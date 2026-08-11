@@ -10,6 +10,7 @@ import { ListingsController } from './listings.controller';
 import { SettingsModule } from '../settings/settings.module';
 import { SearchProviderModule } from '../../providers/search/search.module';
 import { ModerationModule } from '../moderation/moderation.module';
+import { RiskModule } from '../risk/risk.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ModerationModule } from '../moderation/moderation.module';
     SettingsModule,
     SearchProviderModule,
     ModerationModule,
+    RiskModule,
   ],
   controllers: [ListingsController],
   providers: [ListingsService],

@@ -6,9 +6,10 @@ import { User } from '../users/user.entity';
 import { ChatParticipant } from '../chat/chat-participant.entity';
 import { ReportsService } from './reports.service';
 import { ReportsController } from './reports.controller';
+import { RiskModule } from '../risk/risk.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Report, Listing, User, ChatParticipant])],
+  imports: [TypeOrmModule.forFeature([Report, Listing, User, ChatParticipant]), RiskModule],
   controllers: [ReportsController],
   providers: [ReportsService],
 })

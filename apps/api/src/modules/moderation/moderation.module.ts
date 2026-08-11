@@ -6,9 +6,11 @@ import { ModerationService } from './moderation.service';
 import { ModerationController } from './moderation.controller';
 import { SearchProviderModule } from '../../providers/search/search.module';
 import { AuditLogModule } from '../audit-log/audit-log.module';
+import { RiskModule } from '../risk/risk.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ModerationCase, Listing]), SearchProviderModule, AuditLogModule],
+  imports: [TypeOrmModule.forFeature([ModerationCase, Listing]), SearchProviderModule, AuditLogModule, RiskModule, SettingsModule],
   controllers: [ModerationController],
   providers: [ModerationService],
   exports: [ModerationService],

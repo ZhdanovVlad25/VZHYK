@@ -433,7 +433,7 @@ export interface ModerationQueueItem {
   moderatorId: string | null;
   decidedAt: string | null;
   createdAt: string;
-  listing: { id: string; title: string; price: number | null; currency: string; userId: string } | null;
+  listing: { id: string; title: string; price: number | null; currency: string; userId: string; ownerRiskScore: number } | null;
 }
 
 export function getModerationQueue(token: string, status?: ModerationCaseStatus): Promise<ModerationQueueItem[]> {

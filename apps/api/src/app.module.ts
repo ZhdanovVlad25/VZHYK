@@ -38,6 +38,8 @@ import { ModerationCase } from './modules/moderation/moderation-case.entity';
 import { ModerationModule } from './modules/moderation/moderation.module';
 import { AuditLog } from './modules/audit-log/audit-log.entity';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
+import { RiskSignal } from './modules/risk/risk-signal.entity';
+import { RiskScore } from './modules/risk/risk-score.entity';
 
 @Module({
   imports: [
@@ -71,6 +73,8 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
           Report,
           ModerationCase,
           AuditLog,
+          RiskSignal,
+          RiskScore,
         ],
         synchronize: false, // структура БД керується виключно міграціями
         migrationsRun: false,

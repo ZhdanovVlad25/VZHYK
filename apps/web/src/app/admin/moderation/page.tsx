@@ -134,9 +134,16 @@ export default function ModerationQueuePage() {
 
                 {item.listing ? (
                   <>
-                    <Link href={`/listings/${item.listing.id}`} className="font-medium text-gray-900 hover:underline">
-                      {item.listing.title}
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link href={`/listings/${item.listing.id}`} className="font-medium text-gray-900 hover:underline">
+                        {item.listing.title}
+                      </Link>
+                      {item.listing.ownerRiskScore > 0 && (
+                        <Badge tone={item.listing.ownerRiskScore >= 15 ? 'danger' : 'warning'}>
+                          Risk score: {item.listing.ownerRiskScore}
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-600">{formatPrice(item.listing.price, item.listing.currency)}</p>
                   </>
                 ) : (

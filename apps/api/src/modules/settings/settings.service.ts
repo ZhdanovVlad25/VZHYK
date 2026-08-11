@@ -53,4 +53,9 @@ export class SettingsService {
   getPiiRetentionMonths(): Promise<number> {
     return this.get<number>('pii.retention_months', 6);
   }
+
+  /** docs/moderation.md §6 — RiskScore понад цей поріг форсує NEEDS_REVIEW при створенні ModerationCase. */
+  getRiskNeedsReviewThreshold(): Promise<number> {
+    return this.get<number>('risk.needs_review_threshold', 10);
+  }
 }

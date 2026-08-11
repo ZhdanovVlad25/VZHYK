@@ -6,6 +6,8 @@ import { Listing } from '../listings/listing.entity';
 import { BANNED_WORDS, ModerationCaseStatus, ModerationDecision } from './moderation.constants';
 import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-provider.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { RiskService } from '../risk/risk.service';
+import { SettingsService } from '../settings/settings.service';
 
 export interface ModerationQueueItem extends Omit<ModerationCase, 'listing'> {
   listing: {
@@ -14,6 +16,8 @@ export interface ModerationQueueItem extends Omit<ModerationCase, 'listing'> {
     price: number | null;
     currency: string;
     userId: string;
+    /** docs/moderation.md §4 — "Модератор бачить: ... risk score". 0, якщо сигналів ще не було. */
+    ownerRiskScore: number;
   } | null;
 }
 
@@ -29,11 +33,24 @@ export class ModerationService {
     @InjectRepository(Listing) private readonly listings: Repository<Listing>,
     @Inject(SEARCH_PROVIDER) private readonly search: SearchProvider,
     private readonly auditLog: AuditLogService,
+    private readonly risk: RiskService,
+    private readonly settings: SettingsService,
   ) {}
 
   /** Викликається з ListingsService.publish() одразу після переведення listing у PENDING_MODERATION. */
   async createCaseForListing(listing: Listing): Promise<ModerationCase> {
-    const flagReason = this.findBannedWord(listing.title, listing.description);
+    const bannedWordReason = this.findBannedWord(listing.title, listing.description);
+    const isDuplicate = await this.risk.checkDuplicateListing(listing.userId, listing.title, listing.price, listing.id);
+    const ownerRiskScore = await this.risk.getScore(listing.userId);
+    const needsReviewThreshold = await this.settings.getRiskNeedsReviewThreshold();
+
+    let flagReason = bannedWordReason;
+    if (!flagReason && isDuplicate) {
+      flagReason = 'DUPLICATE_LISTING';
+    }
+    if (!flagReason && ownerRiskScore > needsReviewThreshold) {
+      flagReason = `RISK_SCORE:${ownerRiskScore}`;
+    }
 
     return this.cases.save(
       this.cases.create({
@@ -54,13 +71,21 @@ export class ModerationService {
     const listingIds = [...new Set(cases.map((c) => c.listingId))];
     const listings = await this.listings.find({ where: listingIds.map((id) => ({ id })) });
     const byId = new Map(listings.map((l) => [l.id, l]));
+    const riskScores = await this.risk.getScores([...new Set(listings.map((l) => l.userId))]);
 
     return cases.map((c) => {
       const listing = byId.get(c.listingId);
       return {
         ...c,
         listing: listing
-          ? { id: listing.id, title: listing.title, price: listing.price, currency: listing.currency, userId: listing.userId }
+          ? {
+              id: listing.id,
+              title: listing.title,
+              price: listing.price,
+              currency: listing.currency,
+              userId: listing.userId,
+              ownerRiskScore: riskScores.get(listing.userId) ?? 0,
+            }
           : null,
       };
     });

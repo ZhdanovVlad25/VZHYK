@@ -18,6 +18,7 @@ import {
 } from './listing.constants';
 import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-provider.interface';
 import { ModerationService } from '../moderation/moderation.service';
+import { RiskService } from '../risk/risk.service';
 
 /**
  * Слоти "активного" оголошення для ліміту DEC-05 — статуси, які реально займають
@@ -42,6 +43,7 @@ export class ListingsService {
     private readonly settings: SettingsService,
     @Inject(SEARCH_PROVIDER) private readonly search: SearchProvider,
     private readonly moderation: ModerationService,
+    private readonly risk: RiskService,
   ) {}
 
   async create(userId: string, dto: CreateListingDto): Promise<Listing & { attributes: ListingAttributeValue[] }> {
@@ -66,6 +68,8 @@ export class ListingsService {
     const attributes = dto.attributes
       ? await this.applyAttributeValues(listing.id, dto.categoryId, dto.attributes)
       : [];
+
+    await this.risk.checkRapidListingCreation(userId);
 
     return { ...listing, attributes };
   }

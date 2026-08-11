@@ -23,6 +23,8 @@ describe('ModerationService', () => {
   let listings: MockRepo;
   let search: { index: jest.Mock; remove: jest.Mock };
   let auditLog: { record: jest.Mock };
+  let risk: { checkDuplicateListing: jest.Mock; getScore: jest.Mock; getScores: jest.Mock };
+  let settings: { getRiskNeedsReviewThreshold: jest.Mock };
   let service: ModerationService;
 
   beforeEach(() => {
@@ -30,7 +32,20 @@ describe('ModerationService', () => {
     listings = mockRepo();
     search = { index: jest.fn().mockResolvedValue(undefined), remove: jest.fn().mockResolvedValue(undefined) };
     auditLog = { record: jest.fn().mockResolvedValue(undefined) };
-    service = new ModerationService(cases as never, listings as never, search as never, auditLog as never);
+    risk = {
+      checkDuplicateListing: jest.fn().mockResolvedValue(false),
+      getScore: jest.fn().mockResolvedValue(0),
+      getScores: jest.fn().mockResolvedValue(new Map()),
+    };
+    settings = { getRiskNeedsReviewThreshold: jest.fn().mockResolvedValue(10) };
+    service = new ModerationService(
+      cases as never,
+      listings as never,
+      search as never,
+      auditLog as never,
+      risk as never,
+      settings as never,
+    );
   });
 
   describe('createCaseForListing', () => {
@@ -58,6 +73,38 @@ describe('ModerationService', () => {
 
       expect(result.status).toBe('NEEDS_REVIEW');
     });
+
+    it('автофлагає NEEDS_REVIEW при дублікаті (RiskService.checkDuplicateListing)', async () => {
+      risk.checkDuplicateListing.mockResolvedValue(true);
+      const listing = { id: 'l-4', userId: 'u-1', title: 'Товар', price: 100, description: null } as Listing;
+
+      const result = await service.createCaseForListing(listing);
+
+      expect(risk.checkDuplicateListing).toHaveBeenCalledWith('u-1', 'Товар', 100, 'l-4');
+      expect(result.status).toBe('NEEDS_REVIEW');
+      expect(result.autoFlagReason).toBe('DUPLICATE_LISTING');
+    });
+
+    it('автофлагає NEEDS_REVIEW, якщо RiskScore власника перевищує поріг', async () => {
+      risk.getScore.mockResolvedValue(25);
+      settings.getRiskNeedsReviewThreshold.mockResolvedValue(10);
+      const listing = { id: 'l-5', userId: 'u-2', title: 'Товар', price: 100, description: null } as Listing;
+
+      const result = await service.createCaseForListing(listing);
+
+      expect(result.status).toBe('NEEDS_REVIEW');
+      expect(result.autoFlagReason).toBe('RISK_SCORE:25');
+    });
+
+    it('не флагає за RiskScore, якщо він не перевищує поріг', async () => {
+      risk.getScore.mockResolvedValue(5);
+      settings.getRiskNeedsReviewThreshold.mockResolvedValue(10);
+      const listing = { id: 'l-6', userId: 'u-3', title: 'Товар', price: 100, description: null } as Listing;
+
+      const result = await service.createCaseForListing(listing);
+
+      expect(result.status).toBe('PENDING');
+    });
   });
 
   describe('findQueue', () => {
@@ -68,15 +115,16 @@ describe('ModerationService', () => {
       expect(listings.find).not.toHaveBeenCalled();
     });
 
-    it('приєднує дані оголошення до кожної справи', async () => {
+    it('приєднує дані оголошення і risk score власника до кожної справи', async () => {
       cases.find.mockResolvedValue([{ id: 'c-1', listingId: 'l-1', status: 'PENDING' } as ModerationCase]);
       listings.find.mockResolvedValue([
         { id: 'l-1', title: 'Товар', price: 500, currency: 'UAH', userId: 'u-1' } as Listing,
       ]);
+      risk.getScores.mockResolvedValue(new Map([['u-1', 12]]));
 
       const result = await service.findQueue();
 
-      expect(result[0].listing).toMatchObject({ id: 'l-1', title: 'Товар', userId: 'u-1' });
+      expect(result[0].listing).toMatchObject({ id: 'l-1', title: 'Товар', userId: 'u-1', ownerRiskScore: 12 });
     });
 
     it('фільтрує за статусом, якщо переданий', async () => {

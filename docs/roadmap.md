@@ -218,7 +218,7 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       (симуляція валідною парою токенів з іншого флоу). Щоб запрацювало
       по-справжньому — потрібні реальні `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET` в `.env`.
 
-## Phase 4 — Trust & Safety 🟡 частково
+## Phase 4 — Trust & Safety ✅ завершено (backend + мінімальний admin frontend)
 
 - [x] **Reports (громадянське репортування)** — `apps/api/src/modules/reports`,
       міграція `1754800800000-AddReports`. `POST /reports` (targetType
@@ -287,18 +287,59 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       **Не зроблено**: списки Reports (`GET /admin/reports` не існує) й
       admin-редагування listings (`PATCH /admin/listings/:id`) поки що не
       логуються, бо самих цих ендпоінтів ще нема.
-- [ ] Anti-fraud basics: RiskSignal/RiskScore.
+- [x] **Anti-fraud basics (RiskSignal/RiskScore)** — `apps/api/src/modules/risk`,
+      міграція `1754801100000-AddRiskSignals`, схема точно за
+      `docs/database.md`/`docs/moderation.md` §6. `RiskScore` = сума ваг усіх
+      `RiskSignal` юзера (без decay/expiry — "basics", не production-калібрована
+      формула). **Задетектовано 3 з 6 сигналів** з переліку docs (кожен зі своїм
+      реальним тригером):
+      - `rapid_listing_creation` (вага 5) — `ListingsService.create()`, >5
+        оголошень за 1 годину;
+      - `duplicate_listings` (вага 8) — `ModerationService.createCaseForListing()`,
+        точний збіг title+price від того ж юзера за 24 години (без фото —
+        спрощення); подвійно корисний: той самий виклик і пише RiskSignal, і
+        авто-флагає ModerationCase у `NEEDS_REVIEW` (docs §3 auto-rule "дублікат");
+      - `high_report_count` (вага 15) — `ReportsService.create()`, ≥3 скарги на
+        юзера (напряму або через його listings; CHAT-скарги пропускаються —
+        двоє учасників, неоднозначно хто винен).
+      **Не задетектовано** (заведені в enum, без тригера): `mass_messaging`
+      (треба аналіз вмісту чат-повідомлень), `multi_account_signal` (треба
+      IP-трекінг на реєстрації — зараз IP пробрасывается лише в
+      `otp/request`, не в `verify`/Google callback); `location_mismatch` —
+      явно "Phase 2" за `docs/moderation.md` §6, поза MVP.
+      **RiskScore ніколи не блокує юзера автоматично** (docs: "для BLOCKED
+      потрібне ручне підтвердження модератора") — лише форсує `NEEDS_REVIEW`
+      при створенні `ModerationCase`, якщо score власника перевищує поріг
+      (`risk.needs_review_threshold` app_setting, default 10; той самий
+      `SettingsService`-патерн, що й `listing.max_active_per_user`).
+      **Не реалізовано**: "score > Y → авто-приховати з пошуку" (docs §6,
+      друга половина порогової логіки) — свідомо, це вже про ретроактивне
+      зняття з публікації живого оголошення, ризикованіше за вплив лише на
+      нові рішення модерації. Модератор бачить risk score власника прямо в
+      черзі (`GET /admin/moderation/queue` → `listing.ownerRiskScore`,
+      docs §4). 21 unit-тест (`apps/api/test/risk.service.spec.ts` +
+      оновлення `listings`/`reports`/`moderation` spec під нові DI-залежності).
+      Фронтенд: бейдж "Risk score: N" у `/admin/moderation` (danger-тон від 15).
+      **Перевірено живцем**: 6 оголошень підряд → сигнал+score=5; два
+      однакових title+price → `NEEDS_REVIEW`/`DUPLICATE_LISTING` в
+      moderation_cases + score=33; 3 скарги на юзера → `high_report_count`.
+      Каскадне видалення тестового юзера прибрало всі пов'язані
+      risk_signals/listings автоматично (перевірено), скарги (без FK на
+      targetId, поліморфні) прибрані вручну.
 
 ## Phase 5 — Admin Panel 🟡 частково
 
 - [ ] Dashboard (метрики).
-- [ ] Users: пошук/перегляд/блокування/історія.
+- [x] Users: пошук + блокування/розблокування — `/admin/users` (див. Phase 4
+      вище). **Не зроблено**: детальний перегляд одного юзера (історія
+      оголошень/скарг/risk-сигналів на нього).
 - [ ] Listings: пошук/перегляд/редагування/блокування (адмінський, не власницький).
 - [ ] Categories/Attributes: повний CRUD UI (API вже є з Phase 2, UI нема).
-- [x] Moderation queue UI — `/admin/moderation` (див. Phase 4 вище). 🟡 лише
-      queue; **не зроблено**: Reports UI (`GET /admin/reports` навіть не
-      реалізований на бекенді).
-- [ ] Audit Log UI.
+- [x] Moderation queue UI — `/admin/moderation` (див. Phase 4 вище), тепер з
+      risk score власника. **Не зроблено**: Reports UI (`GET /admin/reports`
+      навіть не реалізований на бекенді).
+- [x] Audit Log UI — `/admin/audit-log` (див. Phase 4 вище), таблиця без
+      фільтрів/пошуку.
 
 ## Phase 6 — SEO & Performance ⬜ не розпочато
 
@@ -309,7 +350,7 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
 
 ## Phase 7 — Testing 🟡 частково (лише unit)
 
-- [x] Unit tests на бізнес-логіку кожного backend-модуля (154 тести,
+- [x] Unit tests на бізнес-логіку кожного backend-модуля (168 тестів,
       `npm run test --workspace=apps/api`).
 - [ ] Integration tests.
 - [ ] E2E (11 сценаріїв з вихідного документа).
@@ -332,19 +373,18 @@ Nova Poshta, онлайн-оплата, escrow, монетизація, рейт
 `auth`, `users` (+ `admin-users.*` всередині), `profiles`, `location`,
 `categories`, `attributes`, `settings`, `listings` (+ `price-history`
 всередині), `media`, `search` (+ `providers/search`), `favorites`,
-`saved-searches`, `chat`, `reports`, `moderation`, `audit-log`. Спільна
-інфраструктура: `providers/storage` (S3), `providers/search`, `shared/guards`
-(`JwtAuthGuard`, `OptionalJwtAuthGuard`, `RolesGuard`),
+`saved-searches`, `chat`, `reports`, `moderation`, `audit-log`, `risk`.
+Спільна інфраструктура: `providers/storage` (S3), `providers/search`,
+`shared/guards` (`JwtAuthGuard`, `OptionalJwtAuthGuard`, `RolesGuard`),
 `shared/pagination/cursor.ts` (keyset-пагінація, спільна для Search і Chat).
 
 ## Наступний логічний крок
 
-Phase 4 (Trust & Safety) фактично завершено: Reports, Moderation queue,
-User blocking, Audit log — усе є. Лишився лише Anti-fraud (RiskSignal/
-RiskScore) — найменш конкретний пункт списку, немає чіткого критерію
-"score за чим", варто спершу уточнити з продуктом, що саме рахувати.
-Google OAuth підключено (роутинг+логіка+тести; повний live-тест потребує
-реальних `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`, яких немає в `.env`). Далі
-логічно: решта **Phase 5 Admin Panel** (dashboard, listings admin CRUD,
-Reports UI — зараз є лише moderation queue + users + audit-log), або
+**Phase 4 (Trust & Safety) повністю завершено**: Reports, Moderation queue,
+User blocking, Audit log, Anti-fraud (RiskSignal/RiskScore) — усе є і
+перевірено живцем. Google OAuth підключено (роутинг+логіка+тести; повний
+live-тест потребує реальних `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`, яких немає
+в `.env`). Далі логічно: решта **Phase 5 Admin Panel** (dashboard, listings
+admin CRUD, Categories/Attributes CRUD UI, Reports UI — зараз є лише
+moderation queue + users + audit-log), або
 **Phase 7 Integration/E2E tests** (зараз лише unit).

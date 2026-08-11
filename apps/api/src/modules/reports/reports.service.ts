@@ -6,6 +6,7 @@ import { Listing } from '../listings/listing.entity';
 import { User } from '../users/user.entity';
 import { ChatParticipant } from '../chat/chat-participant.entity';
 import { CreateReportDto } from './dto/create-report.dto';
+import { RiskService } from '../risk/risk.service';
 
 /** docs/api.md §10 Reports — створення скарги + перелік своїх. Черга модерації — окремо, пізніше. */
 @Injectable()
@@ -15,12 +16,13 @@ export class ReportsService {
     @InjectRepository(Listing) private readonly listings: Repository<Listing>,
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(ChatParticipant) private readonly chatParticipants: Repository<ChatParticipant>,
+    private readonly risk: RiskService,
   ) {}
 
   async create(reporterId: string, dto: CreateReportDto): Promise<Report> {
     await this.assertTargetExists(reporterId, dto.targetType, dto.targetId);
 
-    return this.reports.save(
+    const saved = await this.reports.save(
       this.reports.create({
         reporterId,
         targetType: dto.targetType,
@@ -29,6 +31,25 @@ export class ReportsService {
         description: dto.description ?? null,
       }),
     );
+
+    /** CHAT-скарги пропускаємо — учасників двоє, неоднозначно, хто винен. */
+    const reportedUserId = await this.resolveReportedUserId(dto.targetType, dto.targetId);
+    if (reportedUserId) {
+      await this.risk.checkHighReportCount(reportedUserId);
+    }
+
+    return saved;
+  }
+
+  private async resolveReportedUserId(targetType: CreateReportDto['targetType'], targetId: string): Promise<string | null> {
+    if (targetType === 'USER') {
+      return targetId;
+    }
+    if (targetType === 'LISTING') {
+      const listing = await this.listings.findOne({ where: { id: targetId } });
+      return listing?.userId ?? null;
+    }
+    return null;
   }
 
   list(reporterId: string): Promise<Report[]> {

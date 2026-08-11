@@ -42,6 +42,7 @@ describe('ListingsService', () => {
   let settings: { getMaxActiveListingsPerUser: jest.Mock };
   let search: { index: jest.Mock; remove: jest.Mock };
   let moderation: { createCaseForListing: jest.Mock };
+  let risk: { checkRapidListingCreation: jest.Mock };
   let service: ListingsService;
 
   const leafCategory = { id: 'cat-1', deletedAt: null, isActive: true } as Category;
@@ -55,6 +56,7 @@ describe('ListingsService', () => {
     settings = { getMaxActiveListingsPerUser: jest.fn().mockResolvedValue(5) };
     search = { index: jest.fn().mockResolvedValue(undefined), remove: jest.fn().mockResolvedValue(undefined) };
     moderation = { createCaseForListing: jest.fn().mockResolvedValue({ id: 'case-1', status: 'PENDING' }) };
+    risk = { checkRapidListingCreation: jest.fn().mockResolvedValue(undefined) };
 
     categories.findOne.mockResolvedValue(leafCategory);
     categories.count.mockResolvedValue(0); // без дочірніх — leaf
@@ -68,6 +70,7 @@ describe('ListingsService', () => {
       settings as never,
       search as never,
       moderation as never,
+      risk as never,
     );
   });
 
