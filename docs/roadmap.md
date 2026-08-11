@@ -169,7 +169,10 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       ціна/перегляди/дата створення. DRAFT → лінк на `/listings/[id]/edit`,
       решта статусів → на публічну сторінку оголошення. Лінк у Header.
       Профіль-сторінка (редагування `GET/PATCH /profiles/me`) окремо не робилась.
-- [ ] **Favorites UI** — API готовий, кнопки "в обране"/сторінки списку нема.
+- [x] **Favorites UI** — `FavoriteButton` (`apps/web/src/components/listings/FavoriteButton.tsx`)
+      на сторінці оголошення (toggle, стан вичитується з `GET /favorites`, окремого
+      "чи в обраному один listing" ендпоінта нема), сторінка `/favorites` зі списком
+      і прапорцями "Недоступне"/"Ціна змінилась". Лінк у Header.
 - [ ] **Saved searches UI** — API готовий, UI нема.
 - [ ] **Chat UI** — і REST, і WS готові на бекенді, фронтенд-сторінки нема взагалі.
 - [ ] Редагування вже опублікованого оголошення (зараз `/listings/[id]/edit`
@@ -233,6 +236,6 @@ Search і Chat).
 
 ## Наступний логічний крок
 
-"Мої оголошення" зроблено (див. вище). Лишилось API-без-UI: Favorites, Saved
-Searches, Chat — це найбільша віддача зараз. Або Phase 4 (Trust & Safety),
-якщо пріоритет — безпека перед UI-повнотою.
+"Мої оголошення" і Favorites UI зроблено (див. вище). Лишилось API-без-UI:
+Saved Searches (дешево), Chat (найбільший шматок). Або Phase 4 (Trust &
+Safety), якщо пріоритет — безпека перед UI-повнотою.

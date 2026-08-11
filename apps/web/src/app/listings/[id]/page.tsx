@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { ApiError, getCategoryAttributes, getListing, getListingMedia } from '@/lib/api';
 import { Badge, Card } from '@/components/ui';
+import { FavoriteButton } from '@/components/listings/FavoriteButton';
 
 function formatPrice(price: number | null, currency: string): string {
   if (price === null) {
@@ -67,11 +68,14 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
         </div>
 
         <div>
-          <div className="mb-2 flex items-center gap-2">
-            <Badge tone={listing.status === 'ACTIVE' ? 'success' : listing.status === 'SOLD' ? 'neutral' : 'warning'}>
-              {listing.status}
-            </Badge>
-            <span className="text-sm text-gray-500">{listing.viewsCount} переглядів</span>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Badge tone={listing.status === 'ACTIVE' ? 'success' : listing.status === 'SOLD' ? 'neutral' : 'warning'}>
+                {listing.status}
+              </Badge>
+              <span className="text-sm text-gray-500">{listing.viewsCount} переглядів</span>
+            </div>
+            <FavoriteButton listingId={listing.id} />
           </div>
 
           <h1 className="text-2xl font-semibold text-gray-900">{listing.title}</h1>

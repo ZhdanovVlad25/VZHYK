@@ -260,6 +260,35 @@ export function getMyListings(token: string, status?: ListingStatus): Promise<Li
   return apiFetch(`/profiles/me/listings${qs}`, { token });
 }
 
+// ---- Favorites ----
+
+export interface FavoriteView {
+  id: string;
+  listingId: string;
+  createdAt: string;
+  listing: {
+    id: string;
+    title: string;
+    price: number | null;
+    currency: string;
+    status: string;
+  };
+  isUnavailable: boolean;
+  priceChanged: boolean;
+}
+
+export function getFavorites(token: string): Promise<FavoriteView[]> {
+  return apiFetch('/favorites', { token });
+}
+
+export function addFavorite(listingId: string, token: string): Promise<{ id: string; listingId: string }> {
+  return apiFetch(`/favorites/${listingId}`, { method: 'POST', token });
+}
+
+export function removeFavorite(listingId: string, token: string): Promise<void> {
+  return apiFetch(`/favorites/${listingId}`, { method: 'DELETE', token });
+}
+
 /** multipart/form-data — не через apiFetch (той завжди серіалізує body в JSON). */
 export async function uploadListingMedia(listingId: string, file: File, token: string): Promise<Media> {
   const form = new FormData();

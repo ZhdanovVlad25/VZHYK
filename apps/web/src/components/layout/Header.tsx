@@ -51,6 +51,9 @@ export function Header() {
               <Link href="/my-listings" className="text-sm font-medium text-gray-700 hover:text-brand-600">
                 Мої оголошення
               </Link>
+              <Link href="/favorites" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                Обране
+              </Link>
               <span className="text-sm text-gray-600">{user.phone}</span>
               <Button variant="ghost" size="sm" onClick={logout}>
                 Вийти
