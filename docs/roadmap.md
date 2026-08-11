@@ -92,8 +92,8 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
 ## Phase 1 — Foundation ✅ завершено
 
 - [x] Monorepo (apps/api, apps/web, packages/*), Docker Compose (Postgres, Redis, MinIO).
-- [x] Auth foundation: Phone OTP (робочий), Google OAuth (лише strategy-каркас,
-      **роутинг НЕ підключений** — див. "Не зроблено" в Phase 2/3), JWT sessions, RBAC guard.
+- [x] Auth foundation: Phone OTP (робочий), Google OAuth (роутинг підключено —
+      див. окремий пункт нижче після Frontend-секції), JWT sessions, RBAC guard.
 - [x] DB foundation: users, otp_codes, profiles, locations, categories,
       category_attributes, app_settings + seed (області/міста, топ-категорії).
 - [x] Design system: Button, Input, Form, Card, Modal, Dropdown, Tabs, Badge,
@@ -198,7 +198,25 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       статусу крім SOLD/ARCHIVED/BLOCKED (межа з `PATCH /listings/:id` на
       бекенді — категорія незмінна). Кнопка "Редагувати оголошення" на
       сторінці оголошення видна лише власнику.
-- [ ] Google OAuth кнопка (бекенд-роутинг теж не готовий — див. Phase 1 нотатку).
+- [x] **Google OAuth** — `GET /auth/google` (`AuthGuard('google')`, ініціює
+      redirect на consent screen), `GET /auth/google/callback` видає JWT
+      і редіректить на фронтенд `${WEB_ORIGIN}/auth/google/callback?accessToken=&refreshToken=`
+      (query-параметри, не httpOnly cookie — узгоджено з існуючим
+      localStorage-based `AuthContext`; продакшн вимагав би короткоживучого
+      exchange-коду замість сирих токенів в URL). `AuthService.loginWithGoogle()`:
+      шукає за `googleId`, за відсутності — прив'язує до існуючого акаунту за
+      `email` (якщо юзер вже реєструвався через Phone OTP і має той самий
+      email), інакше створює OAuth-only користувача. Кнопка "Увійти через
+      Google" на `/login`, сторінка `/auth/google/callback` (парсить токени
+      з query, `GET /auth/me` для user-даних, бо callback віддає лише
+      токени). 5 unit-тестів (`apps/api/test/auth.service.spec.ts`).
+      **Перевірено частково**: `.env` містить лише dev-заглушку
+      `GOOGLE_OAUTH_CLIENT_ID` (нема реальних Google-креденшлів), тож повний
+      consent-флоу з реальним акаунтом не пройдено — підтверджено лише сам
+      redirect-ланцюжок (`GET /auth/google` → реальний `accounts.google.com`
+      з правильними `redirect_uri`/`scope`/`client_id`) і callback-сторінка
+      (симуляція валідною парою токенів з іншого флоу). Щоб запрацювало
+      по-справжньому — потрібні реальні `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET` в `.env`.
 
 ## Phase 4 — Trust & Safety 🟡 частково
 
@@ -266,7 +284,7 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
 
 ## Phase 7 — Testing 🟡 частково (лише unit)
 
-- [x] Unit tests на бізнес-логіку кожного backend-модуля (135 тестів,
+- [x] Unit tests на бізнес-логіку кожного backend-модуля (140 тестів,
       `npm run test --workspace=apps/api`).
 - [ ] Integration tests.
 - [ ] E2E (11 сценаріїв з вихідного документа).
@@ -296,8 +314,9 @@ Nova Poshta, онлайн-оплата, escrow, монетизація, рейт
 ## Наступний логічний крок
 
 Усі "API-без-UI" пункти з Phase 2/3 закриті, редагування опублікованого
-оголошення зроблено, Reports і Moderation queue (Phase 4) зроблено —
-`ListingsService.publish()` більше не авто-схвалює, реально йде через чергу.
-З відомого лишається: **Google OAuth роутинг** (auth-полнота), **User
-blocking / Audit log** (решта Phase 4), або решта **Phase 5 Admin Panel**
-(dashboard, users/listings admin CRUD — зараз є лише moderation queue).
+оголошення зроблено, Reports і Moderation queue (Phase 4) зроблено, Google
+OAuth підключено (роутинг+логіка+тести; повний live-тест потребує реальних
+`GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`, яких немає в `.env`). З відомого
+лишається: **User blocking / Audit log** (решта Phase 4), або решта
+**Phase 5 Admin Panel** (dashboard, users/listings admin CRUD — зараз є
+лише moderation queue).

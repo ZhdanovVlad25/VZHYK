@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { AuthUser, requestOtp as apiRequestOtp, verifyOtp as apiVerifyOtp } from './api';
+import { AuthUser, getMe, requestOtp as apiRequestOtp, verifyOtp as apiVerifyOtp } from './api';
 
 const STORAGE_KEY = 'vzhyk.auth';
 
@@ -17,6 +17,8 @@ interface AuthContextValue {
   isLoading: boolean;
   requestOtp: (phone: string) => Promise<void>;
   verifyOtp: (phone: string, code: string) => Promise<void>;
+  /** Google OAuth callback віддає лише токени в query — user підвантажується окремо через GET /auth/me. */
+  loginWithTokens: (accessToken: string, refreshToken: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -55,6 +57,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuth(stored);
   }, []);
 
+  const loginWithTokens = useCallback(async (accessToken: string, refreshToken: string) => {
+    const me = await getMe(accessToken);
+    const stored: StoredAuth = { accessToken, refreshToken, user: { id: me.id, role: me.role, phone: me.phone } };
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    setAuth(stored);
+  }, []);
+
   const logout = useCallback(() => {
     window.localStorage.removeItem(STORAGE_KEY);
     setAuth(null);
@@ -67,9 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       requestOtp,
       verifyOtp,
+      loginWithTokens,
       logout,
     }),
-    [auth, isLoading, requestOtp, verifyOtp, logout],
+    [auth, isLoading, requestOtp, verifyOtp, loginWithTokens, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -90,6 +90,31 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
+  /**
+   * Google OAuth: googleId — первинний ключ пошуку. Якщо не знайдено, але є email, що вже
+   * зареєстрований через Phone OTP (email був доданий пізніше через PATCH /profiles/me) —
+   * прив'язуємо googleId до існуючого акаунту замість дубля. Інакше — новий OAuth-only юзер.
+   */
+  async loginWithGoogle(profile: { googleId: string; email: string | null; displayName: string | null }) {
+    let user = await this.users.findOne({ where: { googleId: profile.googleId } });
+
+    if (!user && profile.email) {
+      user = await this.users.findOne({ where: { email: profile.email } });
+      if (user) {
+        user.googleId = profile.googleId;
+        user = await this.users.save(user);
+      }
+    }
+
+    if (!user) {
+      user = await this.users.save(
+        this.users.create({ googleId: profile.googleId, email: profile.email, role: 'user', status: 'active' }),
+      );
+    }
+
+    return this.issueTokens(user);
+  }
+
   async issueTokens(user: User) {
     const payload = { sub: user.id, role: user.role, phone: user.phone };
     const accessToken = await this.jwt.signAsync(payload, { expiresIn: '15m' });

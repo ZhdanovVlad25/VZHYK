@@ -8,6 +8,12 @@ import { ApiError } from '@/lib/api';
 
 type Step = 'phone' | 'code';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+
+function handleGoogleLogin() {
+  window.location.href = `${API_URL}/auth/google`;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const { requestOtp, verifyOtp } = useAuth();
@@ -72,7 +78,22 @@ export default function LoginPage() {
               Надіслати код
             </Button>
           </Form>
-        ) : (
+        ) : null}
+
+        {step === 'phone' && (
+          <>
+            <div className="my-4 flex items-center gap-3 text-xs text-gray-400">
+              <span className="h-px flex-1 bg-gray-200" />
+              або
+              <span className="h-px flex-1 bg-gray-200" />
+            </div>
+            <Button type="button" variant="secondary" onClick={handleGoogleLogin} className="w-full">
+              Увійти через Google
+            </Button>
+          </>
+        )}
+
+        {step === 'code' && (
           <Form ariaLabel="Підтвердження коду" onSubmit={handleVerifyOtp}>
             <p className="text-sm text-gray-600">
               Код надіслано на <span className="font-medium">{phone}</span>
