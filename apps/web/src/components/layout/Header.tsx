@@ -54,6 +54,9 @@ export function Header() {
               <Link href="/favorites" className="text-sm font-medium text-gray-700 hover:text-brand-600">
                 Обране
               </Link>
+              <Link href="/saved-searches" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                Збережені пошуки
+              </Link>
               <span className="text-sm text-gray-600">{user.phone}</span>
               <Button variant="ghost" size="sm" onClick={logout}>
                 Вийти

@@ -289,6 +289,36 @@ export function removeFavorite(listingId: string, token: string): Promise<void> 
   return apiFetch(`/favorites/${listingId}`, { method: 'DELETE', token });
 }
 
+// ---- Saved searches ----
+
+export interface SavedSearch {
+  id: string;
+  queryText: string | null;
+  categoryId: string | null;
+  filters: Record<string, unknown> | null;
+  regionLocationId: string | null;
+  createdAt: string;
+}
+
+export interface CreateSavedSearchDto {
+  queryText?: string;
+  categoryId?: string;
+  filters?: Record<string, unknown>;
+  regionLocationId?: string;
+}
+
+export function getSavedSearches(token: string): Promise<SavedSearch[]> {
+  return apiFetch('/saved-searches', { token });
+}
+
+export function createSavedSearch(dto: CreateSavedSearchDto, token: string): Promise<SavedSearch> {
+  return apiFetch('/saved-searches', { method: 'POST', body: dto, token });
+}
+
+export function deleteSavedSearch(id: string, token: string): Promise<void> {
+  return apiFetch(`/saved-searches/${id}`, { method: 'DELETE', token });
+}
+
 /** multipart/form-data — не через apiFetch (той завжди серіалізує body в JSON). */
 export async function uploadListingMedia(listingId: string, file: File, token: string): Promise<Media> {
   const form = new FormData();

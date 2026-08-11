@@ -173,7 +173,12 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       на сторінці оголошення (toggle, стан вичитується з `GET /favorites`, окремого
       "чи в обраному один listing" ендпоінта нема), сторінка `/favorites` зі списком
       і прапорцями "Недоступне"/"Ціна змінилась". Лінк у Header.
-- [ ] **Saved searches UI** — API готовий, UI нема.
+- [x] **Saved searches UI** — кнопка "Зберегти пошук" на `/search` (queryText +
+      categoryId + `{sort}` у filters), сторінка `/saved-searches` зі списком,
+      резолвом назви категорії з дерева категорій, "Знайти" (повертає на
+      `/search?q=&category=`), "Видалити". Лінк у Header. **Не переносить**
+      priceMin/priceMax/condition/hasPhoto — на `/search` немає UI для цих
+      фільтрів узагалі (лише q/category/sort), тож зберігати нічого.
 - [ ] **Chat UI** — і REST, і WS готові на бекенді, фронтенд-сторінки нема взагалі.
 - [ ] Редагування вже опублікованого оголошення (зараз `/listings/[id]/edit`
       лише допомагає добити чернетку до публікації, не для правок після).
@@ -236,6 +241,7 @@ Search і Chat).
 
 ## Наступний логічний крок
 
-"Мої оголошення" і Favorites UI зроблено (див. вище). Лишилось API-без-UI:
-Saved Searches (дешево), Chat (найбільший шматок). Або Phase 4 (Trust &
-Safety), якщо пріоритет — безпека перед UI-повнотою.
+"Мої оголошення", Favorites UI, Saved Searches UI зроблено (див. вище).
+Лишилось API-без-UI: Chat (найбільший шматок — і REST, і WS готові, фронтенду
+нема взагалі). Або Phase 4 (Trust & Safety), якщо пріоритет — безпека перед
+UI-повнотою.

@@ -2,7 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { search, ApiError, type SearchResultItem, type SearchParams } from '@/lib/api';
+import { search, createSavedSearch, ApiError, type SearchResultItem, type SearchParams } from '@/lib/api';
+import { useAuth } from '@/lib/auth-context';
 import { ListingCard } from '@/components/listings/ListingCard';
 import { Button, Dropdown, EmptyState, ErrorState, LoadingState } from '@/components/ui';
 
@@ -26,6 +27,7 @@ function SearchPageContent() {
   const urlParams = useSearchParams();
   const q = urlParams.get('q') ?? '';
   const category = urlParams.get('category') ?? undefined;
+  const { user, accessToken } = useAuth();
 
   const [sort, setSort] = useState<SearchParams['sort']>(q ? 'relevance' : 'newest');
   const [items, setItems] = useState<SearchResultItem[]>([]);
@@ -33,6 +35,8 @@ function SearchPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSavingSearch, setIsSavingSearch] = useState(false);
+  const [saveSearchMessage, setSaveSearchMessage] = useState<string | null>(null);
 
   const runSearch = useCallback(async () => {
     setIsLoading(true);
@@ -66,6 +70,20 @@ function SearchPageContent() {
     }
   }
 
+  async function saveSearch() {
+    if (!accessToken) return;
+    setIsSavingSearch(true);
+    setSaveSearchMessage(null);
+    try {
+      await createSavedSearch({ queryText: q || undefined, categoryId: category, filters: sort ? { sort } : undefined }, accessToken);
+      setSaveSearchMessage('Пошук збережено');
+    } catch (err) {
+      setSaveSearchMessage(err instanceof ApiError ? err.message : 'Не вдалося зберегти пошук.');
+    } finally {
+      setIsSavingSearch(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
@@ -78,13 +96,23 @@ function SearchPageContent() {
             'Усі оголошення'
           )}
         </h1>
-        <div className="w-56">
-          <Dropdown
-            label="Сортування"
-            options={SORT_OPTIONS}
-            value={sort ?? 'newest'}
-            onChange={(value) => setSort(value as SearchParams['sort'])}
-          />
+        <div className="flex flex-wrap items-end gap-3">
+          {user && (q || category) && (
+            <div className="flex flex-col items-end gap-1">
+              <Button variant="secondary" size="sm" isLoading={isSavingSearch} onClick={saveSearch}>
+                Зберегти пошук
+              </Button>
+              {saveSearchMessage && <span className="text-xs text-gray-500">{saveSearchMessage}</span>}
+            </div>
+          )}
+          <div className="w-56">
+            <Dropdown
+              label="Сортування"
+              options={SORT_OPTIONS}
+              value={sort ?? 'newest'}
+              onChange={(value) => setSort(value as SearchParams['sort'])}
+            />
+          </div>
         </div>
       </div>
 
