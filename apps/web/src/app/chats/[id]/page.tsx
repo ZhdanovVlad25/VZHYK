@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useChatContext } from '../chat-context';
 import { ApiError, blockChat, getChatMessages, sendChatMessage, type Message } from '@/lib/api';
 import { Badge, Button, ErrorState, LoadingState } from '@/components/ui';
+import { ReportButton } from '@/components/shared/ReportButton';
 import { cn } from '@/lib/cn';
 
 const TYPING_TIMEOUT_MS = 3000;
@@ -169,9 +170,12 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
             </Button>
           </div>
         ) : (
-          <Button size="sm" variant="ghost" onClick={() => setConfirmingBlock(true)}>
-            Заблокувати
-          </Button>
+          <div className="flex shrink-0 items-start gap-2">
+            <ReportButton targetType="CHAT" targetId={chatId} />
+            <Button size="sm" variant="ghost" onClick={() => setConfirmingBlock(true)}>
+              Заблокувати
+            </Button>
+          </div>
         )}
       </div>
 

@@ -32,6 +32,8 @@ import { Chat } from './modules/chat/chat.entity';
 import { ChatParticipant } from './modules/chat/chat-participant.entity';
 import { Message } from './modules/chat/message.entity';
 import { ChatModule } from './modules/chat/chat.module';
+import { Report } from './modules/reports/report.entity';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -62,6 +64,7 @@ import { ChatModule } from './modules/chat/chat.module';
           Chat,
           ChatParticipant,
           Message,
+          Report,
         ],
         synchronize: false, // структура БД керується виключно міграціями
         migrationsRun: false,
@@ -79,6 +82,7 @@ import { ChatModule } from './modules/chat/chat.module';
     FavoritesModule,
     SavedSearchesModule,
     ChatModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}

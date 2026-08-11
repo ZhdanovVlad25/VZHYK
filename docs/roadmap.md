@@ -200,9 +200,21 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       сторінці оголошення видна лише власнику.
 - [ ] Google OAuth кнопка (бекенд-роутинг теж не готовий — див. Phase 1 нотатку).
 
-## Phase 4 — Trust & Safety ⬜ не розпочато
+## Phase 4 — Trust & Safety 🟡 частково
 
-- [ ] Reports (усі типи цілей: listing/user/chat) — `POST /reports`, `GET /reports/mine`.
+- [x] **Reports (громадянське репортування)** — `apps/api/src/modules/reports`,
+      міграція `1754800800000-AddReports`. `POST /reports` (targetType
+      LISTING/USER/CHAT + targetId + reason + опційний description),
+      `GET /reports/mine`. Перевірка існування цілі перед створенням
+      (для CHAT — ще й що репортер є учасником, як і решта chat-ендпоінтів).
+      Статус завжди стартує `PENDING` і нічим не змінюється — немає черги
+      модерації, яка б його обробляла (це наступний пункт нижче). 7 unit-тестів
+      (`apps/api/test/reports.service.spec.ts`). Фронтенд: `ReportButton`
+      (`apps/web/src/components/shared/ReportButton.tsx`) — на сторінці
+      оголошення (LISTING) і в треді чату (CHAT). **Не зроблено**: UI для
+      репорту USER (нема сторінки публічного профілю, звідки його викликати),
+      `evidence`-поле з docs/api.md §10 (без upload-флоу для скарг), сторінка
+      "Мої скарги" (`GET /reports/mine` є, списку в UI нема).
 - [ ] Moderation queue + ModerationCase + auto-rules (заборонені слова, дублікати).
 - [ ] User blocking (адмін-рівень; chat-level block між двома юзерами вже є з Phase 3).
 - [ ] Audit log (усі admin/moderation дії).
@@ -250,14 +262,15 @@ Nova Poshta, онлайн-оплата, escrow, монетизація, рейт
 
 `auth`, `users`, `profiles`, `location`, `categories`, `attributes`, `settings`,
 `listings` (+ `price-history` всередині), `media`, `search` (+ `providers/search`),
-`favorites`, `saved-searches`, `chat`. Спільна інфраструктура: `providers/storage`
-(S3), `providers/search`, `shared/guards` (`JwtAuthGuard`, `OptionalJwtAuthGuard`,
-`RolesGuard`), `shared/pagination/cursor.ts` (keyset-пагінація, спільна для
-Search і Chat).
+`favorites`, `saved-searches`, `chat`, `reports`. Спільна інфраструктура:
+`providers/storage` (S3), `providers/search`, `shared/guards` (`JwtAuthGuard`,
+`OptionalJwtAuthGuard`, `RolesGuard`), `shared/pagination/cursor.ts`
+(keyset-пагінація, спільна для Search і Chat).
 
 ## Наступний логічний крок
 
-Усі "API-без-UI" пункти з Phase 2/3 закриті, і редагування опублікованого
-оголошення теж зроблено. Лишається з відомого: Phase 4 (Trust & Safety —
-reports/moderation, зараз авто-approve у публікації) або Google OAuth
-роутинг.
+Усі "API-без-UI" пункти з Phase 2/3 закриті, редагування опублікованого
+оголошення зроблено, Reports (громадянське репортування) зроблено. Далі в
+Phase 4: **Moderation queue** — без неї подані скарги (і `PENDING_MODERATION`
+оголошення після publish) нікуди не рухаються, це найбільша дірка з
+залишених. Або Google OAuth роутинг, якщо пріоритет — auth-полнота.

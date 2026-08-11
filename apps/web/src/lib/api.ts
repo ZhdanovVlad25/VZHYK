@@ -389,6 +389,37 @@ export function blockChat(chatId: string, token: string): Promise<void> {
   return apiFetch(`/chats/${chatId}/block`, { method: 'POST', token });
 }
 
+// ---- Reports ----
+
+export type ReportTargetType = 'LISTING' | 'USER' | 'CHAT';
+export type ReportReason = 'SPAM' | 'FRAUD' | 'PROHIBITED_ITEM' | 'OFFENSIVE_CONTENT' | 'DUPLICATE' | 'OTHER';
+export type ReportStatus = 'PENDING' | 'REVIEWING' | 'RESOLVED' | 'REJECTED';
+
+export interface Report {
+  id: string;
+  targetType: ReportTargetType;
+  targetId: string;
+  reason: ReportReason;
+  description: string | null;
+  status: ReportStatus;
+  createdAt: string;
+}
+
+export interface CreateReportDto {
+  targetType: ReportTargetType;
+  targetId: string;
+  reason: ReportReason;
+  description?: string;
+}
+
+export function createReport(dto: CreateReportDto, token: string): Promise<Report> {
+  return apiFetch('/reports', { method: 'POST', body: dto, token });
+}
+
+export function getMyReports(token: string): Promise<Report[]> {
+  return apiFetch('/reports/mine', { token });
+}
+
 /** multipart/form-data — не через apiFetch (той завжди серіалізує body в JSON). */
 export async function uploadListingMedia(listingId: string, file: File, token: string): Promise<Media> {
   const form = new FormData();

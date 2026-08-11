@@ -4,6 +4,7 @@ import { Badge, Card } from '@/components/ui';
 import { FavoriteButton } from '@/components/listings/FavoriteButton';
 import { StartChatButton } from '@/components/listings/StartChatButton';
 import { OwnerEditLink } from '@/components/listings/OwnerEditLink';
+import { ReportButton } from '@/components/shared/ReportButton';
 
 function formatPrice(price: number | null, currency: string): string {
   if (price === null) {
@@ -84,9 +85,10 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
           <p className="mt-2 text-3xl font-bold text-brand-600">{formatPrice(listing.price, listing.currency)}</p>
           {listing.isNegotiable && <p className="mt-1 text-sm text-gray-500">Торг можливий</p>}
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap items-start gap-2">
             <StartChatButton listingId={listing.id} ownerId={listing.userId} />
             <OwnerEditLink listingId={listing.id} ownerId={listing.userId} />
+            <ReportButton targetType="LISTING" targetId={listing.id} />
           </div>
 
           {listing.description && (
