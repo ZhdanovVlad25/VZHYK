@@ -259,9 +259,34 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       403 FORBIDDEN_ROLE напряму через RolesGuard). **Не зроблено**: решта
       Phase 5 Admin Panel (дашборд, users, listings admin CRUD, audit log UI) —
       ця сторінка лише мінімально розблоковує чергу модерації, не весь Phase 5.
-- [ ] User blocking (адмін-рівень; chat-level block між двома юзерами вже є з Phase 3).
-- [ ] Audit log (усі admin/moderation дії — зараз `decide()` не логується нікуди,
-      окрім `moderatorId`/`decidedAt` на самому case).
+- [x] **User blocking (адмін-рівень)** — `apps/api/src/modules/users/admin-users.*`.
+      `GET /admin/users?search=` (ILIKE по phone/email, макс. 50, без пагінації —
+      як і решта MVP list-ендпоінтів), `POST /admin/users/:id/block`,
+      `POST /admin/users/:id/unblock`. Лише `@Roles('admin')` (не moderator —
+      блокування облікових записів чутливіше за модерацію контенту). Захист
+      від самоблокування (`USER_CANNOT_SELF_BLOCK`). **Реальний enforcement,
+      не просто прапорець**: `JwtStrategy.validate()` тепер робить DB-запит
+      статусу на кожен захищений виклик (раніше — суто stateless JWT-декод
+      без DB) — заблокований юзер втрачає доступ **одразу**, а не аж через
+      15 хв, коли спливе TTL access-токена. `AuthService.issueTokens()`
+      (спільна точка для OTP і Google-логіну) відмовляє заблокованому/
+      видаленому юзеру видачею нових токенів кодом `USER_BLOCKED`.
+      Фронтенд: `/admin/users` (пошук + Заблокувати/Розблокувати), лінк у
+      Header лише для `role==='admin'`.
+- [x] **Audit log** — `apps/api/src/modules/audit-log`, міграція
+      `1754801000000-AddAuditLogs`, схема точно за `docs/database.md`
+      (`actorUserId, action, targetType, targetId, before, after, ip,
+      createdAt`, append-only). **Відхилення від docs/architecture.md
+      "інтерцептор на всіх admin/moderation mutating endpoints"**: замість
+      generic-інтерцептора — явний виклик `AuditLogService.record()` у
+      кожній мутації (`ModerationService.decide()`, `AdminUsersService.block()/
+      unblock()`); свідомий вибір, бо 3 call-сайти — інтерцептор, що
+      інтроспектує довільні контролери, був би передчасною абстракцією
+      для такої кількості. `GET /admin/audit-log` (лише admin, останні 100).
+      Фронтенд: `/admin/audit-log` — таблиця з before/after diff.
+      **Не зроблено**: списки Reports (`GET /admin/reports` не існує) й
+      admin-редагування listings (`PATCH /admin/listings/:id`) поки що не
+      логуються, бо самих цих ендпоінтів ще нема.
 - [ ] Anti-fraud basics: RiskSignal/RiskScore.
 
 ## Phase 5 — Admin Panel 🟡 частково
@@ -284,7 +309,7 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
 
 ## Phase 7 — Testing 🟡 частково (лише unit)
 
-- [x] Unit tests на бізнес-логіку кожного backend-модуля (140 тестів,
+- [x] Unit tests на бізнес-логіку кожного backend-модуля (154 тести,
       `npm run test --workspace=apps/api`).
 - [ ] Integration tests.
 - [ ] E2E (11 сценаріїв з вихідного документа).
@@ -304,19 +329,22 @@ Nova Poshta, онлайн-оплата, escrow, монетизація, рейт
 
 ## Карта модулів бекенду (`apps/api/src/modules`)
 
-`auth`, `users`, `profiles`, `location`, `categories`, `attributes`, `settings`,
-`listings` (+ `price-history` всередині), `media`, `search` (+ `providers/search`),
-`favorites`, `saved-searches`, `chat`, `reports`, `moderation`. Спільна
+`auth`, `users` (+ `admin-users.*` всередині), `profiles`, `location`,
+`categories`, `attributes`, `settings`, `listings` (+ `price-history`
+всередині), `media`, `search` (+ `providers/search`), `favorites`,
+`saved-searches`, `chat`, `reports`, `moderation`, `audit-log`. Спільна
 інфраструктура: `providers/storage` (S3), `providers/search`, `shared/guards`
 (`JwtAuthGuard`, `OptionalJwtAuthGuard`, `RolesGuard`),
 `shared/pagination/cursor.ts` (keyset-пагінація, спільна для Search і Chat).
 
 ## Наступний логічний крок
 
-Усі "API-без-UI" пункти з Phase 2/3 закриті, редагування опублікованого
-оголошення зроблено, Reports і Moderation queue (Phase 4) зроблено, Google
-OAuth підключено (роутинг+логіка+тести; повний live-тест потребує реальних
-`GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`, яких немає в `.env`). З відомого
-лишається: **User blocking / Audit log** (решта Phase 4), або решта
-**Phase 5 Admin Panel** (dashboard, users/listings admin CRUD — зараз є
-лише moderation queue).
+Phase 4 (Trust & Safety) фактично завершено: Reports, Moderation queue,
+User blocking, Audit log — усе є. Лишився лише Anti-fraud (RiskSignal/
+RiskScore) — найменш конкретний пункт списку, немає чіткого критерію
+"score за чим", варто спершу уточнити з продуктом, що саме рахувати.
+Google OAuth підключено (роутинг+логіка+тести; повний live-тест потребує
+реальних `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`, яких немає в `.env`). Далі
+логічно: решта **Phase 5 Admin Panel** (dashboard, listings admin CRUD,
+Reports UI — зараз є лише moderation queue + users + audit-log), або
+**Phase 7 Integration/E2E tests** (зараз лише unit).

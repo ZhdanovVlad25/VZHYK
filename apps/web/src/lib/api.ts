@@ -449,6 +449,48 @@ export function decideModerationCase(
   return apiFetch(`/admin/moderation/${caseId}/decide`, { method: 'POST', body: { decision }, token });
 }
 
+// ---- Admin: users (block/unblock) ----
+
+export interface AdminUserView {
+  id: string;
+  phone: string | null;
+  email: string | null;
+  role: string;
+  status: string;
+  createdAt: string;
+}
+
+export function searchAdminUsers(token: string, search?: string): Promise<AdminUserView[]> {
+  const qs = search ? `?search=${encodeURIComponent(search)}` : '';
+  return apiFetch(`/admin/users${qs}`, { token });
+}
+
+export function blockUser(userId: string, token: string): Promise<AdminUserView> {
+  return apiFetch(`/admin/users/${userId}/block`, { method: 'POST', token });
+}
+
+export function unblockUser(userId: string, token: string): Promise<AdminUserView> {
+  return apiFetch(`/admin/users/${userId}/unblock`, { method: 'POST', token });
+}
+
+// ---- Admin: audit log ----
+
+export interface AuditLogEntry {
+  id: string;
+  actorUserId: string;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+  ip: string | null;
+  createdAt: string;
+}
+
+export function getAuditLog(token: string): Promise<AuditLogEntry[]> {
+  return apiFetch('/admin/audit-log', { token });
+}
+
 /** multipart/form-data — не через apiFetch (той завжди серіалізує body в JSON). */
 export async function uploadListingMedia(listingId: string, file: File, token: string): Promise<Media> {
   const form = new FormData();

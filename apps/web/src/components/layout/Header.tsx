@@ -65,6 +65,16 @@ export function Header() {
                   Модерація
                 </Link>
               )}
+              {user.role === 'admin' && (
+                <>
+                  <Link href="/admin/users" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                    Користувачі
+                  </Link>
+                  <Link href="/admin/audit-log" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                    Журнал дій
+                  </Link>
+                </>
+              )}
               <span className="text-sm text-gray-600">{user.phone}</span>
               <Button variant="ghost" size="sm" onClick={logout}>
                 Вийти

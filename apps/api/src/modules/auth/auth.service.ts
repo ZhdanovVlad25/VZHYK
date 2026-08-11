@@ -115,7 +115,12 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
+  /** Спільна точка для verifyOtp() і loginWithGoogle() — заблокований юзер не отримує нових токенів. */
   async issueTokens(user: User) {
+    if (user.status !== 'active') {
+      throw new ForbiddenException({ code: 'USER_BLOCKED', message: 'Обліковий запис заблоковано' });
+    }
+
     const payload = { sub: user.id, role: user.role, phone: user.phone };
     const accessToken = await this.jwt.signAsync(payload, { expiresIn: '15m' });
     const refreshToken = await this.jwt.signAsync(payload, { expiresIn: '30d' });

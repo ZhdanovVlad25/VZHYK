@@ -5,6 +5,7 @@ import { ModerationCase } from './moderation-case.entity';
 import { Listing } from '../listings/listing.entity';
 import { BANNED_WORDS, ModerationCaseStatus, ModerationDecision } from './moderation.constants';
 import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-provider.interface';
+import { AuditLogService } from '../audit-log/audit-log.service';
 
 export interface ModerationQueueItem extends Omit<ModerationCase, 'listing'> {
   listing: {
@@ -27,6 +28,7 @@ export class ModerationService {
     @InjectRepository(ModerationCase) private readonly cases: Repository<ModerationCase>,
     @InjectRepository(Listing) private readonly listings: Repository<Listing>,
     @Inject(SEARCH_PROVIDER) private readonly search: SearchProvider,
+    private readonly auditLog: AuditLogService,
   ) {}
 
   /** Викликається з ListingsService.publish() одразу після переведення listing у PENDING_MODERATION. */
@@ -64,7 +66,7 @@ export class ModerationService {
     });
   }
 
-  async decide(moderatorId: string, caseId: string, decision: ModerationDecision): Promise<ModerationCase> {
+  async decide(moderatorId: string, caseId: string, decision: ModerationDecision, ip: string | null): Promise<ModerationCase> {
     const moderationCase = await this.cases.findOne({ where: { id: caseId } });
     if (!moderationCase) {
       throw new NotFoundException({ code: 'MODERATION_CASE_NOT_FOUND', message: 'Справу не знайдено' });
@@ -76,6 +78,8 @@ export class ModerationService {
       });
     }
 
+    const before = { caseStatus: moderationCase.status };
+
     if (decision === 'APPROVED' || decision === 'REJECTED') {
       await this.applyDecisionToListing(moderationCase.listingId, decision);
     }
@@ -85,7 +89,19 @@ export class ModerationService {
       moderatorId,
       decidedAt: new Date(),
     });
-    return this.cases.save(moderationCase);
+    const saved = await this.cases.save(moderationCase);
+
+    await this.auditLog.record({
+      actorUserId: moderatorId,
+      action: 'moderation.decide',
+      targetType: 'moderation_case',
+      targetId: saved.id,
+      before,
+      after: { caseStatus: saved.status, listingId: saved.listingId },
+      ip,
+    });
+
+    return saved;
   }
 
   private async applyDecisionToListing(listingId: string, decision: 'APPROVED' | 'REJECTED'): Promise<void> {

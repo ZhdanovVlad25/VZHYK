@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Ip, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ModerationService } from './moderation.service';
 import { DecideCaseDto } from './dto/decide-case.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
@@ -24,7 +24,7 @@ export class ModerationController {
   }
 
   @Post(':caseId/decide')
-  decide(@CurrentUser() user: AuthenticatedUser, @Param('caseId') caseId: string, @Body() dto: DecideCaseDto) {
-    return this.moderation.decide(user.id, caseId, dto.decision);
+  decide(@CurrentUser() user: AuthenticatedUser, @Param('caseId') caseId: string, @Body() dto: DecideCaseDto, @Ip() ip: string) {
+    return this.moderation.decide(user.id, caseId, dto.decision, ip);
   }
 }

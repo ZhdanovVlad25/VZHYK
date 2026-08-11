@@ -36,6 +36,8 @@ import { Report } from './modules/reports/report.entity';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ModerationCase } from './modules/moderation/moderation-case.entity';
 import { ModerationModule } from './modules/moderation/moderation.module';
+import { AuditLog } from './modules/audit-log/audit-log.entity';
+import { AuditLogModule } from './modules/audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -68,6 +70,7 @@ import { ModerationModule } from './modules/moderation/moderation.module';
           Message,
           Report,
           ModerationCase,
+          AuditLog,
         ],
         synchronize: false, // структура БД керується виключно міграціями
         migrationsRun: false,
@@ -87,6 +90,7 @@ import { ModerationModule } from './modules/moderation/moderation.module';
     ChatModule,
     ReportsModule,
     ModerationModule,
+    AuditLogModule,
   ],
 })
 export class AppModule {}

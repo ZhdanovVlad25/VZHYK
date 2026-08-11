@@ -31,7 +31,7 @@ describe('AuthService.loginWithGoogle', () => {
   });
 
   it('логінить існуючого користувача за googleId', async () => {
-    const existing = { id: 'u-1', googleId: 'g-1', email: 'a@b.com', role: 'user', phone: null } as User;
+    const existing = { id: 'u-1', googleId: 'g-1', email: 'a@b.com', role: 'user', phone: null, status: 'active' } as User;
     users.findOne.mockResolvedValueOnce(existing);
 
     const result = await service.loginWithGoogle({ googleId: 'g-1', email: 'a@b.com', displayName: 'A' });
@@ -42,7 +42,14 @@ describe('AuthService.loginWithGoogle', () => {
   });
 
   it('прив’язує googleId до існуючого акаунту за email, якщо googleId ще не збігається', async () => {
-    const existingByEmail = { id: 'u-2', googleId: null, email: 'a@b.com', role: 'user', phone: '+380...' } as User;
+    const existingByEmail = {
+      id: 'u-2',
+      googleId: null,
+      email: 'a@b.com',
+      role: 'user',
+      phone: '+380...',
+      status: 'active',
+    } as User;
     users.findOne.mockResolvedValueOnce(null); // за googleId не знайдено
     users.findOne.mockResolvedValueOnce(existingByEmail); // за email знайдено
 
@@ -73,12 +80,20 @@ describe('AuthService.loginWithGoogle', () => {
   });
 
   it('видає accessToken/refreshToken через issueTokens', async () => {
-    users.findOne.mockResolvedValueOnce({ id: 'u-1', role: 'user', phone: null } as User);
+    users.findOne.mockResolvedValueOnce({ id: 'u-1', role: 'user', phone: null, status: 'active' } as User);
 
     const result = await service.loginWithGoogle({ googleId: 'g-1', email: null, displayName: null });
 
     expect(result.accessToken).toBe('signed-token');
     expect(result.refreshToken).toBe('signed-token');
     expect(jwt.signAsync).toHaveBeenCalledTimes(2);
+  });
+
+  it('відмовляє заблокованому користувачу новими токенами (USER_BLOCKED)', async () => {
+    users.findOne.mockResolvedValueOnce({ id: 'u-5', role: 'user', phone: null, status: 'blocked' } as User);
+
+    await expect(service.loginWithGoogle({ googleId: 'g-5', email: null, displayName: null })).rejects.toMatchObject({
+      response: { code: 'USER_BLOCKED' },
+    });
   });
 });

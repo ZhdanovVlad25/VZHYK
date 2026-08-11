@@ -22,13 +22,15 @@ describe('ModerationService', () => {
   let cases: MockRepo;
   let listings: MockRepo;
   let search: { index: jest.Mock; remove: jest.Mock };
+  let auditLog: { record: jest.Mock };
   let service: ModerationService;
 
   beforeEach(() => {
     cases = mockRepo();
     listings = mockRepo();
     search = { index: jest.fn().mockResolvedValue(undefined), remove: jest.fn().mockResolvedValue(undefined) };
-    service = new ModerationService(cases as never, listings as never, search as never);
+    auditLog = { record: jest.fn().mockResolvedValue(undefined) };
+    service = new ModerationService(cases as never, listings as never, search as never, auditLog as never);
   });
 
   describe('createCaseForListing', () => {
@@ -90,7 +92,7 @@ describe('ModerationService', () => {
     it('кидає MODERATION_CASE_NOT_FOUND для неіснуючої справи', async () => {
       cases.findOne.mockResolvedValue(null);
 
-      await expect(service.decide('mod-1', 'missing', 'APPROVED')).rejects.toMatchObject({
+      await expect(service.decide('mod-1', 'missing', 'APPROVED', null)).rejects.toMatchObject({
         response: { code: 'MODERATION_CASE_NOT_FOUND' },
       });
     });
@@ -98,7 +100,7 @@ describe('ModerationService', () => {
     it('кидає MODERATION_CASE_ALREADY_DECIDED для вже вирішеної справи', async () => {
       cases.findOne.mockResolvedValue({ id: 'c-1', status: 'APPROVED' } as ModerationCase);
 
-      await expect(service.decide('mod-1', 'c-1', 'REJECTED')).rejects.toMatchObject({
+      await expect(service.decide('mod-1', 'c-1', 'REJECTED', null)).rejects.toMatchObject({
         response: { code: 'MODERATION_CASE_ALREADY_DECIDED' },
       });
     });
@@ -107,7 +109,7 @@ describe('ModerationService', () => {
       cases.findOne.mockResolvedValue({ id: 'c-1', listingId: 'l-1', status: 'PENDING' } as ModerationCase);
       listings.findOne.mockResolvedValue({ id: 'l-1', status: 'PENDING_MODERATION' } as Listing);
 
-      const result = await service.decide('mod-1', 'c-1', 'APPROVED');
+      const result = await service.decide('mod-1', 'c-1', 'APPROVED', '127.0.0.1');
 
       expect(result).toMatchObject({ status: 'APPROVED', moderatorId: 'mod-1' });
       expect(result.decidedAt).toBeInstanceOf(Date);
@@ -115,13 +117,16 @@ describe('ModerationService', () => {
       expect(savedListing.status).toBe('ACTIVE');
       expect(savedListing.publishedAt).toBeInstanceOf(Date);
       expect(search.index).toHaveBeenCalledWith('l-1');
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({ actorUserId: 'mod-1', action: 'moderation.decide', targetType: 'moderation_case', ip: '127.0.0.1' }),
+      );
     });
 
     it('REJECTED переводить listing у REJECTED без індексації', async () => {
       cases.findOne.mockResolvedValue({ id: 'c-1', listingId: 'l-1', status: 'NEEDS_REVIEW' } as ModerationCase);
       listings.findOne.mockResolvedValue({ id: 'l-1', status: 'PENDING_MODERATION' } as Listing);
 
-      const result = await service.decide('mod-1', 'c-1', 'REJECTED');
+      const result = await service.decide('mod-1', 'c-1', 'REJECTED', null);
 
       expect(result.status).toBe('REJECTED');
       const savedListing = listings.save.mock.calls[0][0];
@@ -132,7 +137,7 @@ describe('ModerationService', () => {
     it('NEEDS_REVIEW фіксує рішення, але не чіпає listing', async () => {
       cases.findOne.mockResolvedValue({ id: 'c-1', listingId: 'l-1', status: 'PENDING' } as ModerationCase);
 
-      const result = await service.decide('mod-1', 'c-1', 'NEEDS_REVIEW');
+      const result = await service.decide('mod-1', 'c-1', 'NEEDS_REVIEW', null);
 
       expect(result.status).toBe('NEEDS_REVIEW');
       expect(listings.findOne).not.toHaveBeenCalled();
@@ -143,7 +148,7 @@ describe('ModerationService', () => {
       cases.findOne.mockResolvedValue({ id: 'c-1', listingId: 'l-1', status: 'PENDING' } as ModerationCase);
       listings.findOne.mockResolvedValue({ id: 'l-1', status: 'ARCHIVED' } as Listing);
 
-      const result = await service.decide('mod-1', 'c-1', 'APPROVED');
+      const result = await service.decide('mod-1', 'c-1', 'APPROVED', null);
 
       expect(result.status).toBe('APPROVED');
       expect(listings.save).not.toHaveBeenCalled();
