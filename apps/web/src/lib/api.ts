@@ -255,6 +255,11 @@ export function publishListing(id: string, token: string): Promise<Listing> {
   return apiFetch(`/listings/${id}/publish`, { method: 'POST', token });
 }
 
+export function getMyListings(token: string, status?: ListingStatus): Promise<Listing[]> {
+  const qs = status ? `?status=${status}` : '';
+  return apiFetch(`/profiles/me/listings${qs}`, { token });
+}
+
 /** multipart/form-data — не через apiFetch (той завжди серіалізує body в JSON). */
 export async function uploadListingMedia(listingId: string, file: File, token: string): Promise<Media> {
   const form = new FormData();
