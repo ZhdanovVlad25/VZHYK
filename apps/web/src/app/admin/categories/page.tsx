@@ -345,7 +345,7 @@ export default function AdminCategoriesPage() {
           {attributes.map((attr) => {
             const edit = attrEdits[attr.id] ?? { labelUk: attr.labelUk, isRequired: attr.isRequired, isFilterable: attr.isFilterable };
             return (
-              <li key={attr.id} className="rounded-md border border-gray-200 p-2">
+              <li key={attr.id} className="rounded-xl border border-gray-200 p-2">
                 <div className="mb-1 flex items-center gap-2 text-xs text-gray-500">
                   <span className="font-mono">{attr.key}</span>
                   <Badge tone="neutral">{DATA_TYPE_OPTIONS.find((o) => o.value === attr.dataType)?.label ?? attr.dataType}</Badge>
@@ -356,7 +356,7 @@ export default function AdminCategoriesPage() {
                     onChange={(e) =>
                       setAttrEdits((prev) => ({ ...prev, [attr.id]: { ...edit, labelUk: e.target.value } }))
                     }
-                    className="h-9 flex-1 rounded-md border border-gray-300 px-2 text-sm"
+                    className="h-9 flex-1 rounded-xl border border-gray-300 px-2 text-sm"
                   />
                   <label className="flex items-center gap-1 text-xs text-gray-600">
                     <input
@@ -395,13 +395,13 @@ export default function AdminCategoriesPage() {
             placeholder="key (напр. brand)"
             value={newAttr.key}
             onChange={(e) => setNewAttr((a) => ({ ...a, key: e.target.value }))}
-            className="h-9 flex-1 rounded-md border border-gray-300 px-2 text-sm"
+            className="h-9 flex-1 rounded-xl border border-gray-300 px-2 text-sm"
           />
           <input
             placeholder="Назва (укр.)"
             value={newAttr.labelUk}
             onChange={(e) => setNewAttr((a) => ({ ...a, labelUk: e.target.value }))}
-            className="h-9 flex-1 rounded-md border border-gray-300 px-2 text-sm"
+            className="h-9 flex-1 rounded-xl border border-gray-300 px-2 text-sm"
           />
         </div>
         <div className="w-56">
@@ -449,7 +449,7 @@ export default function AdminCategoriesPage() {
       {authLoading || isLoading ? (
         <LoadingState label="Завантаження категорій…" />
       ) : (
-        <ul className="rounded-lg border border-gray-200 bg-white">
+        <ul className="rounded-2xl border border-gray-200 bg-white">
           {tree.map((node) => (
             <CategoryNode key={node.id} node={node} depth={0} onEdit={openEdit} onAddChild={openCreate} />
           ))}

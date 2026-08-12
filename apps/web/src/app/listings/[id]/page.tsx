@@ -131,7 +131,7 @@ export default async function ListingDetailPage({
       <div className="mx-auto max-w-4xl px-4 py-8">
         <div className="grid gap-8 md:grid-cols-2">
           <div>
-            <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
+            <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
               {mainMedia ? (
                 <Image
                   src={mainMedia.url}
@@ -152,7 +152,7 @@ export default async function ListingDetailPage({
                 {otherMedia.map((m) => (
                   <div
                     key={m.id}
-                    className="relative aspect-square w-full overflow-hidden rounded-md border border-gray-200"
+                    className="relative aspect-square w-full overflow-hidden rounded-xl border border-gray-200"
                   >
                     <Image
                       src={m.url}
@@ -191,7 +191,7 @@ export default async function ListingDetailPage({
             <h1 className="text-2xl font-semibold text-gray-900">
               {listing.title}
             </h1>
-            <p className="mt-2 text-3xl font-bold text-brand-600">
+            <p className="mt-2 text-3xl font-extrabold text-accent-600">
               {formatPrice(listing.price, listing.currency)}
             </p>
             {listing.isNegotiable && (

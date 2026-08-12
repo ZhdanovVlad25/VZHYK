@@ -61,7 +61,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-gray-200 p-3">
+    <div className="flex flex-col gap-2 rounded-xl border border-gray-200 p-3">
       <Dropdown
         label="Причина скарги"
         options={REASON_OPTIONS}

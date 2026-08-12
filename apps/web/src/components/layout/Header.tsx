@@ -21,11 +21,17 @@ export function Header() {
   return (
     <header className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
-        <Link href="/" className="text-xl font-bold text-brand-600">
-          ВЖИК
+        <Link href="/" className="flex items-center gap-2 font-display text-xl font-extrabold text-brand-700">
+          <span
+            className="flex h-7 w-7 items-center justify-center rounded-lg bg-highlight-400 text-sm font-extrabold text-highlight-900"
+            aria-hidden="true"
+          >
+            В
+          </span>
+          Вжик
         </Link>
 
-        <form onSubmit={handleSearch} role="search" className="flex min-w-[200px] flex-1 gap-2">
+        <form onSubmit={handleSearch} role="search" className="flex min-w-[200px] flex-1 items-center gap-2">
           <label htmlFor="header-search" className="sr-only">
             Пошук оголошень
           </label>
@@ -35,7 +41,7 @@ export function Header() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Що шукаєте?"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus-visible:outline-none"
+            className="h-8 w-full rounded-xl border border-gray-300 px-3 text-sm focus-visible:outline-none"
           />
           <Button type="submit" size="sm">
             Знайти
@@ -46,7 +52,9 @@ export function Header() {
           {isLoading ? null : user ? (
             <>
               <Link href="/listings/new">
-                <Button size="sm">+ Додати оголошення</Button>
+                <Button variant="accent" size="sm">
+                  + Додати оголошення
+                </Button>
               </Link>
               <Link href="/my-listings" className="text-sm font-medium text-gray-700 hover:text-brand-600">
                 Мої оголошення

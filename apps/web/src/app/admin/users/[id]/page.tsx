@@ -169,7 +169,7 @@ export default function AdminUserDetailPage() {
             ) : (
               <ul className="flex flex-col gap-2">
                 {detail.listings.map((listing) => (
-                  <li key={listing.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                  <li key={listing.id} className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={LISTING_STATUS_TONES[listing.status]}>{LISTING_STATUS_LABELS[listing.status]}</Badge>
                       <Link href={`/listings/${listing.id}`} className="font-medium text-gray-900 hover:underline">
@@ -194,7 +194,7 @@ export default function AdminUserDetailPage() {
             ) : (
               <ul className="flex flex-col gap-2">
                 {detail.reports.map((report) => (
-                  <li key={report.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                  <li key={report.id} className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={REPORT_STATUS_TONES[report.status]}>{report.status}</Badge>
                       <Badge tone="neutral">{REPORT_REASON_LABELS[report.reason]}</Badge>
@@ -220,7 +220,7 @@ export default function AdminUserDetailPage() {
             ) : (
               <ul className="flex flex-col gap-2">
                 {detail.riskSignals.map((signal) => (
-                  <li key={signal.id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                  <li key={signal.id} className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone="warning">{signal.signalType}</Badge>
                       <span className="text-sm text-gray-600">вага {signal.weight}</span>

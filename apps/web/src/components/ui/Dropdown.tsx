@@ -75,7 +75,7 @@ export function Dropdown({ label, options, value, onChange, placeholder }: Dropd
           aria-labelledby={`${buttonId}-label ${buttonId}`}
           onClick={() => setIsOpen((v) => !v)}
           onKeyDown={onKeyDown}
-          className="flex h-10 w-full items-center justify-between rounded-md border border-gray-300 px-3 text-sm"
+          className="flex h-10 w-full items-center justify-between rounded-xl border border-gray-300 px-3 text-sm"
         >
           <span className={cn(!selected && 'text-gray-400')}>
             {selected?.label ?? placeholder ?? 'Оберіть значення'}
@@ -87,7 +87,7 @@ export function Dropdown({ label, options, value, onChange, placeholder }: Dropd
             id={listId}
             role="listbox"
             aria-labelledby={`${buttonId}-label`}
-            className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg"
+            className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg"
           >
             {options.map((option, index) => (
               <li

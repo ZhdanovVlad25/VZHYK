@@ -103,7 +103,7 @@ export default function AdminUsersPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((item) => (
-            <li key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <li key={item.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="mb-1 flex items-center gap-2">

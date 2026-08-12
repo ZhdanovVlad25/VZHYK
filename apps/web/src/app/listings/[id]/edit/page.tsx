@@ -204,7 +204,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         </Badge>
         <h1 className="text-2xl font-semibold text-gray-900">{listing.title}</h1>
       </div>
-      <p className="mb-6 text-xl font-semibold text-brand-600">{formatPrice(listing.price, listing.currency)}</p>
+      <p className="mb-6 text-xl font-extrabold text-accent-600">{formatPrice(listing.price, listing.currency)}</p>
 
       {actionError && (
         <Alert tone="danger" title="Помилка" className="mb-4">
@@ -221,7 +221,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
               key={m.id}
               src={m.url}
               alt=""
-              className="aspect-square w-full rounded-md border border-gray-200 object-cover"
+              className="aspect-square w-full rounded-xl border border-gray-200 object-cover"
             />
           ))}
         </div>

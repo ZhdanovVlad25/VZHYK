@@ -152,7 +152,7 @@ export default function AdminReportsPage() {
           {items.map((item) => {
             const isOpen = item.status === 'PENDING' || item.status === 'REVIEWING';
             return (
-              <li key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <li key={item.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Badge tone={STATUS_TONES[item.status]}>{STATUS_LABELS[item.status]}</Badge>
                   <Badge tone="neutral">{REASON_LABELS[item.reason]}</Badge>

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  --focus-ring: 2px solid #ea580c;
+  --focus-ring: 2px solid #238a80;
   --focus-ring-offset: 2px;
 }
 
@@ -16,4 +16,12 @@
 
 body {
   color-scheme: light;
+}
+
+/* Unbounded лише на заголовках (docs/design.md) — усі h1-h3 автоматично,
+   без ручної правки font-display у кожному файлі. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-unbounded), ui-sans-serif, system-ui, sans-serif;
 }

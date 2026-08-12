@@ -51,7 +51,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg focus:outline-none"
+        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg focus:outline-none"
       >
         <div className="flex items-start justify-between gap-4">
           <h2 id={titleId} className="text-lg font-semibold">

@@ -24,8 +24,8 @@ export function ListingCard({ item }: { item: SearchResultItem }) {
       href={buildListingHref(item.id, item.title)}
       className="block focus-visible:outline-none"
     >
-      <div className="flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-        <div className="relative aspect-square w-full bg-gray-100">
+      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-brand-100 bg-brand-50 shadow-sm transition-shadow hover:shadow-md">
+        <div className="relative aspect-square w-full bg-brand-100">
           {item.mainMediaUrl ? (
             <Image
               src={item.mainMediaUrl}
@@ -35,7 +35,7 @@ export function ListingCard({ item }: { item: SearchResultItem }) {
               className="object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-sm text-gray-400">
+            <div className="flex h-full w-full items-center justify-center text-sm text-brand-500">
               Без фото
             </div>
           )}
@@ -44,7 +44,7 @@ export function ListingCard({ item }: { item: SearchResultItem }) {
           <p className="line-clamp-2 text-sm font-medium text-gray-900">
             {item.title}
           </p>
-          <p className="mt-auto font-semibold text-gray-900">
+          <p className="mt-auto font-extrabold text-accent-600">
             {formatPrice(item.price, item.currency)}
           </p>
         </div>

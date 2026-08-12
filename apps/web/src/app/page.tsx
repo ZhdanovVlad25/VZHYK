@@ -3,6 +3,14 @@ import { getCategoryTree, search } from '@/lib/api';
 import { ListingCard } from '@/components/listings/ListingCard';
 import { EmptyState } from '@/components/ui';
 
+// Ротація світлих tint-фонів з палітри маскота (docs/design.md) — без цього
+// категорії губилися на білому тлі суцільною сірою рамкою.
+const CATEGORY_TINTS = [
+  'bg-brand-100 text-brand-700',
+  'bg-accent-100 text-accent-700',
+  'bg-highlight-100 text-highlight-900',
+];
+
 // Категорії/новинки не персоналізовані й без побічних ефектів на GET — безпечно кешувати (ISR).
 export const revalidate = 60;
 
@@ -25,11 +33,11 @@ export default async function HomePage() {
           Категорії
         </h2>
         <div className="flex flex-wrap gap-2">
-          {categories.map((category) => (
+          {categories.map((category, index) => (
             <Link
               key={category.id}
               href={`/search?category=${category.id}`}
-              className="rounded-full border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:border-brand-500 hover:text-brand-600 focus-visible:outline-none"
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80 focus-visible:outline-none ${CATEGORY_TINTS[index % CATEGORY_TINTS.length]}`}
             >
               {category.nameUk}
             </Link>

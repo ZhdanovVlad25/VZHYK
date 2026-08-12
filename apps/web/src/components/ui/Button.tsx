@@ -1,7 +1,7 @@
 import { ButtonHTMLAttributes, forwardRef } from 'react';
 import { cn } from '@/lib/cn';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -15,6 +15,9 @@ const variantClasses: Record<ButtonVariant, string> = {
   secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400',
   ghost: 'bg-transparent text-brand-700 hover:bg-brand-50 disabled:text-gray-400',
   danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-300',
+  // Головна "продавай" дія (напр. "+ Додати оголошення") — червоний з футболки маскота,
+  // виділяється на тлі бірюзового primary, не конкурує з ним за увагу.
+  accent: 'bg-accent-600 text-white hover:bg-accent-700 disabled:bg-gray-300',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -39,7 +42,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       disabled={disabled || isLoading}
       aria-busy={isLoading || undefined}
       className={cn(
-        'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors',
+        'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors',
         'disabled:cursor-not-allowed',
         variantClasses[variant],
         sizeClasses[size],

@@ -1,8 +1,26 @@
 import type { Metadata } from 'next';
+import { Rubik, Unbounded } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { Header } from '@/components/layout/Header';
 import { SITE_URL } from '@/lib/site';
+
+// Cyrillic-підмножина обов'язкова — увесь контент українською.
+// Rubik — основний UI/body-текст (заокруглені літери, але читається дрібним кеглем).
+const rubik = Rubik({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '700', '800'],
+  variable: '--font-rubik',
+  display: 'swap',
+});
+
+// Unbounded — display-шрифт лише для заголовків/лого (h1-h3, wordmark у Header).
+const unbounded = Unbounded({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['500', '800'],
+  variable: '--font-unbounded',
+  display: 'swap',
+});
 
 const DESCRIPTION =
   'Україномовна платформа оголошень: продаж, купівля, обмін, робота, житло.';
@@ -26,8 +44,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="uk">
-      <body className="min-h-screen bg-white text-gray-900 antialiased">
+    <html lang="uk" className={`${rubik.variable} ${unbounded.variable}`}>
+      <body className="min-h-screen bg-white font-sans text-gray-900 antialiased">
         {/* Skip-link для keyboard/screen-reader навігації (базова accessibility, DEC-09) */}
         <a
           href="#main-content"

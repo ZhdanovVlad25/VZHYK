@@ -200,7 +200,7 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
                   <li key={m.id} className={cn('flex', isMine ? 'justify-end' : 'justify-start')}>
                     <div
                       className={cn(
-                        'max-w-[75%] rounded-lg px-3 py-2 text-sm',
+                        'max-w-[75%] rounded-2xl px-3 py-2 text-sm',
                         isMine ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-900',
                       )}
                     >
@@ -233,7 +233,7 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
               onChange={(e) => handleTypingInput(e.target.value)}
               placeholder="Напишіть повідомлення…"
               maxLength={2000}
-              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus-visible:outline-none"
+              className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus-visible:outline-none"
             />
             <Button type="submit" size="sm" isLoading={isSending} disabled={!text.trim()}>
               Надіслати

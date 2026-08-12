@@ -24,7 +24,7 @@ export function Alert({ tone = 'info', title, className, children, ...props }: A
   return (
     <div
       role={role}
-      className={cn('rounded-md border p-3 text-sm', toneClasses[tone], className)}
+      className={cn('rounded-xl border p-3 text-sm', toneClasses[tone], className)}
       {...props}
     >
       {title && <p className="font-medium">{title}</p>}
