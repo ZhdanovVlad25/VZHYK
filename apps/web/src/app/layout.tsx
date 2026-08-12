@@ -45,7 +45,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="uk" className={`${rubik.variable} ${unbounded.variable}`}>
-      <body className="min-h-screen bg-white font-sans text-gray-900 antialiased">
+      <body className="min-h-screen bg-page font-sans text-gray-900 antialiased">
         {/* Skip-link для keyboard/screen-reader навігації (базова accessibility, DEC-09) */}
         <a
           href="#main-content"

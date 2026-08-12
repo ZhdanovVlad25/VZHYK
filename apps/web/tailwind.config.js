@@ -28,6 +28,9 @@ module.exports = {
           500: '#DDAE1F',
           900: '#6B5200',
         },
+        // Тепла нейтральна підложка для всієї сторінки (не стерильний білий) —
+        // картки/шапка лишаються білими/tint зверху, тому потрібен контраст.
+        page: '#FBF6EE',
       },
       fontFamily: {
         sans: ['var(--font-rubik)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
