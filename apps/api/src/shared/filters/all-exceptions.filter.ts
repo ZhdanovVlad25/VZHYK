@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { randomUUID } from 'crypto';
+import { captureException } from '../sentry';
 
 /**
  * Єдиний формат помилок для всього API (docs/api.md §1):
@@ -41,11 +42,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
         details = b.details ?? (Array.isArray(b.message) ? b.message : null);
       }
     } else {
-      // Неочікувана (не-HttpException) помилка — клієнт бачить лише traceId, деталі йдуть у сервер-лог.
+      // Неочікувана (не-HttpException) помилка — клієнт бачить лише traceId, деталі йдуть у сервер-лог + Sentry.
       this.logger.error(
         `[${traceId}] ${request.method} ${request.url} → ${(exception as Error)?.message ?? exception}`,
         (exception as Error)?.stack,
       );
+      captureException(exception);
     }
 
     response.status(status).json({

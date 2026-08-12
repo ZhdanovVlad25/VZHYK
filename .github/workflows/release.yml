@@ -1,0 +1,48 @@
+name: Release
+
+# docs/deployment.md §4 CD крок 2: на merge в main — build & push образів, тег = git SHA
+# (+ latest). Використовує вбудований GITHUB_TOKEN, жодних додаткових секретів не
+# потрібно — запрацює одразу, щойно в репозиторії з'явиться реальний GitHub remote.
+# Сам деплой на staging/production (крок 3) свідомо НЕ тут — залежить від конкретної
+# інфраструктури, якої в проєкті ще нема (docs/roadmap.md Phase 8).
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        app: [api, web]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.app }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ github.repository }}/${{ matrix.app }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

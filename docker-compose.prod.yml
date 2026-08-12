@@ -1,0 +1,111 @@
+name: vzhyk-prod
+
+# Продакшн-оверлей: production Docker-таргети (без hot-reload volumes), health checks,
+# без прокинутих портів БД/Redis/MinIO назовні (лише всередині мережі compose).
+# Використання: docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# MinIO тут — самостійний варіант object storage без хмарного акаунту. Для реального
+# продакшну зазвичай краще керований S3 (docs/deployment.md §5) — просто замініть
+# S3_ENDPOINT/S3_*-змінні в .env.production на хмарні значення й приберіть сервіс minio.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vzhyk-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:-vzhyk}
+    volumes:
+      - vzhyk_postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:?} -d ${POSTGRES_DB:-vzhyk}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: vzhyk-redis-prod
+    restart: unless-stopped
+    volumes:
+      - vzhyk_redis_prod_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: vzhyk-minio-prod
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?}
+    volumes:
+      - vzhyk_minio_prod_data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: production
+    image: vzhyk-api:${IMAGE_TAG:-latest}
+    container_name: vzhyk-api-prod
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:-vzhyk}
+      REDIS_URL: redis://redis:6379
+    ports:
+      - '${API_PORT:-3001}:3001'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/health || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: production
+    image: vzhyk-web:${IMAGE_TAG:-latest}
+    container_name: vzhyk-web-prod
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+    ports:
+      - '${WEB_PORT:-3000}:3000'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/ || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  vzhyk_postgres_prod_data:
+  vzhyk_redis_prod_data:
+  vzhyk_minio_prod_data:

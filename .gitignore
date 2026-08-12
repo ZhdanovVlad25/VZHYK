@@ -5,6 +5,8 @@ coverage/
 *.log
 .env
 .env.local
+.env.production
+backups/
 .DS_Store
 *.tsbuildinfo
 .claude/settings.local.json

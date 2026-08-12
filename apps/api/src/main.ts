@@ -4,15 +4,40 @@ import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
+import { initSentry } from './shared/sentry';
+import { JsonLogger } from './shared/json-logger';
+
+function resolveCorsOrigin(): boolean | string {
+  if (process.env.NODE_ENV !== 'production') {
+    return true; // dev/test: довільний origin (localhost:3000, Playwright, різні порти) — зручність важливіша
+  }
+  const webOrigin = process.env.WEB_ORIGIN;
+  if (!webOrigin) {
+    // Свідомо fail fast, а не мовчки відкат на дозвіл усіх origin — саме цього ми уникаємо.
+    throw new Error(
+      "WEB_ORIGIN не задано — обов'язковий у production для звуження CORS (docs/security.md).",
+    );
+  }
+  return webOrigin;
+}
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  initSentry();
+
+  const app = await NestFactory.create(AppModule, {
+    cors: { origin: resolveCorsOrigin() },
+    // JSON-логи для колектора в production (docs/deployment.md §6); у dev лишається
+    // звичний кольоровий Nest-логер (undefined = дефолт).
+    logger:
+      process.env.NODE_ENV === 'production' ? new JsonLogger() : undefined,
+  });
 
   // Security headers: CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy тощо (docs/security.md §4)
   app.use(helmet());
 
-  // Версіонування через префікс /api/v1 (див. docs/api.md)
-  app.setGlobalPrefix('api/v1');
+  // Версіонування через префікс /api/v1 (див. docs/api.md). /health лишається поза
+  // версіонуванням — стабільний шлях для LB/оркестратора незалежно від версії API.
+  app.setGlobalPrefix('api/v1', { exclude: ['health'] });
 
   // Суворі DTO-схеми, whitelist полів (docs/security.md §3)
   app.useGlobalPipes(

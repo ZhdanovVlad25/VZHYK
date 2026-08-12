@@ -104,6 +104,25 @@ find module main.js"). Якщо треба build — спочатку зупин
     `jest-integration.config.js` має `forceExit: true`, інакше процес висить
     нескінченно замість повернути exit code (на це наступили в цій сесії —
     команда "завершилась" лише через 10 годин після вбивства процесу вручну).
+13. **`apps/api/Dockerfile`/`apps/web/Dockerfile` не копіювали `packages/`
+    (npm workspaces `packages/tsconfig`, `packages/eslint-config`) у
+    build-контекст** — `tsc` мовчки падав на дефолтний ES5-таргет замість
+    `packages/tsconfig/base.json` (`extends` на неіснуючий у контейнері файл
+    не кидає помилку, просто ігнорується), `nest build` валився з
+    незрозумілими TS2802/TS1192. Був ще з Phase 1, ніхто не помічав, бо
+    жодного `docker build` кроку в CI не було до Phase 8. Фікс: `COPY packages
+    ./packages` у base-стадії обох Dockerfile.
+14. **npm workspaces хоїстить частину залежностей у корінь `/app/node_modules`**
+    (напр. `reflect-metadata` для api) — production-стадія Dockerfile, що
+    копіює лише `apps/api/node_modules` (без кореневого рівня), падає рантайм
+    з `MODULE_NOT_FOUND` одразу при старті контейнера. Потрібно копіювати
+    ОБИДВА рівні `node_modules` (корінь + workspace) у production-стадію.
+15. `ConfigService.get(key, default)` з другим аргументом-fallback — та сама
+    пастка, що grabli #2, але гостріша для секретів: якщо забути прибрати
+    default при переході на production, застосунок мовчки стартує з
+    публічним/тестовим значенням замість падати. Для будь-якого
+    production-обов'язкового секрету (JWT, тощо) — `requireEnv()`
+    (`apps/api/src/shared/env.ts`), без default, throw якщо відсутній.
 
 ---
 
@@ -607,10 +626,86 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
 
 (Деталі 1 і 3 — тепер у "Відомі граблі" на початку файлу, пункти 11–12.)
 
-## Phase 8 — Production Readiness ⬜ не розпочато
+## Phase 8 — Production Readiness ✅ завершено (deploy-ready артефакти; реальної інфраструктури нема)
 
-- [ ] Deployment pipeline, моніторинг, error tracking, backups, production
-      конфіг, фінальний security review.
+Немає реального сервера/домену/хмарного акаунту/Sentry-акаунту — ціль цієї фази була
+підготувати все, що можна перевірити й задеплоїти без них, а не власне задеплоїти.
+**Усе нижче перевірено живцем** (докер build + запуск контейнерів проти реальних
+postgres/redis/minio з `docker-compose.yml`), не лише написано.
+
+- [x] **Deployment pipeline**. `docker-compose.prod.yml` — production-оверлей
+      (без hot-reload volumes, health checks для api/web, БД/Redis/MinIO без
+      прокинутих портів назовні). `.github/workflows/ci.yml` — новий job `docker`
+      (build обох production-образів на кожен PR/push, раніше такого кроку не
+      було жодного). `.github/workflows/release.yml` — build+push у GHCR на
+      merge в main, тег = git SHA + `latest`, вбудований `GITHUB_TOKEN`.
+      **Не запускався по-справжньому**: в репозиторії немає GitHub remote —
+      workflow валідний і готовий, спрацює одразу, як з'явиться push у GitHub.
+      **Виявлено й полагоджено 2 реальні баги в Dockerfile'ах** (існували з
+      Phase 1, ніколи не тестувались — жодного docker-build кроку в CI не було):
+      1. `packages/tsconfig`/`packages/eslint-config` (npm workspaces `packages/*`)
+         не копіювались у build-контекст → `tsc` мовчки падав на дефолтний
+         ES5-таргет замість `packages/tsconfig/base.json` → `nest build` валився
+         з десятком TS-помилок.
+      2. `apps/api` production-стадія копіювала лише `apps/api/node_modules`, а
+         частина залежностей (`reflect-metadata`) хоїститься npm workspaces в
+         корінь `/app/node_modules` → контейнер падав одразу з `MODULE_NOT_FOUND`.
+      Заодно `apps/web/next.config.js` отримав `output: 'standalone'`
+      (225MB→менший, трасовані залежності замість повного `node_modules`) і
+      `apps/web/public/` (раніше не існував — Dockerfile копіював неіснуючу
+      директорію, теж падало).
+- [x] **Моніторинг та error tracking**. `GET /health` (поза `/api/v1`, пінгує
+      Postgres+Redis, 503 при недоступності) — `apps/api/src/modules/health`.
+      Структуровані JSON-логи в production (`apps/api/src/shared/json-logger.ts`,
+      підключається лише при `NODE_ENV=production`). `@sentry/node` (api) і
+      `@sentry/nextjs` (web) — опційно, без `SENTRY_DSN`/`NEXT_PUBLIC_SENTRY_DSN`
+      повний no-op, реального акаунту не потрібно. Метрики (Prometheus/Grafana)
+      і alerting — свідомо не реалізовано, потребують реальної observability-
+      інфраструктури, якої нема; health-check + Sentry вже покривають
+      MVP-мінімум ("сервіс живий" + "про помилку дізнаємось").
+- [x] **Backups**. `scripts/backup-db.sh` — `pg_dump` через `docker compose exec`,
+      gzip, ротація за `BACKUP_RETENTION_DAYS` (дефолт 14 днів), cron-приклад і
+      команда відновлення в коментарях. **Перевірено живцем**: сам механізм
+      `pg_dump | gzip` проти реальної dev-БД (29.7KB дамп з demo-даними).
+      Point-in-time recovery, реплікація object storage, задокументовані
+      RTO/RPO — не зроблено, це рішення разом із бізнесом на реальному
+      продакшні, а не щось, що можна визначити наперед у MVP.
+- [x] **Production конфіг**. `.env.production.example` (реальний
+      `.env.production` у `.gitignore`, лише placeholder'и в git) —
+      `POSTGRES_USER/PASSWORD/DB` для docker-compose підстановки, реальні
+      домени замість localhost, `SMS_PROVIDER` попереджає не лишати `console`.
+      CORS звужено до `WEB_ORIGIN` у production (`main.ts`) — **fail fast**,
+      якщо не задано (перевірено живцем: контейнер падає з чітким повідомленням
+      замість мовчазного відкату на дозвіл усіх origin).
+- [x] **Фінальний security review**. Пройдено: hardcoded secrets (немає —
+      `.env`/`.env.local`/`.env.production` в `.gitignore`, у git лише
+      placeholder'и), auth (OTP хешується argon2, не plaintext), raw SQL
+      (`PostgresFtsSearchProvider` — усе параметризовано `$1/$2`, жодної
+      конкатенації user input у SQL-текст), media upload (шлях завжди
+      `listings/{uuid з БД}/{randomUUID()}.{ext з MIME-whitelist}` — user input
+      ніколи не потрапляє в storage key), XSS (єдиний
+      `dangerouslySetInnerHTML` — JSON-LD на сторінці оголошення, Phase 6,
+      server-generated дані, не user input).
+      **Знайдено й полагоджено одну реальну діру**: `JWT_ACCESS_SECRET` мав
+      хардкодний fallback (`'dev_only_secret'`, буквальний рядок у коді, не
+      навіть значення з `.env.example`) в `auth.module.ts` і `jwt.strategy.ts`
+      — якщо змінну забудуть задати в production, застосунок мовчки
+      підписував/перевіряв токени публічним, легко вгадуваним секретом замість
+      відмови стартувати. Виправлено: `apps/api/src/shared/env.ts`
+      `requireEnv()`, той самий fail-fast принцип, що й `WEB_ORIGIN` для CORS
+      (перевірено живцем в обидва боки — з секретом стартує, без нього падає
+      з чітким повідомленням). **Задокументовано, не виправлено**:
+      `JWT_REFRESH_SECRET` задекларовано в `.env.example`, але
+      `AuthService.issueTokens()` підписує і access, і refresh одним і тим
+      самим `JwtService`/`JWT_ACCESS_SECRET` (лише різний `expiresIn`) —
+      refresh-токен видається, але ніде не приймається назад (`POST /auth/refresh`
+      не існує, roadmap Phase 1 вже це фіксував). Не нова вразливість (обидва
+      токени й так під одним секретом), а розбіжність між заявленим і реальним
+      дизайном — виправляти має сенс разом із появою `/auth/refresh`, не
+      ізольовано зараз.
+      **OWASP ZAP і повний Lighthouse/CWV прогін — досі свідомо відкладені**
+      (той самий аргумент, що в Phase 6/7: немає staging, dev-режим дав би шум,
+      не сигнал).
 
 ## Після MVP (поза межами roadmap)
 
@@ -638,31 +733,32 @@ Playwright, окремо від workspace-структури — стосуєт�
 
 ## Наступний логічний крок
 
-**Усі фази, крім Phase 8, повністю завершені**: Phase 4/5/7 (Trust & Safety,
-Admin Panel, Testing) — Reports, Moderation queue, User blocking (+ каскад на
-оголошення, + детальний перегляд юзера), Audit log (+ фільтри), Anti-fraud
-(RiskSignal/RiskScore), Dashboard, Listings admin CRUD, Categories/Attributes
-CRUD UI (+ переміщення в дереві), rate limiting (OTP за phone + три per-user
-ліміти з docs/security.md §6, усі нарешті реально enforced), security headers
-(`helmet`), dependency audit (`next` CVE-патч), 9 integration-сюїтів
-(24 тести), усі 11 E2E-сценаріїв (12 тестів, Playwright). Google OAuth
-підключено (роутинг+логіка+тести; повний live-тест потребує реальних
-`GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`, яких немає в `.env`).
+**Усі фази roadmap завершені, включно з Phase 8.** MVP-скоуп цього документа
+закритий повністю:
 
-**Phase 6 (SEO & Performance) також завершено**: sitemap.xml/robots.txt,
-per-listing metadata + Open Graph + JSON-LD, SEO-friendly slug URLs (без
-міграції БД — косметичний хвіст поверх UUID), `next/image` замість `<img>`,
-опт-ін ISR-кешування головної сторінки (без кешування сторінки оголошення —
-побічний ефект інкременту переглядів), нові DB-індекси (`listings.price`,
-композитний `media(listingId, isMain)`). Усе перевірено живцем (curl проти
-dev-серверів: title/OG/canonical/JSON-LD, `/_next/image` 200, sitemap.xml і
-robots.txt віддаються коректно, старі голі UUID-посилання досі 200). Повний
-Lighthouse/CrUX Core Web Vitals прогін свідомо не виконано — немає
-production-збірки/staging (той самий аргумент, що OWASP ZAP), відкладено до
-Phase 8.
+- **Phase 0–5, 7** (Discovery → Testing): Trust & Safety, Admin Panel,
+  rate limiting, security headers, dependency audit, 9 integration-сюїтів
+  (24 тести), усі 11 E2E-сценаріїв (12 тестів). Google OAuth підключено
+  (повний live-тест потребує реальних `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`).
+- **Phase 6** (SEO & Performance): sitemap.xml/robots.txt, per-listing
+  metadata + OG + JSON-LD, SEO-friendly slug URLs, `next/image`, опт-ін
+  ISR-кешування, нові DB-індекси.
+- **Phase 8** (Production Readiness): production Docker-образи (перевірені
+  живцем — знайдено й полагоджено 2 реальні баги, яких CI не ловив),
+  `docker-compose.prod.yml`, CI docker-build job + GHCR release workflow,
+  `/health`, JSON-логи, опційний Sentry, DB-backup скрипт, `.env.production.example`,
+  фінальний security review (знайдено й полагоджено хардкодний JWT-secret
+  fallback — була б реальна production-вразливість).
 
-206 unit + 24 integration + 12 E2E тестів. OWASP ZAP, повний Core Web Vitals
-прогін і кілька breaking-change dependency upgrades свідомо відкладені до
-Phase 8 (staging не існує). **Єдина фаза, що лишилась — Phase 8 Production
-Readiness**: deployment pipeline, моніторинг, error tracking, backups,
-production конфіг, фінальний security review.
+206 unit + 24 integration + 12 E2E тестів, усі проходять. Свідомо відкладено
+до появи реальної інфраструктури (staging/production hosts, GitHub remote,
+хмарні акаунти) — не бракує коду, бракує середовища, де його застосувати:
+OWASP ZAP, повний Lighthouse/CWV прогін, кілька breaking-change dependency
+upgrades, реальний запуск `release.yml` (workflow готовий, але в репозиторії
+немає GitHub remote), підключення реального Sentry/managed Postgres/CDN.
+
+**Далі — поза межами цього roadmap**: розділ "Після MVP" нижче (Nova Poshta,
+онлайн-оплата, escrow, монетизація, рейтинги, мобільні застосунки,
+локалізація RU/EN, category-specific модерація, сповіщення про збіг saved
+search), або власне підняття реальної production-інфраструктури й прогін
+усього підготовленого в Phase 8 живцем.

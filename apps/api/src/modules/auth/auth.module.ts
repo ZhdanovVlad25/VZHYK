@@ -9,6 +9,7 @@ import { OtpCode } from './otp-code.entity';
 import { User } from '../users/user.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { requireEnv } from '../../shared/env';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_ACCESS_SECRET', 'dev_only_secret'),
+        secret: requireEnv(config, 'JWT_ACCESS_SECRET'),
       }),
     }),
   ],

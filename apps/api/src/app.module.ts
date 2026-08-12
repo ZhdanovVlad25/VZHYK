@@ -43,10 +43,14 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { RiskSignal } from './modules/risk/risk-signal.entity';
 import { RiskScore } from './modules/risk/risk-score.entity';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: join(__dirname, '../../../.env') }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: join(__dirname, '../../../.env'),
+    }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 100 }]), // базовий 100/хв на IP, docs/security.md §6
     EventEmitterModule.forRoot(), // ChatsService -> ChatGateway push, docs/architecture.md §2
     RedisModule,
@@ -99,6 +103,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     ModerationModule,
     AuditLogModule,
     DashboardModule,
+    HealthModule,
   ],
   providers: [
     // roadmap.md grabli — ThrottlerModule.forRoot() сам по собі нічого не блокує без

@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { User } from '../../users/user.entity';
+import { requireEnv } from '../../../shared/env';
 
 export interface JwtPayload {
   sub: string;
@@ -27,15 +28,22 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.get<string>('JWT_ACCESS_SECRET', 'dev_only_secret'),
+      secretOrKey: requireEnv(config, 'JWT_ACCESS_SECRET'),
     });
   }
 
   async validate(payload: JwtPayload) {
     const user = await this.users.findOne({ where: { id: payload.sub } });
     if (!user || user.status !== 'active') {
-      throw new UnauthorizedException({ code: 'USER_BLOCKED', message: 'Обліковий запис заблоковано' });
+      throw new UnauthorizedException({
+        code: 'USER_BLOCKED',
+        message: 'Обліковий запис заблоковано',
+      });
     }
-    return { id: payload.sub, role: payload.role, phone: payload.phone ?? null };
+    return {
+      id: payload.sub,
+      role: payload.role,
+      phone: payload.phone ?? null,
+    };
   }
 }
