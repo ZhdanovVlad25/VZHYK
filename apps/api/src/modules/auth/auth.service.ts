@@ -29,16 +29,30 @@ export class AuthService {
   ) {}
 
   async requestOtp(phone: string, ip: string | null): Promise<{ requested: true }> {
-    const code = String(randomInt(100000, 999999));
+    /**
+     * Dev-зручність: сталий код для одного заздалегідь заданого номера, щоб не
+     * ганятись за console.log/rate limit на кожен вхід під час ручного тестування.
+     * Виключно поза production (DEV_FIXED_OTP_PHONE/_CODE — не в .env.example
+     * з реальним значенням, лише документовані як опція).
+     */
+    const isFixedDevOtp =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.DEV_FIXED_OTP_PHONE &&
+      process.env.DEV_FIXED_OTP_CODE &&
+      phone === process.env.DEV_FIXED_OTP_PHONE;
+
+    const code = isFixedDevOtp ? process.env.DEV_FIXED_OTP_CODE! : String(randomInt(100000, 999999));
     const codeHash = await argon2.hash(code);
+    const ttlSeconds = isFixedDevOtp ? 30 * 24 * 60 * 60 : OTP_TTL_SECONDS; // 30 днів для фіксованого dev-коду
+    const maxAttempts = isFixedDevOtp ? 1000 : OTP_MAX_ATTEMPTS; // не блокувати кількома невдалими спробами під час ручного тестування
 
     await this.otpCodes.save(
       this.otpCodes.create({
         phone,
         codeHash,
         purpose: 'login',
-        maxAttempts: OTP_MAX_ATTEMPTS,
-        expiresAt: new Date(Date.now() + OTP_TTL_SECONDS * 1000),
+        maxAttempts,
+        expiresAt: new Date(Date.now() + ttlSeconds * 1000),
         createdIp: ip,
       }),
     );
