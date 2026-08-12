@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, HttpCode, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { AttributesService } from '../attributes/attributes.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -17,6 +17,12 @@ export class AdminCategoriesController {
     private readonly categories: CategoriesService,
     private readonly attributes: AttributesService,
   ) {}
+
+  /** Включає неактивні категорії, на відміну від публічного GET /categories — потрібне для Admin Panel. */
+  @Get()
+  findAll() {
+    return this.categories.findAdminTree();
+  }
 
   @Post()
   create(@Body() dto: CreateCategoryDto) {

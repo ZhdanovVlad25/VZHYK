@@ -51,10 +51,42 @@ describe('AuditLogService', () => {
   });
 
   describe('list', () => {
-    it('повертає останні записи, новіші спочатку, обмежено 100', async () => {
+    it('без фільтрів повертає останні записи, новіші спочатку, обмежено 100', async () => {
       await service.list();
 
-      expect(logs.find).toHaveBeenCalledWith({ order: { createdAt: 'DESC' }, take: 100 });
+      expect(logs.find).toHaveBeenCalledWith({ where: {}, order: { createdAt: 'DESC' }, take: 100 });
+    });
+
+    it('фільтрує за targetType', async () => {
+      await service.list({ targetType: 'listing' });
+
+      expect(logs.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { targetType: 'listing' } }),
+      );
+    });
+
+    it('фільтрує за action', async () => {
+      await service.list({ action: 'user.block' });
+
+      expect(logs.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { action: 'user.block' } }),
+      );
+    });
+
+    it('фільтрує за actorUserId', async () => {
+      await service.list({ actorUserId: 'admin-1' });
+
+      expect(logs.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { actorUserId: 'admin-1' } }),
+      );
+    });
+
+    it('комбінує кілька фільтрів', async () => {
+      await service.list({ targetType: 'listing', action: 'listing.admin_update' });
+
+      expect(logs.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { targetType: 'listing', action: 'listing.admin_update' } }),
+      );
     });
   });
 });

@@ -25,6 +25,7 @@ describe('ReportsService', () => {
   let users: MockRepo;
   let chatParticipants: MockRepo;
   let risk: { checkHighReportCount: jest.Mock };
+  let auditLog: { record: jest.Mock };
   let service: ReportsService;
 
   beforeEach(() => {
@@ -33,7 +34,15 @@ describe('ReportsService', () => {
     users = mockRepo();
     chatParticipants = mockRepo();
     risk = { checkHighReportCount: jest.fn().mockResolvedValue(undefined) };
-    service = new ReportsService(reports as never, listings as never, users as never, chatParticipants as never, risk as never);
+    auditLog = { record: jest.fn().mockResolvedValue(undefined) };
+    service = new ReportsService(
+      reports as never,
+      listings as never,
+      users as never,
+      chatParticipants as never,
+      risk as never,
+      auditLog as never,
+    );
   });
 
   describe('create — targetType LISTING', () => {
@@ -124,6 +133,71 @@ describe('ReportsService', () => {
 
       expect(result).toBe(mine);
       expect(reports.find).toHaveBeenCalledWith({ where: { reporterId: 'u-1' }, order: { createdAt: 'DESC' } });
+    });
+  });
+
+  describe('adminList', () => {
+    it('без фільтрів повертає всі, найновіші спочатку, take 100', async () => {
+      await service.adminList();
+
+      expect(reports.find).toHaveBeenCalledWith({ where: {}, order: { createdAt: 'DESC' }, take: 100 });
+    });
+
+    it('фільтрує за статусом (нормалізує регістр)', async () => {
+      await service.adminList('pending');
+
+      expect(reports.find).toHaveBeenCalledWith({ where: { status: 'PENDING' }, order: { createdAt: 'DESC' }, take: 100 });
+    });
+
+    it('кидає REPORT_STATUS_INVALID для невідомого статусу', async () => {
+      await expect(service.adminList('bogus')).rejects.toMatchObject({ response: { code: 'REPORT_STATUS_INVALID' } });
+    });
+
+    it('фільтрує за targetType', async () => {
+      await service.adminList(undefined, 'user');
+
+      expect(reports.find).toHaveBeenCalledWith({ where: { targetType: 'USER' }, order: { createdAt: 'DESC' }, take: 100 });
+    });
+
+    it('кидає REPORT_TARGET_TYPE_INVALID для невідомого типу цілі', async () => {
+      await expect(service.adminList(undefined, 'bogus')).rejects.toMatchObject({
+        response: { code: 'REPORT_TARGET_TYPE_INVALID' },
+      });
+    });
+  });
+
+  describe('resolve', () => {
+    it('кидає REPORT_NOT_FOUND для неіснуючої скарги', async () => {
+      reports.findOne.mockResolvedValue(null);
+
+      await expect(service.resolve('mod-1', 'missing', 'RESOLVED', null)).rejects.toMatchObject({
+        response: { code: 'REPORT_NOT_FOUND' },
+      });
+    });
+
+    it('кидає REPORT_ALREADY_DECIDED, якщо скарга вже RESOLVED/REJECTED', async () => {
+      reports.findOne.mockResolvedValue({ id: 'r-1', status: 'RESOLVED' });
+
+      await expect(service.resolve('mod-1', 'r-1', 'REJECTED', null)).rejects.toMatchObject({
+        response: { code: 'REPORT_ALREADY_DECIDED' },
+      });
+    });
+
+    it('оновлює статус і пише audit log з before/after', async () => {
+      reports.findOne.mockResolvedValue({ id: 'r-1', status: 'PENDING' });
+
+      const result = await service.resolve('mod-1', 'r-1', 'RESOLVED', '127.0.0.1');
+
+      expect(result.status).toBe('RESOLVED');
+      expect(auditLog.record).toHaveBeenCalledWith({
+        actorUserId: 'mod-1',
+        action: 'report.resolve',
+        targetType: 'report',
+        targetId: 'r-1',
+        before: { status: 'PENDING' },
+        after: { status: 'RESOLVED' },
+        ip: '127.0.0.1',
+      });
     });
   });
 });

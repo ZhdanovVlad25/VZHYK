@@ -7,10 +7,13 @@ import { Category } from '../categories/category.entity';
 import { CategoryAttribute } from '../attributes/category-attribute.entity';
 import { ListingsService } from './listings.service';
 import { ListingsController } from './listings.controller';
+import { AdminListingsService } from './admin-listings.service';
+import { AdminListingsController } from './admin-listings.controller';
 import { SettingsModule } from '../settings/settings.module';
 import { SearchProviderModule } from '../../providers/search/search.module';
 import { ModerationModule } from '../moderation/moderation.module';
 import { RiskModule } from '../risk/risk.module';
+import { AuditLogModule } from '../audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -19,9 +22,10 @@ import { RiskModule } from '../risk/risk.module';
     SearchProviderModule,
     ModerationModule,
     RiskModule,
+    AuditLogModule,
   ],
-  controllers: [ListingsController],
-  providers: [ListingsService],
+  controllers: [ListingsController, AdminListingsController],
+  providers: [ListingsService, AdminListingsService],
   exports: [ListingsService],
 })
 export class ListingsModule {}

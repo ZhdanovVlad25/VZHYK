@@ -397,6 +397,7 @@ export type ReportStatus = 'PENDING' | 'REVIEWING' | 'RESOLVED' | 'REJECTED';
 
 export interface Report {
   id: string;
+  reporterId: string;
   targetType: ReportTargetType;
   targetId: string;
   reason: ReportReason;
@@ -465,6 +466,25 @@ export function searchAdminUsers(token: string, search?: string): Promise<AdminU
   return apiFetch(`/admin/users${qs}`, { token });
 }
 
+export interface AdminUserDetail extends AdminUserView {
+  profile: PublicProfile;
+  listings: { id: string; title: string; status: ListingStatus; price: number | null; currency: string; createdAt: string }[];
+  reports: {
+    id: string;
+    targetType: ReportTargetType;
+    targetId: string;
+    reason: ReportReason;
+    status: ReportStatus;
+    createdAt: string;
+  }[];
+  riskScore: number;
+  riskSignals: { id: string; signalType: string; weight: number; metadata: Record<string, unknown> | null; createdAt: string }[];
+}
+
+export function getAdminUserDetail(id: string, token: string): Promise<AdminUserDetail> {
+  return apiFetch(`/admin/users/${id}`, { token });
+}
+
 export function blockUser(userId: string, token: string): Promise<AdminUserView> {
   return apiFetch(`/admin/users/${userId}/block`, { method: 'POST', token });
 }
@@ -487,8 +507,122 @@ export interface AuditLogEntry {
   createdAt: string;
 }
 
-export function getAuditLog(token: string): Promise<AuditLogEntry[]> {
-  return apiFetch('/admin/audit-log', { token });
+export interface AuditLogFilters {
+  targetType?: string;
+  action?: string;
+  actorUserId?: string;
+}
+
+export function getAuditLog(token: string, filters?: AuditLogFilters): Promise<AuditLogEntry[]> {
+  const qs = new URLSearchParams();
+  if (filters?.targetType) qs.set('targetType', filters.targetType);
+  if (filters?.action) qs.set('action', filters.action);
+  if (filters?.actorUserId) qs.set('actorUserId', filters.actorUserId);
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return apiFetch(`/admin/audit-log${suffix}`, { token });
+}
+
+// ---- Admin: dashboard ----
+
+export interface DashboardMetrics {
+  users: { total: number; active: number; blocked: number };
+  listings: { total: number; byStatus: Record<ListingStatus, number> };
+  moderation: { pending: number; needsReview: number };
+  reports: { pending: number; reviewing: number };
+  riskFlaggedUsers: number;
+}
+
+export function getDashboardMetrics(token: string): Promise<DashboardMetrics> {
+  return apiFetch('/admin/dashboard', { token });
+}
+
+// ---- Admin: listings (search/view/edit/block) ----
+
+export interface AdminUpdateListingDto {
+  status?: 'ACTIVE' | 'BLOCKED';
+  title?: string;
+  description?: string;
+  price?: number;
+  currency?: string;
+}
+
+export function searchAdminListings(token: string, search?: string, status?: ListingStatus): Promise<Listing[]> {
+  const qs = new URLSearchParams();
+  if (search) qs.set('search', search);
+  if (status) qs.set('status', status);
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return apiFetch(`/admin/listings${suffix}`, { token });
+}
+
+export function updateAdminListing(id: string, dto: AdminUpdateListingDto, token: string): Promise<Listing> {
+  return apiFetch(`/admin/listings/${id}`, { method: 'PATCH', body: dto, token });
+}
+
+// ---- Admin: categories & attributes (CRUD) ----
+
+export function getAdminCategoryTree(token: string): Promise<Category[]> {
+  return apiFetch('/admin/categories', { token });
+}
+
+export interface CreateCategoryDto {
+  nameUk: string;
+  slug: string;
+  parentId?: string | null;
+  icon?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+}
+
+export type UpdateCategoryDto = Partial<CreateCategoryDto>;
+
+export function createCategory(dto: CreateCategoryDto, token: string): Promise<Category> {
+  return apiFetch('/admin/categories', { method: 'POST', body: dto, token });
+}
+
+export function updateCategory(id: string, dto: UpdateCategoryDto, token: string): Promise<Category> {
+  return apiFetch(`/admin/categories/${id}`, { method: 'PATCH', body: dto, token });
+}
+
+export function deleteCategory(id: string, token: string): Promise<void> {
+  return apiFetch(`/admin/categories/${id}`, { method: 'DELETE', token });
+}
+
+export interface CreateAttributeDto {
+  key: string;
+  labelUk: string;
+  dataType: CategoryAttribute['dataType'];
+  enumOptions?: Record<string, unknown>;
+  isRequired?: boolean;
+  isFilterable?: boolean;
+  sortOrder?: number;
+}
+
+export function createCategoryAttribute(categoryId: string, dto: CreateAttributeDto, token: string): Promise<CategoryAttribute> {
+  return apiFetch(`/admin/categories/${categoryId}/attributes`, { method: 'POST', body: dto, token });
+}
+
+export function updateCategoryAttribute(
+  id: string,
+  dto: Partial<CreateAttributeDto>,
+  token: string,
+): Promise<CategoryAttribute> {
+  return apiFetch(`/admin/attributes/${id}`, { method: 'PATCH', body: dto, token });
+}
+
+// ---- Admin: reports (moderator/admin) ----
+
+export function getAdminReports(token: string, status?: ReportStatus, targetType?: ReportTargetType): Promise<Report[]> {
+  const qs = new URLSearchParams();
+  if (status) qs.set('status', status);
+  if (targetType) qs.set('targetType', targetType);
+  const suffix = qs.toString() ? `?${qs.toString()}` : '';
+  return apiFetch(`/admin/reports${suffix}`, { token });
+}
+
+export type ReportResolutionStatus = 'REVIEWING' | 'RESOLVED' | 'REJECTED';
+
+export function resolveReport(id: string, status: ReportResolutionStatus, token: string): Promise<Report> {
+  return apiFetch(`/admin/reports/${id}/resolve`, { method: 'POST', body: { status }, token });
 }
 
 /** multipart/form-data — не через apiFetch (той завжди серіалізує body в JSON). */

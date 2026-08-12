@@ -40,6 +40,7 @@ import { AuditLog } from './modules/audit-log/audit-log.entity';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { RiskSignal } from './modules/risk/risk-signal.entity';
 import { RiskScore } from './modules/risk/risk-score.entity';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -95,6 +96,7 @@ import { RiskScore } from './modules/risk/risk-score.entity';
     ReportsModule,
     ModerationModule,
     AuditLogModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}

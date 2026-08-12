@@ -3,15 +3,37 @@ import { User } from '../src/modules/users/user.entity';
 
 type MockRepo = { find: jest.Mock; findOne: jest.Mock; save: jest.Mock };
 
+function mockRepo(): MockRepo {
+  return { find: jest.fn().mockResolvedValue([]), findOne: jest.fn(), save: jest.fn(async (e) => e) };
+}
+
 describe('AdminUsersService', () => {
   let users: MockRepo;
+  let listings: MockRepo;
+  let reports: MockRepo;
+  let riskSignals: MockRepo;
+  let riskScores: MockRepo;
   let auditLog: { record: jest.Mock };
+  let profiles: { getPublicProfile: jest.Mock };
   let service: AdminUsersService;
 
   beforeEach(() => {
-    users = { find: jest.fn().mockResolvedValue([]), findOne: jest.fn(), save: jest.fn(async (e) => e) };
+    users = mockRepo();
+    listings = mockRepo();
+    reports = mockRepo();
+    riskSignals = mockRepo();
+    riskScores = mockRepo();
     auditLog = { record: jest.fn().mockResolvedValue(undefined) };
-    service = new AdminUsersService(users as never, auditLog as never);
+    profiles = { getPublicProfile: jest.fn().mockResolvedValue({ userId: 'u-2', displayName: null }) };
+    service = new AdminUsersService(
+      users as never,
+      listings as never,
+      reports as never,
+      riskSignals as never,
+      riskScores as never,
+      auditLog as never,
+      profiles as never,
+    );
   });
 
   describe('search', () => {
@@ -74,6 +96,64 @@ describe('AdminUsersService', () => {
 
       expect(result.status).toBe('active');
       expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'user.unblock' }));
+    });
+  });
+
+  describe('getDetail', () => {
+    it('кидає USER_NOT_FOUND для неіснуючого користувача', async () => {
+      users.findOne.mockResolvedValue(null);
+
+      await expect(service.getDetail('missing')).rejects.toMatchObject({ response: { code: 'USER_NOT_FOUND' } });
+    });
+
+    it('збирає профіль/оголошення/risk-score/risk-сигнали', async () => {
+      users.findOne.mockResolvedValue({
+        id: 'u-2',
+        phone: '+380...',
+        email: null,
+        role: 'user',
+        status: 'active',
+        createdAt: new Date('2026-01-01'),
+      } as User);
+      listings.find.mockResolvedValueOnce([{ id: 'l-1', title: 't', status: 'ACTIVE', price: 100, currency: 'UAH' }]);
+      listings.find.mockResolvedValueOnce([{ id: 'l-1' }]);
+      riskScores.findOne.mockResolvedValue({ userId: 'u-2', score: 13 });
+      riskSignals.find.mockResolvedValue([{ id: 'rs-1', signalType: 'rapid_listing_creation', weight: 5 }]);
+      reports.find.mockResolvedValue([{ id: 'r-1', targetType: 'LISTING', targetId: 'l-1', reason: 'SPAM', status: 'PENDING' }]);
+
+      const result = await service.getDetail('u-2');
+
+      expect(result.riskScore).toBe(13);
+      expect(result.listings).toHaveLength(1);
+      expect(result.riskSignals).toHaveLength(1);
+      expect(result.reports).toHaveLength(1);
+      expect(profiles.getPublicProfile).toHaveBeenCalledWith('u-2');
+    });
+
+    it('риск-скор 0, коли RiskScore-рядка ще нема', async () => {
+      users.findOne.mockResolvedValue({ id: 'u-2', status: 'active' } as User);
+      riskScores.findOne.mockResolvedValue(null);
+
+      const result = await service.getDetail('u-2');
+
+      expect(result.riskScore).toBe(0);
+    });
+
+    it('шукає скарги і за targetType USER, і за LISTING серед оголошень юзера', async () => {
+      users.findOne.mockResolvedValue({ id: 'u-2', status: 'active' } as User);
+      listings.find.mockResolvedValueOnce([]);
+      listings.find.mockResolvedValueOnce([{ id: 'l-1' }, { id: 'l-2' }]);
+
+      await service.getDetail('u-2');
+
+      expect(reports.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.arrayContaining([
+            { targetType: 'USER', targetId: 'u-2' },
+            expect.objectContaining({ targetType: 'LISTING' }),
+          ]),
+        }),
+      );
     });
   });
 });

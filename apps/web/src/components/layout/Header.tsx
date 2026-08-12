@@ -61,12 +61,26 @@ export function Header() {
                 Збережені пошуки
               </Link>
               {(user.role === 'moderator' || user.role === 'admin') && (
-                <Link href="/admin/moderation" className="text-sm font-medium text-gray-700 hover:text-brand-600">
-                  Модерація
-                </Link>
+                <>
+                  <Link href="/admin/moderation" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                    Модерація
+                  </Link>
+                  <Link href="/admin/reports" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                    Скарги
+                  </Link>
+                </>
               )}
               {user.role === 'admin' && (
                 <>
+                  <Link href="/admin/dashboard" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                    Дашборд
+                  </Link>
+                  <Link href="/admin/listings" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                    Оголошення (адмін)
+                  </Link>
+                  <Link href="/admin/categories" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                    Категорії
+                  </Link>
                   <Link href="/admin/users" className="text-sm font-medium text-gray-700 hover:text-brand-600">
                     Користувачі
                   </Link>

@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { AuditLog } from './audit-log.entity';
+
+export interface AuditLogFilters {
+  targetType?: string;
+  action?: string;
+  actorUserId?: string;
+}
 
 export interface RecordAuditLogInput {
   actorUserId: string;
@@ -32,8 +38,17 @@ export class AuditLogService {
     );
   }
 
-  /** Без keyset-пагінації, як і решта MVP list-ендпоінтів (favorites/saved-searches) — обмежено останніми 100. */
-  list(): Promise<AuditLog[]> {
-    return this.logs.find({ order: { createdAt: 'DESC' }, take: 100 });
+  /**
+   * Без keyset-пагінації, як і решта MVP list-ендпоінтів (favorites/saved-searches) —
+   * обмежено останніми 100. targetType/action/actorUserId — звичайні varchar-колонки
+   * (не Postgres enum), тож без @IsIn-валідації на контролері — точна рівність.
+   */
+  list(filters?: AuditLogFilters): Promise<AuditLog[]> {
+    const where: FindOptionsWhere<AuditLog> = {};
+    if (filters?.targetType) where.targetType = filters.targetType;
+    if (filters?.action) where.action = filters.action;
+    if (filters?.actorUserId) where.actorUserId = filters.actorUserId;
+
+    return this.logs.find({ where, order: { createdAt: 'DESC' }, take: 100 });
   }
 }

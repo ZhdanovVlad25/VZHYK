@@ -110,7 +110,9 @@ export default function AdminUsersPage() {
                     <Badge tone={item.status === 'blocked' ? 'danger' : 'success'}>{item.status}</Badge>
                     <Badge tone="neutral">{item.role}</Badge>
                   </div>
-                  <p className="font-medium text-gray-900">{item.phone ?? item.email ?? item.id}</p>
+                  <Link href={`/admin/users/${item.id}`} className="font-medium text-gray-900 hover:underline">
+                    {item.phone ?? item.email ?? item.id}
+                  </Link>
                   <p className="text-xs text-gray-500">Зареєстрований {formatDate(item.createdAt)}</p>
                 </div>
                 <Button

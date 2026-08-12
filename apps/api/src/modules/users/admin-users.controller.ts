@@ -17,6 +17,11 @@ export class AdminUsersController {
     return this.adminUsers.search(search);
   }
 
+  @Get(':id')
+  getDetail(@Param('id') id: string) {
+    return this.adminUsers.getDetail(id);
+  }
+
   @Post(':id/block')
   block(@CurrentUser() actor: AuthenticatedUser, @Param('id') id: string, @Ip() ip: string) {
     return this.adminUsers.block(actor.id, id, ip);

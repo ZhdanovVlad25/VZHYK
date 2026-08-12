@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { AuditLogService } from './audit-log.service';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
@@ -12,7 +12,11 @@ export class AuditLogController {
   constructor(private readonly auditLog: AuditLogService) {}
 
   @Get()
-  list() {
-    return this.auditLog.list();
+  list(
+    @Query('targetType') targetType?: string,
+    @Query('action') action?: string,
+    @Query('actorUserId') actorUserId?: string,
+  ) {
+    return this.auditLog.list({ targetType, action, actorUserId });
   }
 }

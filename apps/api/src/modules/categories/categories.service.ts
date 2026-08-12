@@ -43,7 +43,23 @@ export class CategoriesService {
       order: { sortOrder: 'ASC' },
     });
 
-    const byId = new Map<string, CategoryTreeNode>(all.map((c) => [c.id, { ...c, children: [] }]));
+    const roots = this.buildTree(all);
+    await this.redis.set(TREE_CACHE_KEY, JSON.stringify(roots), 'EX', TREE_CACHE_TTL_SECONDS);
+    return roots;
+  }
+
+  /**
+   * Admin-версія дерева (включно з неактивними категоріями, щоб їх можна було
+   * реактивувати з Admin Panel) — без Redis-кешу, трафік адмінки низький, свіжість
+   * важливіша за 60с кеш.
+   */
+  async findAdminTree(): Promise<CategoryTreeNode[]> {
+    const all = await this.categories.find({ where: { deletedAt: IsNull() }, order: { sortOrder: 'ASC' } });
+    return this.buildTree(all);
+  }
+
+  private buildTree(categories: Category[]): CategoryTreeNode[] {
+    const byId = new Map<string, CategoryTreeNode>(categories.map((c) => [c.id, { ...c, children: [] }]));
     const roots: CategoryTreeNode[] = [];
     for (const node of byId.values()) {
       if (node.parentId && byId.has(node.parentId)) {
@@ -52,8 +68,6 @@ export class CategoriesService {
         roots.push(node);
       }
     }
-
-    await this.redis.set(TREE_CACHE_KEY, JSON.stringify(roots), 'EX', TREE_CACHE_TTL_SECONDS);
     return roots;
   }
 
