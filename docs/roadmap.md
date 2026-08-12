@@ -123,6 +123,19 @@ find module main.js"). Якщо треба build — спочатку зупин
     публічним/тестовим значенням замість падати. Для будь-якого
     production-обов'язкового секрету (JWT, тощо) — `requireEnv()`
     (`apps/api/src/shared/env.ts`), без default, throw якщо відсутній.
+16. **npm workspaces хоїстинг маскує відсутні залежності одного workspace,
+    якщо той самий пакет є в іншому** — `apps/web` мав тестовий файл
+    (`Button.test.tsx`) з Jest-глобалами (`describe`/`it`/`expect`), але без
+    `@types/jest` у власному `apps/web/package.json` (лише `apps/api` його
+    мав). Локально `npm run typecheck --workspace=apps/web` завжди проходив,
+    бо кореневий `npm install` хоїстив `@types/jest` з `apps/api` в корінь
+    `node_modules`, і `tsc` знаходив його там. **Перший реальний CI-прогін
+    на GitHub Actions це показав**: там кожен job робить `npm ci
+    --workspace=X` ізольовано, без хоїстингу з інших workspace, і typecheck
+    впав з "Cannot find name 'expect'"/"'it'"/"'describe'". Урок: `npm run
+    X --workspace=Y` локально не гарантує, що `Y` реально самодостатній —
+    треба або довіряти лише CI (ізольований install), або періодично
+    прибирати кореневий `node_modules` і ставити один workspace окремо.
 
 ---
 
