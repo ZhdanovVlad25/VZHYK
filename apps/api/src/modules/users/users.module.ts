@@ -10,12 +10,14 @@ import { RiskSignal } from '../risk/risk-signal.entity';
 import { RiskScore } from '../risk/risk-score.entity';
 import { ProfilesModule } from '../profiles/profiles.module';
 import { AuditLogModule } from '../audit-log/audit-log.module';
+import { SearchProviderModule } from '../../providers/search/search.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Listing, Report, RiskSignal, RiskScore]),
     ProfilesModule,
     AuditLogModule,
+    SearchProviderModule,
   ],
   controllers: [UsersController, AdminUsersController],
   providers: [AdminUsersService],

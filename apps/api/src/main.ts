@@ -1,11 +1,15 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
+
+  // Security headers: CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy тощо (docs/security.md §4)
+  app.use(helmet());
 
   // Версіонування через префікс /api/v1 (див. docs/api.md)
   app.setGlobalPrefix('api/v1');

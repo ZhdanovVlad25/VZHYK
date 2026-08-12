@@ -1,13 +1,18 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, IsNull, Repository } from 'typeorm';
 import { User } from './user.entity';
 import { Listing } from '../listings/listing.entity';
+import { ListingStatus } from '../listings/listing.constants';
 import { Report } from '../reports/report.entity';
 import { RiskSignal } from '../risk/risk-signal.entity';
 import { RiskScore } from '../risk/risk-score.entity';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { ProfilesService, PublicProfile } from '../profiles/profiles.service';
+import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-provider.interface';
+
+/** Статуси, які реально займають "слот" юзера — той самий набір, що ACTIVE_SLOT_STATUSES у listings.service.ts. */
+const BLOCKABLE_LISTING_STATUSES: ListingStatus[] = ['ACTIVE', 'RESERVED'];
 
 export interface AdminUserView {
   id: string;
@@ -37,6 +42,7 @@ export class AdminUsersService {
     @InjectRepository(RiskScore) private readonly riskScores: Repository<RiskScore>,
     private readonly auditLog: AuditLogService,
     private readonly profiles: ProfilesService,
+    @Inject(SEARCH_PROVIDER) private readonly searchProvider: SearchProvider,
   ) {}
 
   async search(query?: string): Promise<AdminUserView[]> {
@@ -118,13 +124,32 @@ export class AdminUsersService {
     user.status = status;
     const saved = await this.users.save(user);
 
+    /**
+     * docs/moderation.md §7 — блокування юзера каскадує на його активні оголошення.
+     * Розблокування навмисно НЕ відновлює їх автоматично (той самий консервативний
+     * принцип, що NEEDS_REVIEW не авто-схвалюється) — адмін переглядає й розблоковує
+     * кожне окремо через /admin/listings.
+     */
+    let blockedListingIds: string[] = [];
+    if (status === 'blocked') {
+      const listingsToBlock = await this.listings.find({
+        where: { userId: targetId, status: In(BLOCKABLE_LISTING_STATUSES), deletedAt: IsNull() },
+      });
+      for (const listing of listingsToBlock) {
+        listing.status = 'BLOCKED';
+        await this.listings.save(listing);
+        await this.searchProvider.remove(listing.id);
+      }
+      blockedListingIds = listingsToBlock.map((l) => l.id);
+    }
+
     await this.auditLog.record({
       actorUserId: actorId,
       action,
       targetType: 'user',
       targetId,
       before,
-      after: { status: saved.status },
+      after: { status: saved.status, ...(blockedListingIds.length > 0 ? { blockedListingIds } : {}) },
       ip,
     });
 

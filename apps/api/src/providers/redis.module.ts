@@ -1,5 +1,6 @@
 import { Global, Module } from '@nestjs/common';
 import { redisProvider } from './redis.provider';
+import { RateLimitService } from '../shared/rate-limit.service';
 
 /**
  * Redis: сесії/refresh-token revoke-list, rate limiting, кеш налаштувань і пошукових
@@ -7,7 +8,7 @@ import { redisProvider } from './redis.provider';
  */
 @Global()
 @Module({
-  providers: [redisProvider],
-  exports: [redisProvider],
+  providers: [redisProvider, RateLimitService],
+  exports: [redisProvider, RateLimitService],
 })
 export class RedisModule {}

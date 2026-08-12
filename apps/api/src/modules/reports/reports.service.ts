@@ -10,6 +10,9 @@ import { ReportResolutionStatus } from './dto/resolve-report.dto';
 import { REPORT_STATUSES, REPORT_TARGET_TYPES, ReportStatus, ReportTargetType } from './report.constants';
 import { RiskService } from '../risk/risk.service';
 import { AuditLogService } from '../audit-log/audit-log.service';
+import { RateLimitService } from '../../shared/rate-limit.service';
+
+const REPORT_CREATE_DAILY_LIMIT = 10; // docs/security.md §6
 
 /** docs/api.md §10 Reports — створення скарги + перелік своїх. Admin-черга — нижче (§12). */
 @Injectable()
@@ -21,9 +24,11 @@ export class ReportsService {
     @InjectRepository(ChatParticipant) private readonly chatParticipants: Repository<ChatParticipant>,
     private readonly risk: RiskService,
     private readonly auditLog: AuditLogService,
+    private readonly rateLimit: RateLimitService,
   ) {}
 
   async create(reporterId: string, dto: CreateReportDto): Promise<Report> {
+    await this.rateLimit.consume(`ratelimit:report_create:${reporterId}`, REPORT_CREATE_DAILY_LIMIT, 86_400);
     await this.assertTargetExists(reporterId, dto.targetType, dto.targetId);
 
     const saved = await this.reports.save(

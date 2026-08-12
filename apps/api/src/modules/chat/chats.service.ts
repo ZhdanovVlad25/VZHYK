@@ -10,8 +10,10 @@ import { Listing } from '../listings/listing.entity';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { CHAT_MESSAGE_CREATED } from './chat.events';
 import { decodeCursor, encodeCursor } from '../../shared/pagination/cursor';
+import { RateLimitService } from '../../shared/rate-limit.service';
 
 const MESSAGES_PAGE_LIMIT = 30;
+const CHAT_MESSAGE_PER_MINUTE_LIMIT = 60; // docs/security.md §6
 
 export interface ChatListItem {
   chatId: string;
@@ -36,6 +38,7 @@ export class ChatsService {
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Listing) private readonly listings: Repository<Listing>,
     private readonly events: EventEmitter2,
+    private readonly rateLimit: RateLimitService,
   ) {}
 
   async findOrCreate(userId: string, dto: CreateChatDto): Promise<Chat> {
@@ -144,6 +147,7 @@ export class ChatsService {
   }
 
   async sendMessage(userId: string, chatId: string, text: string): Promise<Message> {
+    await this.rateLimit.consume(`ratelimit:chat_message:${userId}`, CHAT_MESSAGE_PER_MINUTE_LIMIT, 60);
     const participant = await this.assertParticipant(userId, chatId);
     if (participant.isBlockedByOther) {
       throw new ForbiddenException({ code: 'CHAT_BLOCKED', message: 'Вас заблоковано в цьому чаті' });

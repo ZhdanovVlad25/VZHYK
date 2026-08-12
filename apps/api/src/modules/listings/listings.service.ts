@@ -19,6 +19,9 @@ import {
 import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-provider.interface';
 import { ModerationService } from '../moderation/moderation.service';
 import { RiskService } from '../risk/risk.service';
+import { RateLimitService } from '../../shared/rate-limit.service';
+
+const LISTING_CREATE_DAILY_LIMIT = 20; // docs/security.md §6
 
 /**
  * Слоти "активного" оголошення для ліміту DEC-05 — статуси, які реально займають
@@ -44,9 +47,11 @@ export class ListingsService {
     @Inject(SEARCH_PROVIDER) private readonly search: SearchProvider,
     private readonly moderation: ModerationService,
     private readonly risk: RiskService,
+    private readonly rateLimit: RateLimitService,
   ) {}
 
   async create(userId: string, dto: CreateListingDto): Promise<Listing & { attributes: ListingAttributeValue[] }> {
+    await this.rateLimit.consume(`ratelimit:listing_create:${userId}`, LISTING_CREATE_DAILY_LIMIT, 86_400);
     await this.assertCategoryListable(dto.categoryId);
 
     const listing = await this.listings.save(

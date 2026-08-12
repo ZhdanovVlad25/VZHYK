@@ -1,9 +1,11 @@
 import { join } from 'path';
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { OtpPhoneThrottlerGuard } from './modules/auth/guards/otp-phone-throttler.guard';
 import { AuthModule } from './modules/auth/auth.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { CategoriesModule } from './modules/categories/categories.module';
@@ -97,6 +99,14 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     ModerationModule,
     AuditLogModule,
     DashboardModule,
+  ],
+  providers: [
+    // roadmap.md grabli — ThrottlerModule.forRoot() сам по собі нічого не блокує без
+    // зареєстрованого guard'а; @Throttle() decorator'и по контролерам були inert без цього.
+    // OtpPhoneThrottlerGuard (не голий ThrottlerGuard) — трекає OTP-маршрути за phone,
+    // решту за IP; єдиний guard, без стекання другого класу на маршруті (див. коментар
+    // у самому guard'і чому стекання двох класів ламає phone-tracking).
+    { provide: APP_GUARD, useClass: OtpPhoneThrottlerGuard },
   ],
 })
 export class AppModule {}

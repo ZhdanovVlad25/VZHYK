@@ -13,12 +13,17 @@
     "lint": "npm run lint --workspace=apps/api && npm run lint --workspace=apps/web",
     "typecheck": "npm run typecheck --workspace=apps/api && npm run typecheck --workspace=apps/web",
     "test": "npm run test --workspace=apps/api && npm run test --workspace=apps/web",
+    "test:integration": "npm run test:integration --workspace=apps/api",
+    "test:e2e": "playwright test",
     "format": "prettier --write \"apps/**/*.{ts,tsx}\"",
     "migration:run": "npm run migration:run --workspace=apps/api",
     "migration:generate": "npm run migration:generate --workspace=apps/api",
     "seed": "npm run seed --workspace=apps/api"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "argon2": "^0.45.1",
+    "pg": "^8.23.0",
     "prettier": "^3.3.3",
     "typescript": "^5.5.4"
   },

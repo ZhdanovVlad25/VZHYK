@@ -26,6 +26,7 @@ describe('ReportsService', () => {
   let chatParticipants: MockRepo;
   let risk: { checkHighReportCount: jest.Mock };
   let auditLog: { record: jest.Mock };
+  let rateLimit: { consume: jest.Mock };
   let service: ReportsService;
 
   beforeEach(() => {
@@ -35,6 +36,7 @@ describe('ReportsService', () => {
     chatParticipants = mockRepo();
     risk = { checkHighReportCount: jest.fn().mockResolvedValue(undefined) };
     auditLog = { record: jest.fn().mockResolvedValue(undefined) };
+    rateLimit = { consume: jest.fn().mockResolvedValue(undefined) };
     service = new ReportsService(
       reports as never,
       listings as never,
@@ -42,7 +44,22 @@ describe('ReportsService', () => {
       chatParticipants as never,
       risk as never,
       auditLog as never,
+      rateLimit as never,
     );
+  });
+
+  describe('create — rate limit', () => {
+    it('перевіряє rate limit (10/добу) перед перевіркою існування цілі', async () => {
+      rateLimit.consume.mockRejectedValue(new Error('RATE_LIMIT_EXCEEDED'));
+
+      await expect(
+        service.create('u-1', { targetType: 'LISTING', targetId: 'l-1', reason: 'SPAM' }),
+      ).rejects.toThrow('RATE_LIMIT_EXCEEDED');
+
+      expect(rateLimit.consume).toHaveBeenCalledWith('ratelimit:report_create:u-1', 10, 86_400);
+      expect(listings.findOne).not.toHaveBeenCalled();
+      expect(reports.save).not.toHaveBeenCalled();
+    });
   });
 
   describe('create — targetType LISTING', () => {

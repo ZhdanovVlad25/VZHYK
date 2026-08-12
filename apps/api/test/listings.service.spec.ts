@@ -43,6 +43,7 @@ describe('ListingsService', () => {
   let search: { index: jest.Mock; remove: jest.Mock };
   let moderation: { createCaseForListing: jest.Mock };
   let risk: { checkRapidListingCreation: jest.Mock };
+  let rateLimit: { consume: jest.Mock };
   let service: ListingsService;
 
   const leafCategory = { id: 'cat-1', deletedAt: null, isActive: true } as Category;
@@ -57,6 +58,7 @@ describe('ListingsService', () => {
     search = { index: jest.fn().mockResolvedValue(undefined), remove: jest.fn().mockResolvedValue(undefined) };
     moderation = { createCaseForListing: jest.fn().mockResolvedValue({ id: 'case-1', status: 'PENDING' }) };
     risk = { checkRapidListingCreation: jest.fn().mockResolvedValue(undefined) };
+    rateLimit = { consume: jest.fn().mockResolvedValue(undefined) };
 
     categories.findOne.mockResolvedValue(leafCategory);
     categories.count.mockResolvedValue(0); // без дочірніх — leaf
@@ -71,10 +73,22 @@ describe('ListingsService', () => {
       search as never,
       moderation as never,
       risk as never,
+      rateLimit as never,
     );
   });
 
   describe('create', () => {
+    it('перевіряє rate limit (20/добу) перед створенням і не створює listing, якщо ліміт вичерпано', async () => {
+      rateLimit.consume.mockRejectedValue(new Error('RATE_LIMIT_EXCEEDED'));
+
+      await expect(
+        service.create('user-1', { categoryId: 'cat-1', listingType: 'sell', title: 'Тестовий товар' }),
+      ).rejects.toThrow('RATE_LIMIT_EXCEEDED');
+
+      expect(rateLimit.consume).toHaveBeenCalledWith('ratelimit:listing_create:user-1', 20, 86_400);
+      expect(listings.save).not.toHaveBeenCalled();
+    });
+
     it('кидає CATEGORY_NOT_FOUND, якщо категорія не існує', async () => {
       categories.findOne.mockResolvedValue(null);
 

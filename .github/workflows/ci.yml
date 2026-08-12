@@ -29,6 +29,59 @@ jobs:
         run: npm run test -- --ci --coverage
       - name: Build
         run: npm run build
+      # docs/testing.md §4 — інформаційно, не блокує білд: кілька known findings
+      # (dev-only @nestjs/cli tooling, breaking-change транзитивні qs/uuid) свідомо
+      # відкладені, див. docs/roadmap.md Phase 7 security checklist.
+      - name: Dependency audit (informational)
+        run: npm audit --audit-level=high || true
+        working-directory: .
+
+  integration:
+    name: API integration tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: vzhyk
+          POSTGRES_PASSWORD: vzhyk_dev_password
+          POSTGRES_DB: vzhyk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vzhyk -d vzhyk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install
+        run: npm ci --workspace=apps/api
+        working-directory: .
+      # docs/testing.md §2 — реальна тестова БД, не мок. .env.example дає S3/JWT/OTP
+      # значення за замовчуванням; DATABASE_URL/REDIS_URL для тестової БД підміняються
+      # test/integration/env-setup.ts (setupFiles) на дефолти, що збігаються з сервісами вище.
+      - name: Copy .env.example
+        run: cp .env.example .env
+        working-directory: .
+      - name: Integration tests
+        run: npm run test:integration
 
   web:
     name: Web (Next.js)

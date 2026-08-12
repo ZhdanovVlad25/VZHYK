@@ -80,6 +80,30 @@ find module main.js"). Якщо треба build — спочатку зупин
 9. `AllExceptionsFilter` (`apps/api/src/shared/filters/all-exceptions.filter.ts`)
    логує неочікувані (не-`HttpException`) помилки через `Logger` — дивись
    термінал API при "порожньому" 500 без деталей.
+10. **`JwtStrategy.validate()` бере `role` з payload JWT, не з БД** (лише
+    `status` перевіряється живим DB-запитом, для миттєвого блокування — див.
+    граблі вище). Якщо вручну міняєш роль юзера в БД для ручного тестування
+    admin-функціоналу (`UPDATE users SET role='admin' WHERE ...`), стара
+    сесія в браузері/localStorage далі несе стару роль у токені — потрібен
+    новий логін (нова пара токенів), інакше `RolesGuard` кине 403/401 навіть
+    для щойно призначеного admin. Той самий трюк, спакований у
+    `e2e/helpers/auth.ts` `loginAsPrivileged()` для Playwright-тестів.
+11. **Guards із перевизначеним `getTracker()`/`generateKey()` не можна
+    стекати кілька класів на одному маршруті, якщо вони читають ту саму
+    `@Throttle()` метадату** — кожен guard незалежно викликає
+    `Reflector.getAllAndOverride()` і застосовує ліміт по-своєму; глобальний
+    (`APP_GUARD`) виконується першим і, якщо він IP-tracked (дефолт),
+    "з'їдає" ліміт раніше кастомного per-route guard'а з іншим трекером.
+    Якщо потрібне нестандартне трекування (не по IP) для конкретних
+    маршрутів — робити ЄДИНИЙ guard, що розрізняє маршрути всередині
+    `getTracker()` (напр. за `body.phone`, коли є), і реєструвати лише його
+    глобально, а не додавати другий клас поверх (`OtpPhoneThrottlerGuard`,
+    `apps/api/src/modules/auth/guards/`).
+12. `test:integration`/E2E Jest-прогони не завершуються самі —
+    NestJS/TypeORM/ioredis не завжди звільняють усі handle на `app.close()`.
+    `jest-integration.config.js` має `forceExit: true`, інакше процес висить
+    нескінченно замість повернути exit code (на це наступили в цій сесії —
+    команда "завершилась" лише через 10 годин після вбивства процесу вручну).
 
 ---
 
@@ -272,7 +296,11 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       (спільна точка для OTP і Google-логіну) відмовляє заблокованому/
       видаленому юзеру видачею нових токенів кодом `USER_BLOCKED`.
       Фронтенд: `/admin/users` (пошук + Заблокувати/Розблокувати), лінк у
-      Header лише для `role==='admin'`.
+      Header лише для `role==='admin'`. **Доповнено в Phase 7**: `block()`
+      тепер каскадно переводить `ACTIVE`/`RESERVED` оголошення юзера в
+      `BLOCKED` + знімає з пошукового індексу (docs/moderation.md §7 — цей
+      розрив між docs і кодом виявився під час підготовки E2E-сценарію 11).
+      Unblock свідомо НЕ відновлює їх автоматично.
 - [x] **Audit log** — `apps/api/src/modules/audit-log`, міграція
       `1754801000000-AddAuditLogs`, схема точно за `docs/database.md`
       (`actorUserId, action, targetType, targetId, before, after, ip,
@@ -327,19 +355,78 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       risk_signals/listings автоматично (перевірено), скарги (без FK на
       targetId, поліморфні) прибрані вручну.
 
-## Phase 5 — Admin Panel 🟡 частково
+## Phase 5 — Admin Panel ✅ завершено (для MVP)
 
-- [ ] Dashboard (метрики).
+- [x] **Dashboard (метрики)** — `apps/api/src/modules/dashboard`,
+      `GET /admin/dashboard` (лише admin). Паралельні `count()` по
+      User/Listing/ModerationCase/Report/RiskScore (немає `groupBy`-прецеденту
+      в кодовій базі — той самий підхід, що й у `RiskService`). Метрики: users
+      (total/active/blocked), listings (total + розбивка по кожному
+      `ListingStatus`), moderation (pending/needsReview), reports
+      (pending/reviewing), risk-flagged users (score понад поріг). **Без**
+      графіків/трендів у часі — лише поточні числа картками. 3 unit-тести
+      (`dashboard.service.spec.ts`). Фронтенд: `/admin/dashboard`, лінк у
+      Header лише для admin.
 - [x] Users: пошук + блокування/розблокування — `/admin/users` (див. Phase 4
-      вище). **Не зроблено**: детальний перегляд одного юзера (історія
-      оголошень/скарг/risk-сигналів на нього).
-- [ ] Listings: пошук/перегляд/редагування/блокування (адмінський, не власницький).
-- [ ] Categories/Attributes: повний CRUD UI (API вже є з Phase 2, UI нема).
+      вище) + **детальний перегляд** — `GET /admin/users/:id`
+      (`AdminUsersService.getDetail()`) повертає профіль (перевикористовує
+      `ProfilesService.getPublicProfile()`, вже імпортований у `UsersModule`),
+      останні 20 оголошень, останні 20 скарг (на самого юзера напряму АБО на
+      будь-яке з усіх його оголошень — той самий listingIds-патерн, що
+      `RiskService.checkHighReportCount()`, але повертає рядки, а не лічильник),
+      risk score + останні 20 risk-сигналів. Репозиторії Listing/Report/
+      RiskSignal/RiskScore інжектяться напряму в `AdminUsersService` (як і в
+      `DashboardService` — без імпорту цілих модулів заради кількох read-запитів).
+      4 нові unit-тести. Фронтенд: `/admin/users/[id]` — секції профіль/
+      оголошення/скарги/risk-сигнали, кнопка блокування, лінк з рядка
+      `/admin/users`.
+- [x] **Listings: пошук/перегляд/редагування/блокування (адмінський)** —
+      `apps/api/src/modules/listings/admin-listings.*`,
+      `GET/PATCH /admin/listings` (лише admin, як і `admin/users`/
+      `admin/audit-log`). `GET` — ILIKE по title + фільтр за статусом, take 50.
+      `PATCH` — редагування title/description/price/currency незалежно від
+      статусу (адмін не обмежений власницькою забороною "SOLD/ARCHIVED/BLOCKED
+      не редагувати") + окремий `status`-перехід лише `BLOCKED`↔`ACTIVE`
+      (розблокування дозволене тільки з `BLOCKED` — це не повна власницька
+      state machine, а буквально docs' "Редагування/блокування"). Кожен виклик
+      пише `audit_logs` (`listing.admin_update`, before/after). 7 unit-тестів
+      (`admin-listings.service.spec.ts`). Фронтенд: `/admin/listings` — пошук
+      за назвою, фільтр статусу, кнопки Заблокувати/Розблокувати, модалка
+      редагування (назва/опис/ціна/валюта).
+- [x] **Categories/Attributes: CRUD UI** — API існував ще з Phase 2, додано
+      лише один бекенд-ендпоінт (`GET /admin/categories` — адмінська версія
+      дерева з неактивними категоріями включно, без Redis-кешу; публічний
+      `GET /categories` кешується і ховає неактивні — для адмінки це
+      неправильна поведінка). Фронтенд: `/admin/categories` — рекурсивне
+      дерево з відступами, модалка створення/редагування з вкладками (`Tabs`,
+      перше реальне використання цього компонента в проєкті) "Категорія"
+      (nameUk/slug/icon/sortOrder/isActive) і "Атрибути" (список з
+      inline-редагуванням labelUk/isRequired/isFilterable + форма додавання
+      нового атрибута) + **дропдаун "Батьківська категорія"** (переміщення
+      в дереві) — жодних змін на бекенді не знадобилось
+      (`UpdateCategoryDto.parentId` + `CategoriesService.assertNoCycle()` вже
+      існували з Phase 2). `flattenForParentPicker()` на фронтенді виключає
+      з переліку саму категорію, що редагується, і все її піддерево
+      (клієнтський UX-guard; реальна перевірка циклів лишається на бекенді).
 - [x] Moderation queue UI — `/admin/moderation` (див. Phase 4 вище), тепер з
-      risk score власника. **Не зроблено**: Reports UI (`GET /admin/reports`
-      навіть не реалізований на бекенді).
-- [x] Audit Log UI — `/admin/audit-log` (див. Phase 4 вище), таблиця без
-      фільтрів/пошуку.
+      risk score власника.
+- [x] **Reports UI** — `apps/api/src/modules/reports` доповнено
+      `GET /admin/reports` (moderator/admin, фільтри status/targetType) та
+      `POST /admin/reports/:id/resolve` (не буквально в docs/api.md §12 — там
+      лише GET — але потрібен, щоб чергу можна було реально "обробляти" за
+      флоу `new → in_review → resolved | rejected` з docs/moderation.md §5;
+      той самий парний патерн GET queue + POST decide, що в moderation).
+      Кожне рішення пише `audit_logs` (`report.resolve`). 8 нових unit-тестів
+      у `reports.service.spec.ts`. Фронтенд: `/admin/reports` — фільтри
+      статус/тип цілі, дії В обробці/Вирішено/Відхилено, лінк у Header для
+      moderator+admin.
+- [x] **Audit Log UI з фільтрами** — `/admin/audit-log` (див. Phase 4 вище).
+      `AuditLogService.list()` тепер приймає опційні `targetType`/`action`/
+      `actorUserId` (звичайні varchar-колонки, не Postgres enum — без
+      `@IsIn`-валідації, пряма рівність у `where`). Фронтенд: два `Dropdown`
+      (тип цілі, дія — опції вручну виписані зі списку реальних значень, з
+      якими `record()` викликається по кодовій базі, енуму для них нема) +
+      пошук за `actorUserId`. 5 нових unit-тестів у `audit-log.service.spec.ts`.
 
 ## Phase 6 — SEO & Performance ⬜ не розпочато
 
@@ -348,13 +435,120 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
 - [ ] Caching, image optimization, lazy loading.
 - [ ] Аудит Core Web Vitals, N+1 запити, індекси.
 
-## Phase 7 — Testing 🟡 частково (лише unit)
+## Phase 7 — Testing ✅ завершено
 
-- [x] Unit tests на бізнес-логіку кожного backend-модуля (168 тестів,
+- [x] Unit tests на бізнес-логіку кожного backend-модуля (206 тестів,
       `npm run test --workspace=apps/api`).
-- [ ] Integration tests.
-- [ ] E2E (11 сценаріїв з вихідного документа).
-- [ ] Security testing (dependency audit, OWASP ZAP baseline).
+- [x] **Integration tests** — `apps/api/test/integration/`, окрема тестова БД
+      `vzhyk_test` (не чіпає demo-дані в `vzhyk`) на тому самому `docker
+      compose` postgres, окремий Redis DB-індекс (`/1`). `test-app.ts`:
+      `createTestApp()` (справжній Nest app + supertest, той самий bootstrap,
+      що `main.ts`), `resetDb()` (truncate всіх таблиць між тестами),
+      `requestOtpAndCaptureCode()` — перехоплює `console.log` замість
+      підміни БД (той самий процес, що й app). `global-setup.ts` створює БД +
+      ганяє реальні міграції перед прогоном. `npm run test:integration`
+      (`--workspace=apps/api` або з кореня), окремий `jest-integration.config.js`
+      (`forceExit: true` — NestJS/TypeORM/ioredis не завжди звільняють усі
+      handle на `app.close()`, без цього Jest висить нескінченно замість
+      завершитись з exit code). 7 сюїтів за розділами docs/testing.md §2
+      (database/auth/listings/search/chat/moderation + user-blocking для
+      Part A2 cascade-фіксу нижче) + 2 security-сюїти (rate-limiting,
+      authorization — див. Security testing нижче), 24 тести, ≥1 happy+1
+      negative кожен. Новий CI job `integration` (`.github/workflows/ci.yml`)
+      з postgres+redis service containers.
+- [x] **E2E (усі 11 сценаріїв з docs/testing.md §3)** — Playwright,
+      кореневий `playwright.config.ts` + `e2e/`. **Без `webServer` auto-start**
+      — прогін проти вже запущених `docker compose` + `npm run dev` (api+web
+      окремими терміналами, як і в "Швидкий старт" вище), не окрема
+      E2E-БД/стейджинг (staging не існує, Phase 8 не розпочато). Ізоляція між
+      сценаріями — випадковий телефон на кожен (`e2e/helpers/fixtures.ts`
+      `uniquePhone()`), не спільна БД-транзакція. `e2e/helpers/auth.ts`
+      `loginViaOtp()` — Playwright є окремим OS-процесом від API, тож
+      `console.log`-перехоплення (як в integration tests) недоступне;
+      замість цього підміна argon2-хешу коду напряму в БД (`pg` + `argon2` як
+      root devDependencies) — той самий трюк, що ганявся вручну цю сесію
+      (grabli #10 на початку файлу). `loginAsPrivileged()` — реєстрація → logout →
+      промоушен ролі в БД → повторний логін (роль у payload JWT, не
+      перевіряється з БД на кожен запит). 12 тестів (сценарій 2 — Login —
+      містить 2: OTP-логін і поверхнева перевірка Google OAuth redirect,
+      повний consent-флоу і тут неможливий без реальних
+      `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`). Сценарій 3 (створення оголошення)
+      свідомо закінчується на `PENDING_MODERATION` — `publish()` не
+      авто-схвалює з Phase 4, доведення до `ACTIVE` — сценарії 4/5/10
+      (moderator/admin-декейди). **Не** wired у CI (docs/testing.md §3 сам
+      каже "на staging перед production deploy" — staging не існує).
+- [x] **Security testing** — dependency audit + rate-limiting/authorization
+      тести з наявного, OWASP ZAP свідомо відкладено:
+      - **Per-user rate limits** (docs/security.md §6) — три ліміти з таблиці
+        не мали жодного `@Throttle()` (`grep` підтвердив: лише OTP-маршрути).
+        Не через `ThrottlerGuard` (global `APP_GUARD` виконується до
+        `JwtAuthGuard`, `req.user` ще не заповнений — та сама причина, що
+        grabli #3/#11), а явний `RateLimitService` (`apps/api/src/shared/`,
+        Redis `INCR`+`EXPIRE`, той самий прямий доступ до `REDIS_CLIENT`, що
+        `SettingsService`) у сервісному шарі: `ListingsService.create()`
+        20/добу, `ChatsService.sendMessage()` 60/хв, `ReportsService.create()`
+        10/добу. Unit-тести + 3 integration-кейси
+        (`rate-limiting.integration-spec.ts`, N+1-й виклик → 429).
+      - **Security headers** — жодного `helmet`/ручних заголовків не було.
+        Додано `app.use(helmet())` у `main.ts` (CSP, X-Frame-Options,
+        X-Content-Type-Options, Referrer-Policy тощо, docs/security.md §4).
+        Перевірено живцем: `curl -sI` на dev API показує всі заголовки.
+      - **Dependency audit** — `npm audit --workspaces` знайшов 35 advisories.
+        `next` `14.2.5→14.2.35` (safe patch bump) закрив ~10 реальних
+        high-severity (SSRF, cache poisoning, middleware bypass) — підтверджено
+        повторним `npm audit` (ці конкретні advisory зникли зі списку для
+        `next`). Решта — dev-only tooling (`@nestjs/cli`/`picomatch`/`tmp`/
+        `webpack`, ніколи не потрапляють у прод) або потребують breaking
+        upgrade (`qs`/`uuid` через `@nestjs/platform-express`/`typeorm` мажори)
+        — свідомо залишено, не силувано `--force`. Новий CI-крок `npm audit
+        --audit-level=high` в `api`-job, **інформаційний** (`|| true`, не
+        валить білд) — деякі findings свідомо в переліку "відкладено".
+      - **Authorization adversarial tests** — новий
+        `authorization.integration-spec.ts`: неавтентифікований запит → 401,
+        plain `user` на `/admin/dashboard`/`/admin/moderation/queue` → 403,
+        чужий `PATCH /listings/:id` → 403 `LISTING_NOT_OWNER`, не-учасник
+        чату на `GET /chats/:id/messages` → 404 (existence-hiding, не 403).
+      - **OWASP ZAP** — свідомо НЕ прогнано: `docs/testing.md §3` сам каже
+        "на staging перед production deploy", staging не існує (Phase 8 не
+        розпочато), а скан dev-режиму Next.js без production security-config
+        дав би переважно шум, не сигнал. Відкладено до Phase 8.
+      - **XSS-санітизація тексту оголошень/чату** (docs/security.md §3) —
+        перевірено: `dangerouslySetInnerHTML` у `apps/web/src` не
+        використовується жодного разу, тож React-дефолтне екранування вже
+        покриває кожен поточний render-шлях без бекенд-санітизації. Задокументовано
+        як залишковий ризик (переглянути, якщо колись з'явиться non-React
+        рендер тексту оголошень/чату), нову залежність не додано без
+        продемонстрованої вразливості.
+      - **CORS** (`cors: true`, дозволяє всі origin) — не в MVP-критичному
+        переліку docs/security.md, звуження ризикує зламати локальний
+        dev/Playwright без прямого запиту — залишено як Phase 8 hardening
+        кандидат.
+
+### Виявлено й полагоджено під час Phase 7 (не було в докорінному коді)
+
+1. **`ThrottlerGuard` ніде не був зареєстрований** — `ThrottlerModule.forRoot()`
+   в `app.module.ts` існував з Phase 1, але без `providers: [{provide:
+   APP_GUARD, useClass: ...}]` жоден `@Throttle()` decorator по контролерам
+   (otp/request 3/15хв, otp/verify 5/5хв) фактично нічого не блокував.
+   Полагоджено: `OtpPhoneThrottlerGuard extends ThrottlerGuard`
+   (`apps/api/src/modules/auth/guards/`) — єдиний глобальний `APP_GUARD`,
+   `getTracker()` повертає `body.phone` для OTP-маршрутів (докладно матчить
+   docs/security.md "3/15хв на номер", не на IP) і падає назад на
+   `req.ip` для решти. **Свідомо один клас, не стек із двох**: спроба
+   повісити окремий phone-tracking guard локально на маршрут ПОВЕРХ
+   глобального `ThrottlerGuard` не працює — обидва класи незалежно читають
+   ту саму `@Throttle()` метадату, тож звичайний IP-tracked глобальний guard
+   душить маршрут своїм лічильником раніше, ніж встигає відпрацювати
+   кастомний (виявлено й підтверджено integration-тестами).
+2. **Блокування юзера не каскадувало на оголошення** — див. запис вище в
+   Phase 4 "User blocking".
+3. **Три per-user rate limits з docs/security.md §6 не мали жодної
+   реалізації** — `RateLimitService`, див. Security testing вище.
+4. **Жодних security headers** — `helmet()`, див. Security testing вище.
+5. **`next@14.2.5` мав ~10 реальних high-severity CVE** з готовим
+   non-breaking фіксом (`14.2.35`) — див. Security testing вище.
+
+(Деталі 1 і 3 — тепер у "Відомі граблі" на початку файлу, пункти 11–12.)
 
 ## Phase 8 — Production Readiness ⬜ не розпочато
 
@@ -370,21 +564,35 @@ Nova Poshta, онлайн-оплата, escrow, монетизація, рейт
 
 ## Карта модулів бекенду (`apps/api/src/modules`)
 
-`auth`, `users` (+ `admin-users.*` всередині), `profiles`, `location`,
-`categories`, `attributes`, `settings`, `listings` (+ `price-history`
-всередині), `media`, `search` (+ `providers/search`), `favorites`,
-`saved-searches`, `chat`, `reports`, `moderation`, `audit-log`, `risk`.
+`auth` (+ `guards/otp-phone-throttler.guard.ts` всередині), `users`
+(+ `admin-users.*` всередині), `profiles`, `location`, `categories`,
+`attributes`, `settings`, `listings` (+ `price-history` та
+`admin-listings.*` всередині), `media`, `search` (+ `providers/search`),
+`favorites`, `saved-searches`, `chat`, `reports` (+ `admin-reports.controller.ts`
+всередині), `moderation`, `audit-log`, `risk`, `dashboard`.
 Спільна інфраструктура: `providers/storage` (S3), `providers/search`,
 `shared/guards` (`JwtAuthGuard`, `OptionalJwtAuthGuard`, `RolesGuard`),
-`shared/pagination/cursor.ts` (keyset-пагінація, спільна для Search і Chat).
+`shared/pagination/cursor.ts` (keyset-пагінація, спільна для Search і Chat),
+`shared/rate-limit.service.ts` (per-user Redis rate limiting, реєструється
+через `@Global() RedisModule`).
+Тести: `apps/api/test/*.spec.ts` (unit), `apps/api/test/integration/*.integration-spec.ts`
+(`npm run test:integration`), `e2e/*.spec.ts` у корені (`npm run test:e2e`,
+Playwright, окремо від workspace-структури — стосується і api, і web).
 
 ## Наступний логічний крок
 
-**Phase 4 (Trust & Safety) повністю завершено**: Reports, Moderation queue,
-User blocking, Audit log, Anti-fraud (RiskSignal/RiskScore) — усе є і
-перевірено живцем. Google OAuth підключено (роутинг+логіка+тести; повний
-live-тест потребує реальних `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`, яких немає
-в `.env`). Далі логічно: решта **Phase 5 Admin Panel** (dashboard, listings
-admin CRUD, Categories/Attributes CRUD UI, Reports UI — зараз є лише
-moderation queue + users + audit-log), або
-**Phase 7 Integration/E2E tests** (зараз лише unit).
+**Phase 4, 5 і 7 (Trust & Safety, Admin Panel, Testing) повністю завершені**:
+Reports, Moderation queue, User blocking (+ каскад на оголошення,
++ детальний перегляд юзера), Audit log (+ фільтри), Anti-fraud
+(RiskSignal/RiskScore), Dashboard, Listings admin CRUD, Categories/Attributes
+CRUD UI (+ переміщення в дереві), rate limiting (OTP за phone + три per-user
+ліміти з docs/security.md §6, усі нарешті реально enforced), security headers
+(`helmet`), dependency audit (`next` CVE-патч), 9 integration-сюїтів
+(24 тести), усі 11 E2E-сценаріїв (12 тестів, Playwright) — усе перевірено
+живцем. Google OAuth підключено (роутинг+логіка+тести; повний live-тест
+потребує реальних `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`, яких немає в `.env`).
+206 unit + 24 integration + 12 E2E тестів. OWASP ZAP і кілька
+breaking-change dependency upgrades свідомо відкладені до Phase 8 (staging
+не існує). Далі логічно: **Phase 6 SEO & Performance** (не розпочато,
+єдина нерозпочата фаза перед Phase 8) або сама **Phase 8 Production
+Readiness**.

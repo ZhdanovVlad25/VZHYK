@@ -24,13 +24,13 @@ export class AuthController {
   ) {}
 
   @Post('otp/request')
-  @Throttle({ default: { limit: 3, ttl: 900_000 } }) // 3/15хв на номер (додатково per-IP на рівні Redis guard)
+  @Throttle({ default: { limit: 3, ttl: 900_000 } }) // 3/15хв на номер — глобальний OtpPhoneThrottlerGuard (app.module.ts) трекає за phone, не IP
   requestOtp(@Body() dto: RequestOtpDto, @Ip() ip: string) {
     return this.auth.requestOtp(dto.phone, ip);
   }
 
   @Post('otp/verify')
-  @Throttle({ default: { limit: 5, ttl: 300_000 } }) // 5 спроб на код
+  @Throttle({ default: { limit: 5, ttl: 300_000 } }) // 5 спроб на код, теж за phone
   verifyOtp(@Body() dto: VerifyOtpDto) {
     return this.auth.verifyOtp(dto.phone, dto.code);
   }

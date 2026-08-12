@@ -15,6 +15,7 @@ describe('AdminUsersService', () => {
   let riskScores: MockRepo;
   let auditLog: { record: jest.Mock };
   let profiles: { getPublicProfile: jest.Mock };
+  let searchProvider: { index: jest.Mock; remove: jest.Mock };
   let service: AdminUsersService;
 
   beforeEach(() => {
@@ -25,6 +26,7 @@ describe('AdminUsersService', () => {
     riskScores = mockRepo();
     auditLog = { record: jest.fn().mockResolvedValue(undefined) };
     profiles = { getPublicProfile: jest.fn().mockResolvedValue({ userId: 'u-2', displayName: null }) };
+    searchProvider = { index: jest.fn().mockResolvedValue(undefined), remove: jest.fn().mockResolvedValue(undefined) };
     service = new AdminUsersService(
       users as never,
       listings as never,
@@ -33,6 +35,7 @@ describe('AdminUsersService', () => {
       riskScores as never,
       auditLog as never,
       profiles as never,
+      searchProvider as never,
     );
   });
 
@@ -68,8 +71,9 @@ describe('AdminUsersService', () => {
       });
     });
 
-    it('переводить користувача в blocked і пише audit log', async () => {
+    it('переводить користувача в blocked і пише audit log (без активних оголошень)', async () => {
       users.findOne.mockResolvedValue({ id: 'u-2', status: 'active', phone: '+380...', email: null, role: 'user' } as User);
+      listings.find.mockResolvedValue([]);
 
       const result = await service.block('admin-1', 'u-2', '10.0.0.1');
 
@@ -85,17 +89,53 @@ describe('AdminUsersService', () => {
           ip: '10.0.0.1',
         }),
       );
+      expect(searchProvider.remove).not.toHaveBeenCalled();
+    });
+
+    it('docs/moderation.md §7 — каскадно блокує ACTIVE/RESERVED оголошення юзера, знімає з пошукового індексу', async () => {
+      users.findOne.mockResolvedValue({ id: 'u-2', status: 'active', phone: null, email: null, role: 'user' } as User);
+      const activeListing = { id: 'l-1', status: 'ACTIVE' };
+      const reservedListing = { id: 'l-2', status: 'RESERVED' };
+      listings.find.mockResolvedValue([activeListing, reservedListing]);
+
+      await service.block('admin-1', 'u-2', null);
+
+      expect(activeListing.status).toBe('BLOCKED');
+      expect(reservedListing.status).toBe('BLOCKED');
+      expect(listings.save).toHaveBeenCalledTimes(2);
+      expect(searchProvider.remove).toHaveBeenCalledWith('l-1');
+      expect(searchProvider.remove).toHaveBeenCalledWith('l-2');
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          after: expect.objectContaining({ status: 'blocked', blockedListingIds: ['l-1', 'l-2'] }),
+        }),
+      );
+    });
+
+    it('не чіпає оголошення юзера, коли шукає ACTIVE/RESERVED (find вже фільтрує за статусом)', async () => {
+      users.findOne.mockResolvedValue({ id: 'u-2', status: 'active' } as User);
+      listings.find.mockResolvedValue([]);
+
+      await service.block('admin-1', 'u-2', null);
+
+      expect(listings.find).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ userId: 'u-2', status: expect.anything() }),
+        }),
+      );
     });
   });
 
   describe('unblock', () => {
-    it('переводить користувача назад у active і пише audit log', async () => {
+    it('переводить користувача назад у active і пише audit log, НЕ відновлює оголошення', async () => {
       users.findOne.mockResolvedValue({ id: 'u-2', status: 'blocked', phone: null, email: 'a@b.com', role: 'user' } as User);
 
       const result = await service.unblock('admin-1', 'u-2', null);
 
       expect(result.status).toBe('active');
       expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'user.unblock' }));
+      expect(listings.find).not.toHaveBeenCalled();
+      expect(searchProvider.remove).not.toHaveBeenCalled();
     });
   });
 

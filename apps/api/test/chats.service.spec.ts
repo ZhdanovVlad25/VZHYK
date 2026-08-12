@@ -52,6 +52,7 @@ describe('ChatsService', () => {
   let users: MockRepo;
   let listings: MockRepo;
   let events: { emit: jest.Mock };
+  let rateLimit: { consume: jest.Mock };
   let service: ChatsService;
 
   beforeEach(() => {
@@ -61,6 +62,7 @@ describe('ChatsService', () => {
     users = mockRepo();
     listings = mockRepo();
     events = { emit: jest.fn() };
+    rateLimit = { consume: jest.fn().mockResolvedValue(undefined) };
 
     users.findOne.mockResolvedValue({ id: 'other', deletedAt: null } as User);
 
@@ -71,6 +73,7 @@ describe('ChatsService', () => {
       users as never,
       listings as never,
       events as never,
+      rateLimit as never,
     );
   });
 
@@ -177,6 +180,15 @@ describe('ChatsService', () => {
   });
 
   describe('sendMessage', () => {
+    it('перевіряє rate limit (60/хв) перед надсиланням', async () => {
+      rateLimit.consume.mockRejectedValue(new Error('RATE_LIMIT_EXCEEDED'));
+
+      await expect(service.sendMessage('u-1', 'chat-1', 'привіт')).rejects.toThrow('RATE_LIMIT_EXCEEDED');
+
+      expect(rateLimit.consume).toHaveBeenCalledWith('ratelimit:chat_message:u-1', 60, 60);
+      expect(messages.save).not.toHaveBeenCalled();
+    });
+
     it('кидає CHAT_BLOCKED, якщо власного учасника заблоковано', async () => {
       participants.findOne.mockResolvedValue({ chatId: 'chat-1', userId: 'u-1', isBlockedByOther: true } as ChatParticipant);
 
