@@ -428,12 +428,69 @@ Phase 1 Authorization (`vzhyk_phase1_decisions.md`, `docs/decisions.md`).
       якими `record()` викликається по кодовій базі, енуму для них нема) +
       пошук за `actorUserId`. 5 нових unit-тестів у `audit-log.service.spec.ts`.
 
-## Phase 6 — SEO & Performance ⬜ не розпочато
+## Phase 6 — SEO & Performance ✅ завершено (для MVP)
 
-- [ ] SSR/SSG, sitemap.xml, robots.txt, structured data, Open Graph.
-- [ ] SEO-friendly URLs.
-- [ ] Caching, image optimization, lazy loading.
-- [ ] Аудит Core Web Vitals, N+1 запити, індекси.
+- [x] **SSR/SSG, sitemap.xml, robots.txt, structured data, Open Graph.**
+      `apps/web/src/app/sitemap.ts` — home + `/search` + до 500 найновіших ACTIVE
+      оголошень (10 сторінок courser-пагінації search API по 50, `docs/roadmap.md`
+      MAX_LIMIT бекенду). `apps/web/src/app/robots.ts` — дозволяє все, крім
+      автентифікованих/приватних маршрутів (`/admin`, `/login`, `/my-listings`,
+      `/favorites`, `/saved-searches`, `/chats`, `/listings/new`,
+      `/listings/*/edit`), лінкує sitemap. Обидва вже були server-only (домашня
+      і сторінка оголошення — Server Components з `Promise.all`-фетчем, без
+      конверсії — уся інша навігація лишається client-side, як і була).
+      `generateMetadata` на `/listings/[id]` — title/description/OG (title/
+      description/url/image) + `<link rel="canonical">` на slug-версію URL.
+      JSON-LD `Product`/`Offer` schema там само (наявність/ціна/валюта).
+      `apps/web/src/app/search/layout.tsx` — статичний title/description
+      (сторінка client-компонент, `generateMetadata` неможливий безпосередньо
+      на ній). Кореневий layout: `metadataBase`, title template `%s — Вжик`,
+      дефолтний Open Graph. `NEXT_PUBLIC_SITE_URL` (apps/web/.env.local,
+      дефолт `http://localhost:3000`) — продакшн деплой має виставити реальний
+      домен, інакше sitemap/OG/canonical лишаться на localhost.
+- [x] **SEO-friendly URLs.** Без міграції БД: `listings` не має колонки `slug`
+      (є лише в `categories`/`locations`), додавати її заради косметики URL —
+      зайва складність. Замість цього суто фронтенд-трюк:
+      `apps/web/src/lib/slugify.ts` — `buildListingHref(id, title)` формує
+      `/listings/{uuid}-{транслітерований-slug}`, `parseListingIdParam()` бере
+      перші 36 символів параметра (довжина UUID) незалежно від хвоста —
+      **старі "голі" UUID-посилання лишаються робочими без змін** (перевірено
+      живцем, обидва варіанти віддають 200). Застосовано лише на публічній
+      /SEO-критичній поверхні (`ListingCard` — головна + пошук); адмінка,
+      чати, "Мої оголошення", "Обране" лишились на голому `id` — там SEO не
+      має значення (`robots.txt` однаково їх забороняє).
+- [x] **Caching, image optimization, lazy loading.**
+      `next/image` замість `<img>` у `ListingCard` і `/listings/[id]`
+      (`fill` + `sizes`, автоматичний lazy-loading для non-priority картинок,
+      responsive srcset — перевірено живцем через `/_next/image?...`, 200
+      image/jpeg). `next.config.js` `images.remotePatterns` для dev MinIO
+      (`localhost:9000`) — **продакшн деплой має додати сюди реальний S3/CDN
+      хост**, інакше next/image відмовиться оптимізувати. `apiFetch()`
+      (`apps/web/src/lib/api.ts`) отримав опційний `revalidate` — за
+      замовчуванням усе лишається `cache: 'no-store'` (без зміни поведінки),
+      опт-ін лише для головної сторінки (`getCategoryTree` 300с,
+      `search()` 60с — жодних побічних ефектів на цих GET, не персоналізовано).
+      **Свідомо НЕ кешовано** `getListing()` на сторінці оголошення — бекенд
+      інкрементує `viewsCount` при кожному GET від не-власника
+      (`ListingsService.findVisible()`), ISR "заморозив" би лічильник на
+      вікно кешу.
+- [x] **Аудит Core Web Vitals, N+1 запити, індекси.** N+1: пройдено
+      `listings.service.ts`/`admin-listings.service.ts`/`favorites.service.ts`
+      — відвертих patterns "цикл → запит на рядок" не знайдено (`FavoritesService.list()`
+      вже коректно батчить через `find()` зі списком id). Корельовані підзапити
+      `mainMediaId`/`mainMediaStorageKey` у `PostgresFtsSearchProvider.search()`
+      виконуються всередині одного SQL-запиту (не app-level N+1) — залишено
+      як є, ризик регресії від переписування на `LEFT JOIN LATERAL` не
+      виправдав виграш для MVP-масштабу. Індекси: міграція
+      `1754801200000-AddPerformanceIndexes` — `idx_listings_price` (сортування
+      `price_asc`/`price_desc` в keyset-пагінації йшло без індексу) і
+      `idx_media_listing_is_main` (композитний, замінює filter-after-scan на
+      `isMain` поверх наявного `idx_media_listing`). Прогнано локально
+      (`npm run migration:run`), обидва індекси створені без помилок.
+      **Full Lighthouse/CrUX Core Web Vitals прогін — свідомо НЕ виконано**:
+      немає production-збірки на staging (той самий аргумент, що OWASP ZAP
+      у Phase 7 — dev-режим Next.js дає нерепрезентативні цифри), відкладено
+      до Phase 8.
 
 ## Phase 7 — Testing ✅ завершено
 
@@ -581,18 +638,31 @@ Playwright, окремо від workspace-структури — стосуєт�
 
 ## Наступний логічний крок
 
-**Phase 4, 5 і 7 (Trust & Safety, Admin Panel, Testing) повністю завершені**:
-Reports, Moderation queue, User blocking (+ каскад на оголошення,
-+ детальний перегляд юзера), Audit log (+ фільтри), Anti-fraud
+**Усі фази, крім Phase 8, повністю завершені**: Phase 4/5/7 (Trust & Safety,
+Admin Panel, Testing) — Reports, Moderation queue, User blocking (+ каскад на
+оголошення, + детальний перегляд юзера), Audit log (+ фільтри), Anti-fraud
 (RiskSignal/RiskScore), Dashboard, Listings admin CRUD, Categories/Attributes
 CRUD UI (+ переміщення в дереві), rate limiting (OTP за phone + три per-user
 ліміти з docs/security.md §6, усі нарешті реально enforced), security headers
 (`helmet`), dependency audit (`next` CVE-патч), 9 integration-сюїтів
-(24 тести), усі 11 E2E-сценаріїв (12 тестів, Playwright) — усе перевірено
-живцем. Google OAuth підключено (роутинг+логіка+тести; повний live-тест
-потребує реальних `GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`, яких немає в `.env`).
-206 unit + 24 integration + 12 E2E тестів. OWASP ZAP і кілька
-breaking-change dependency upgrades свідомо відкладені до Phase 8 (staging
-не існує). Далі логічно: **Phase 6 SEO & Performance** (не розпочато,
-єдина нерозпочата фаза перед Phase 8) або сама **Phase 8 Production
-Readiness**.
+(24 тести), усі 11 E2E-сценаріїв (12 тестів, Playwright). Google OAuth
+підключено (роутинг+логіка+тести; повний live-тест потребує реальних
+`GOOGLE_OAUTH_CLIENT_ID`/`_SECRET`, яких немає в `.env`).
+
+**Phase 6 (SEO & Performance) також завершено**: sitemap.xml/robots.txt,
+per-listing metadata + Open Graph + JSON-LD, SEO-friendly slug URLs (без
+міграції БД — косметичний хвіст поверх UUID), `next/image` замість `<img>`,
+опт-ін ISR-кешування головної сторінки (без кешування сторінки оголошення —
+побічний ефект інкременту переглядів), нові DB-індекси (`listings.price`,
+композитний `media(listingId, isMain)`). Усе перевірено живцем (curl проти
+dev-серверів: title/OG/canonical/JSON-LD, `/_next/image` 200, sitemap.xml і
+robots.txt віддаються коректно, старі голі UUID-посилання досі 200). Повний
+Lighthouse/CrUX Core Web Vitals прогін свідомо не виконано — немає
+production-збірки/staging (той самий аргумент, що OWASP ZAP), відкладено до
+Phase 8.
+
+206 unit + 24 integration + 12 E2E тестів. OWASP ZAP, повний Core Web Vitals
+прогін і кілька breaking-change dependency upgrades свідомо відкладені до
+Phase 8 (staging не існує). **Єдина фаза, що лишилась — Phase 8 Production
+Readiness**: deployment pipeline, моніторинг, error tracking, backups,
+production конфіг, фінальний security review.

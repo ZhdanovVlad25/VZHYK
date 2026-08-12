@@ -2,13 +2,29 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { Header } from '@/components/layout/Header';
+import { SITE_URL } from '@/lib/site';
+
+const DESCRIPTION =
+  'Україномовна платформа оголошень: продаж, купівля, обмін, робота, житло.';
 
 export const metadata: Metadata = {
-  title: 'Вжик — оголошення',
-  description: 'Україномовна платформа оголошень: продаж, купівля, обмін, робота, житло.',
+  metadataBase: new URL(SITE_URL),
+  title: { default: 'Вжик — оголошення', template: '%s — Вжик' },
+  description: DESCRIPTION,
+  openGraph: {
+    siteName: 'Вжик',
+    type: 'website',
+    locale: 'uk_UA',
+    title: 'Вжик — оголошення',
+    description: DESCRIPTION,
+  },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="uk">
       <body className="min-h-screen bg-white text-gray-900 antialiased">

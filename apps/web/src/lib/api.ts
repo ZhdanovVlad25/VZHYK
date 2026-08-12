@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
 /** Той самий envelope, що AllExceptionsFilter на бекенді: { error: { code, message, details, traceId } }. */
 export class ApiError extends Error {
@@ -17,10 +18,20 @@ export class ApiError extends Error {
 interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   token?: string;
   body?: unknown;
+  /**
+   * ISR: скільки секунд Next може віддавати кешовану відповідь замість похідного fetch.
+   * За замовчуванням nema — усе лишається `cache: 'no-store'`, як і було. Опт-ін лише для
+   * чистих (без побічних ефектів) публічних GET, які викликаються із Server Component —
+   * client-side виклики цей режим Next.js Data Cache однаково не використовують.
+   */
+  revalidate?: number;
 }
 
-async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { token, body, headers, ...rest } = options;
+async function apiFetch<T>(
+  path: string,
+  options: ApiFetchOptions = {},
+): Promise<T> {
+  const { token, body, headers, revalidate, ...rest } = options;
 
   const res = await fetch(`${API_URL}${path}`, {
     ...rest,
@@ -30,7 +41,9 @@ async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
-    cache: 'no-store',
+    ...(revalidate !== undefined
+      ? { next: { revalidate } }
+      : { cache: 'no-store' }),
   });
 
   if (res.status === 204) {
@@ -41,7 +54,12 @@ async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise
 
   if (!res.ok) {
     const err = json?.error ?? {};
-    throw new ApiError(res.status, err.code ?? 'UNKNOWN_ERROR', err.message ?? res.statusText, err.details ?? null);
+    throw new ApiError(
+      res.status,
+      err.code ?? 'UNKNOWN_ERROR',
+      err.message ?? res.statusText,
+      err.details ?? null,
+    );
   }
 
   return json as T;
@@ -49,7 +67,8 @@ async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise
 
 // ---- Types ----
 
-export type ListingType = 'sell' | 'buy' | 'exchange' | 'give_away' | 'service' | 'rent';
+export type ListingType =
+  'sell' | 'buy' | 'exchange' | 'give_away' | 'service' | 'rent';
 export type ListingStatus =
   | 'DRAFT'
   | 'PENDING_MODERATION'
@@ -173,15 +192,17 @@ export interface Me {
 
 // ---- Public read endpoints ----
 
-export function getCategoryTree(): Promise<Category[]> {
-  return apiFetch('/categories');
+export function getCategoryTree(revalidate?: number): Promise<Category[]> {
+  return apiFetch('/categories', { revalidate });
 }
 
 export function getCategoryBySlug(slug: string): Promise<CategoryDetail> {
   return apiFetch(`/categories/${slug}`);
 }
 
-export function getCategoryAttributes(categoryId: string): Promise<CategoryAttribute[]> {
+export function getCategoryAttributes(
+  categoryId: string,
+): Promise<CategoryAttribute[]> {
   return apiFetch(`/categories/${categoryId}/attributes`);
 }
 
@@ -210,19 +231,24 @@ export function getListingMedia(id: string): Promise<Media[]> {
   return apiFetch(`/listings/${id}/media`);
 }
 
-export function search(params: SearchParams): Promise<SearchResult> {
+export function search(
+  params: SearchParams,
+  revalidate?: number,
+): Promise<SearchResult> {
   const qs = new URLSearchParams();
   if (params.q) qs.set('q', params.q);
   if (params.category) qs.set('category', params.category);
-  if (params.priceMin !== undefined) qs.set('priceMin', String(params.priceMin));
-  if (params.priceMax !== undefined) qs.set('priceMax', String(params.priceMax));
+  if (params.priceMin !== undefined)
+    qs.set('priceMin', String(params.priceMin));
+  if (params.priceMax !== undefined)
+    qs.set('priceMax', String(params.priceMax));
   if (params.condition) qs.set('condition', params.condition);
   if (params.hasPhoto) qs.set('hasPhoto', 'true');
   if (params.sort) qs.set('sort', params.sort);
   if (params.cursor) qs.set('cursor', params.cursor);
   if (params.limit) qs.set('limit', String(params.limit));
   const suffix = qs.toString() ? `?${qs.toString()}` : '';
-  return apiFetch(`/search${suffix}`);
+  return apiFetch(`/search${suffix}`, { revalidate });
 }
 
 // ---- Auth ----
@@ -232,7 +258,10 @@ export function requestOtp(phone: string): Promise<{ requested: true }> {
 }
 
 export function verifyOtp(phone: string, code: string): Promise<AuthTokens> {
-  return apiFetch('/auth/otp/verify', { method: 'POST', body: { phone, code } });
+  return apiFetch('/auth/otp/verify', {
+    method: 'POST',
+    body: { phone, code },
+  });
 }
 
 export function getMe(token: string): Promise<Me> {
@@ -260,11 +289,18 @@ export interface CreateListingDto {
 
 export type UpdateListingDto = Partial<Omit<CreateListingDto, 'categoryId'>>;
 
-export function createListing(dto: CreateListingDto, token: string): Promise<Listing> {
+export function createListing(
+  dto: CreateListingDto,
+  token: string,
+): Promise<Listing> {
   return apiFetch('/listings', { method: 'POST', body: dto, token });
 }
 
-export function updateListing(id: string, dto: UpdateListingDto, token: string): Promise<Listing> {
+export function updateListing(
+  id: string,
+  dto: UpdateListingDto,
+  token: string,
+): Promise<Listing> {
   return apiFetch(`/listings/${id}`, { method: 'PATCH', body: dto, token });
 }
 
@@ -272,7 +308,10 @@ export function publishListing(id: string, token: string): Promise<Listing> {
   return apiFetch(`/listings/${id}/publish`, { method: 'POST', token });
 }
 
-export function getMyListings(token: string, status?: ListingStatus): Promise<Listing[]> {
+export function getMyListings(
+  token: string,
+  status?: ListingStatus,
+): Promise<Listing[]> {
   const qs = status ? `?status=${status}` : '';
   return apiFetch(`/profiles/me/listings${qs}`, { token });
 }
@@ -298,11 +337,17 @@ export function getFavorites(token: string): Promise<FavoriteView[]> {
   return apiFetch('/favorites', { token });
 }
 
-export function addFavorite(listingId: string, token: string): Promise<{ id: string; listingId: string }> {
+export function addFavorite(
+  listingId: string,
+  token: string,
+): Promise<{ id: string; listingId: string }> {
   return apiFetch(`/favorites/${listingId}`, { method: 'POST', token });
 }
 
-export function removeFavorite(listingId: string, token: string): Promise<void> {
+export function removeFavorite(
+  listingId: string,
+  token: string,
+): Promise<void> {
   return apiFetch(`/favorites/${listingId}`, { method: 'DELETE', token });
 }
 
@@ -328,7 +373,10 @@ export function getSavedSearches(token: string): Promise<SavedSearch[]> {
   return apiFetch('/saved-searches', { token });
 }
 
-export function createSavedSearch(dto: CreateSavedSearchDto, token: string): Promise<SavedSearch> {
+export function createSavedSearch(
+  dto: CreateSavedSearchDto,
+  token: string,
+): Promise<SavedSearch> {
   return apiFetch('/saved-searches', { method: 'POST', body: dto, token });
 }
 
@@ -368,21 +416,41 @@ export interface MessagesPage {
   nextCursor: string | null;
 }
 
-export function createChat(otherUserId: string, listingId: string | undefined, token: string): Promise<ChatDto> {
-  return apiFetch('/chats', { method: 'POST', body: { otherUserId, listingId }, token });
+export function createChat(
+  otherUserId: string,
+  listingId: string | undefined,
+  token: string,
+): Promise<ChatDto> {
+  return apiFetch('/chats', {
+    method: 'POST',
+    body: { otherUserId, listingId },
+    token,
+  });
 }
 
 export function listChats(token: string): Promise<ChatListItem[]> {
   return apiFetch('/chats', { token });
 }
 
-export function getChatMessages(chatId: string, token: string, cursor?: string): Promise<MessagesPage> {
+export function getChatMessages(
+  chatId: string,
+  token: string,
+  cursor?: string,
+): Promise<MessagesPage> {
   const qs = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
   return apiFetch(`/chats/${chatId}/messages${qs}`, { token });
 }
 
-export function sendChatMessage(chatId: string, text: string, token: string): Promise<Message> {
-  return apiFetch(`/chats/${chatId}/messages`, { method: 'POST', body: { text }, token });
+export function sendChatMessage(
+  chatId: string,
+  text: string,
+  token: string,
+): Promise<Message> {
+  return apiFetch(`/chats/${chatId}/messages`, {
+    method: 'POST',
+    body: { text },
+    token,
+  });
 }
 
 export function blockChat(chatId: string, token: string): Promise<void> {
@@ -392,7 +460,13 @@ export function blockChat(chatId: string, token: string): Promise<void> {
 // ---- Reports ----
 
 export type ReportTargetType = 'LISTING' | 'USER' | 'CHAT';
-export type ReportReason = 'SPAM' | 'FRAUD' | 'PROHIBITED_ITEM' | 'OFFENSIVE_CONTENT' | 'DUPLICATE' | 'OTHER';
+export type ReportReason =
+  | 'SPAM'
+  | 'FRAUD'
+  | 'PROHIBITED_ITEM'
+  | 'OFFENSIVE_CONTENT'
+  | 'DUPLICATE'
+  | 'OTHER';
 export type ReportStatus = 'PENDING' | 'REVIEWING' | 'RESOLVED' | 'REJECTED';
 
 export interface Report {
@@ -413,7 +487,10 @@ export interface CreateReportDto {
   description?: string;
 }
 
-export function createReport(dto: CreateReportDto, token: string): Promise<Report> {
+export function createReport(
+  dto: CreateReportDto,
+  token: string,
+): Promise<Report> {
   return apiFetch('/reports', { method: 'POST', body: dto, token });
 }
 
@@ -423,7 +500,8 @@ export function getMyReports(token: string): Promise<Report[]> {
 
 // ---- Moderation (moderator/admin) ----
 
-export type ModerationCaseStatus = 'PENDING' | 'NEEDS_REVIEW' | 'APPROVED' | 'REJECTED';
+export type ModerationCaseStatus =
+  'PENDING' | 'NEEDS_REVIEW' | 'APPROVED' | 'REJECTED';
 export type ModerationDecision = 'APPROVED' | 'REJECTED' | 'NEEDS_REVIEW';
 
 export interface ModerationQueueItem {
@@ -434,10 +512,20 @@ export interface ModerationQueueItem {
   moderatorId: string | null;
   decidedAt: string | null;
   createdAt: string;
-  listing: { id: string; title: string; price: number | null; currency: string; userId: string; ownerRiskScore: number } | null;
+  listing: {
+    id: string;
+    title: string;
+    price: number | null;
+    currency: string;
+    userId: string;
+    ownerRiskScore: number;
+  } | null;
 }
 
-export function getModerationQueue(token: string, status?: ModerationCaseStatus): Promise<ModerationQueueItem[]> {
+export function getModerationQueue(
+  token: string,
+  status?: ModerationCaseStatus,
+): Promise<ModerationQueueItem[]> {
   const qs = status ? `?status=${status}` : '';
   return apiFetch(`/admin/moderation/queue${qs}`, { token });
 }
@@ -447,7 +535,11 @@ export function decideModerationCase(
   decision: ModerationDecision,
   token: string,
 ): Promise<ModerationQueueItem> {
-  return apiFetch(`/admin/moderation/${caseId}/decide`, { method: 'POST', body: { decision }, token });
+  return apiFetch(`/admin/moderation/${caseId}/decide`, {
+    method: 'POST',
+    body: { decision },
+    token,
+  });
 }
 
 // ---- Admin: users (block/unblock) ----
@@ -461,14 +553,24 @@ export interface AdminUserView {
   createdAt: string;
 }
 
-export function searchAdminUsers(token: string, search?: string): Promise<AdminUserView[]> {
+export function searchAdminUsers(
+  token: string,
+  search?: string,
+): Promise<AdminUserView[]> {
   const qs = search ? `?search=${encodeURIComponent(search)}` : '';
   return apiFetch(`/admin/users${qs}`, { token });
 }
 
 export interface AdminUserDetail extends AdminUserView {
   profile: PublicProfile;
-  listings: { id: string; title: string; status: ListingStatus; price: number | null; currency: string; createdAt: string }[];
+  listings: {
+    id: string;
+    title: string;
+    status: ListingStatus;
+    price: number | null;
+    currency: string;
+    createdAt: string;
+  }[];
   reports: {
     id: string;
     targetType: ReportTargetType;
@@ -478,18 +580,33 @@ export interface AdminUserDetail extends AdminUserView {
     createdAt: string;
   }[];
   riskScore: number;
-  riskSignals: { id: string; signalType: string; weight: number; metadata: Record<string, unknown> | null; createdAt: string }[];
+  riskSignals: {
+    id: string;
+    signalType: string;
+    weight: number;
+    metadata: Record<string, unknown> | null;
+    createdAt: string;
+  }[];
 }
 
-export function getAdminUserDetail(id: string, token: string): Promise<AdminUserDetail> {
+export function getAdminUserDetail(
+  id: string,
+  token: string,
+): Promise<AdminUserDetail> {
   return apiFetch(`/admin/users/${id}`, { token });
 }
 
-export function blockUser(userId: string, token: string): Promise<AdminUserView> {
+export function blockUser(
+  userId: string,
+  token: string,
+): Promise<AdminUserView> {
   return apiFetch(`/admin/users/${userId}/block`, { method: 'POST', token });
 }
 
-export function unblockUser(userId: string, token: string): Promise<AdminUserView> {
+export function unblockUser(
+  userId: string,
+  token: string,
+): Promise<AdminUserView> {
   return apiFetch(`/admin/users/${userId}/unblock`, { method: 'POST', token });
 }
 
@@ -513,7 +630,10 @@ export interface AuditLogFilters {
   actorUserId?: string;
 }
 
-export function getAuditLog(token: string, filters?: AuditLogFilters): Promise<AuditLogEntry[]> {
+export function getAuditLog(
+  token: string,
+  filters?: AuditLogFilters,
+): Promise<AuditLogEntry[]> {
   const qs = new URLSearchParams();
   if (filters?.targetType) qs.set('targetType', filters.targetType);
   if (filters?.action) qs.set('action', filters.action);
@@ -546,7 +666,11 @@ export interface AdminUpdateListingDto {
   currency?: string;
 }
 
-export function searchAdminListings(token: string, search?: string, status?: ListingStatus): Promise<Listing[]> {
+export function searchAdminListings(
+  token: string,
+  search?: string,
+  status?: ListingStatus,
+): Promise<Listing[]> {
   const qs = new URLSearchParams();
   if (search) qs.set('search', search);
   if (status) qs.set('status', status);
@@ -554,8 +678,16 @@ export function searchAdminListings(token: string, search?: string, status?: Lis
   return apiFetch(`/admin/listings${suffix}`, { token });
 }
 
-export function updateAdminListing(id: string, dto: AdminUpdateListingDto, token: string): Promise<Listing> {
-  return apiFetch(`/admin/listings/${id}`, { method: 'PATCH', body: dto, token });
+export function updateAdminListing(
+  id: string,
+  dto: AdminUpdateListingDto,
+  token: string,
+): Promise<Listing> {
+  return apiFetch(`/admin/listings/${id}`, {
+    method: 'PATCH',
+    body: dto,
+    token,
+  });
 }
 
 // ---- Admin: categories & attributes (CRUD) ----
@@ -575,12 +707,23 @@ export interface CreateCategoryDto {
 
 export type UpdateCategoryDto = Partial<CreateCategoryDto>;
 
-export function createCategory(dto: CreateCategoryDto, token: string): Promise<Category> {
+export function createCategory(
+  dto: CreateCategoryDto,
+  token: string,
+): Promise<Category> {
   return apiFetch('/admin/categories', { method: 'POST', body: dto, token });
 }
 
-export function updateCategory(id: string, dto: UpdateCategoryDto, token: string): Promise<Category> {
-  return apiFetch(`/admin/categories/${id}`, { method: 'PATCH', body: dto, token });
+export function updateCategory(
+  id: string,
+  dto: UpdateCategoryDto,
+  token: string,
+): Promise<Category> {
+  return apiFetch(`/admin/categories/${id}`, {
+    method: 'PATCH',
+    body: dto,
+    token,
+  });
 }
 
 export function deleteCategory(id: string, token: string): Promise<void> {
@@ -597,8 +740,16 @@ export interface CreateAttributeDto {
   sortOrder?: number;
 }
 
-export function createCategoryAttribute(categoryId: string, dto: CreateAttributeDto, token: string): Promise<CategoryAttribute> {
-  return apiFetch(`/admin/categories/${categoryId}/attributes`, { method: 'POST', body: dto, token });
+export function createCategoryAttribute(
+  categoryId: string,
+  dto: CreateAttributeDto,
+  token: string,
+): Promise<CategoryAttribute> {
+  return apiFetch(`/admin/categories/${categoryId}/attributes`, {
+    method: 'POST',
+    body: dto,
+    token,
+  });
 }
 
 export function updateCategoryAttribute(
@@ -606,12 +757,20 @@ export function updateCategoryAttribute(
   dto: Partial<CreateAttributeDto>,
   token: string,
 ): Promise<CategoryAttribute> {
-  return apiFetch(`/admin/attributes/${id}`, { method: 'PATCH', body: dto, token });
+  return apiFetch(`/admin/attributes/${id}`, {
+    method: 'PATCH',
+    body: dto,
+    token,
+  });
 }
 
 // ---- Admin: reports (moderator/admin) ----
 
-export function getAdminReports(token: string, status?: ReportStatus, targetType?: ReportTargetType): Promise<Report[]> {
+export function getAdminReports(
+  token: string,
+  status?: ReportStatus,
+  targetType?: ReportTargetType,
+): Promise<Report[]> {
   const qs = new URLSearchParams();
   if (status) qs.set('status', status);
   if (targetType) qs.set('targetType', targetType);
@@ -621,12 +780,24 @@ export function getAdminReports(token: string, status?: ReportStatus, targetType
 
 export type ReportResolutionStatus = 'REVIEWING' | 'RESOLVED' | 'REJECTED';
 
-export function resolveReport(id: string, status: ReportResolutionStatus, token: string): Promise<Report> {
-  return apiFetch(`/admin/reports/${id}/resolve`, { method: 'POST', body: { status }, token });
+export function resolveReport(
+  id: string,
+  status: ReportResolutionStatus,
+  token: string,
+): Promise<Report> {
+  return apiFetch(`/admin/reports/${id}/resolve`, {
+    method: 'POST',
+    body: { status },
+    token,
+  });
 }
 
 /** multipart/form-data — не через apiFetch (той завжди серіалізує body в JSON). */
-export async function uploadListingMedia(listingId: string, file: File, token: string): Promise<Media> {
+export async function uploadListingMedia(
+  listingId: string,
+  file: File,
+  token: string,
+): Promise<Media> {
   const form = new FormData();
   form.append('file', file);
 
@@ -639,7 +810,12 @@ export async function uploadListingMedia(listingId: string, file: File, token: s
   const json = await res.json().catch(() => null);
   if (!res.ok) {
     const err = json?.error ?? {};
-    throw new ApiError(res.status, err.code ?? 'UNKNOWN_ERROR', err.message ?? res.statusText, err.details ?? null);
+    throw new ApiError(
+      res.status,
+      err.code ?? 'UNKNOWN_ERROR',
+      err.message ?? res.statusText,
+      err.details ?? null,
+    );
   }
   return json as Media;
 }

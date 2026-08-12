@@ -1,11 +1,17 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import type { SearchResultItem } from '@/lib/api';
+import { buildListingHref } from '@/lib/slugify';
 
 function formatPrice(price: number | null, currency: string): string {
   if (price === null) {
     return 'Ціна не вказана';
   }
-  return new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
+  return new Intl.NumberFormat('uk-UA', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(price);
 }
 
 /**
@@ -14,19 +20,33 @@ function formatPrice(price: number | null, currency: string): string {
  */
 export function ListingCard({ item }: { item: SearchResultItem }) {
   return (
-    <Link href={`/listings/${item.id}`} className="block focus-visible:outline-none">
+    <Link
+      href={buildListingHref(item.id, item.title)}
+      className="block focus-visible:outline-none"
+    >
       <div className="flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-        <div className="aspect-square w-full bg-gray-100">
+        <div className="relative aspect-square w-full bg-gray-100">
           {item.mainMediaUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- зображення з presigned S3/MinIO URL, next/image domain-конфіг поза цим зрізом
-            <img src={item.mainMediaUrl} alt={item.title} className="h-full w-full object-cover" />
+            <Image
+              src={item.mainMediaUrl}
+              alt={item.title}
+              fill
+              sizes="(min-width: 1024px) 16vw, (min-width: 640px) 33vw, 50vw"
+              className="object-cover"
+            />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-sm text-gray-400">Без фото</div>
+            <div className="flex h-full w-full items-center justify-center text-sm text-gray-400">
+              Без фото
+            </div>
           )}
         </div>
         <div className="flex flex-1 flex-col gap-1 p-3">
-          <p className="line-clamp-2 text-sm font-medium text-gray-900">{item.title}</p>
-          <p className="mt-auto font-semibold text-gray-900">{formatPrice(item.price, item.currency)}</p>
+          <p className="line-clamp-2 text-sm font-medium text-gray-900">
+            {item.title}
+          </p>
+          <p className="mt-auto font-semibold text-gray-900">
+            {formatPrice(item.price, item.currency)}
+          </p>
         </div>
       </div>
     </Link>
