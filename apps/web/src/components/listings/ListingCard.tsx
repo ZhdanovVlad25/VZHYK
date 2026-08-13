@@ -44,9 +44,12 @@ export function ListingCard({ item }: { item: SearchResultItem }) {
           <p className="line-clamp-2 text-sm font-medium text-gray-900">
             {item.title}
           </p>
-          <p className="mt-auto font-extrabold text-accent-600">
+          <p className="font-extrabold text-accent-600">
             {formatPrice(item.price, item.currency)}
           </p>
+          {item.locationName && (
+            <p className="mt-auto text-xs text-gray-500">{item.locationName}</p>
+          )}
         </div>
       </div>
     </Link>

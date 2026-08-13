@@ -16,6 +16,7 @@ export interface ModerationQueueItem extends Omit<ModerationCase, 'listing'> {
     price: number | null;
     currency: string;
     userId: string;
+    status: Listing['status'];
     /** docs/moderation.md §4 — "Модератор бачить: ... risk score". 0, якщо сигналів ще не було. */
     ownerRiskScore: number;
   } | null;
@@ -84,6 +85,7 @@ export class ModerationService {
               price: listing.price,
               currency: listing.currency,
               userId: listing.userId,
+              status: listing.status,
               ownerRiskScore: riskScores.get(listing.userId) ?? 0,
             }
           : null,

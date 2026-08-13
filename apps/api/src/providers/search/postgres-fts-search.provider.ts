@@ -60,6 +60,14 @@ export class PostgresFtsSearchProvider implements SearchProvider {
       params.push(filters.categoryId);
       conditions.push(`l."categoryId" = $${params.length}`);
     }
+    if (filters.locationId) {
+      params.push(filters.locationId);
+      conditions.push(`l."locationId" = $${params.length}`);
+    }
+    if (filters.userId) {
+      params.push(filters.userId);
+      conditions.push(`l."userId" = $${params.length}`);
+    }
     if (filters.priceMin !== undefined) {
       params.push(filters.priceMin);
       conditions.push(`l."price" >= $${params.length}`);
@@ -92,6 +100,7 @@ export class PostgresFtsSearchProvider implements SearchProvider {
     const sql = `
       SELECT l."id", l."title", l."price", l."currency", l."categoryId", l."locationId", l."publishedAt",
              ${rankExpr} AS "rank",
+             (SELECT loc."nameUk" FROM "locations" loc WHERE loc."id" = l."locationId") AS "locationName",
              (SELECT m."id" FROM "media" m WHERE m."listingId" = l."id" AND m."isMain" = true LIMIT 1) AS "mainMediaId",
              (SELECT m."storageKey" FROM "media" m WHERE m."listingId" = l."id" AND m."isMain" = true LIMIT 1) AS "mainMediaStorageKey"
       FROM "listings" l
@@ -174,6 +183,7 @@ export class PostgresFtsSearchProvider implements SearchProvider {
       currency: row.currency as string,
       categoryId: row.categoryId as string,
       locationId: (row.locationId as string | null) ?? null,
+      locationName: (row.locationName as string | null) ?? null,
       publishedAt: row.publishedAt ? new Date(row.publishedAt as string).toISOString() : null,
       mainMediaId,
       // Presign — локальний HMAC без мережевого виклику, тому дешево робити навіть для 50 елементів сторінки.

@@ -40,6 +40,14 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         message: 'Обліковий запис заблоковано',
       });
     }
+
+    // "Останній раз онлайн" для публічного профілю (profiles.service.ts). Fire-and-forget +
+    // троттлінг 2 хв — інакше писали б у БД на КОЖЕН авторизований запит.
+    const ONLINE_STALE_MS = 2 * 60 * 1000;
+    if (!user.lastActiveAt || Date.now() - user.lastActiveAt.getTime() > ONLINE_STALE_MS) {
+      this.users.update(user.id, { lastActiveAt: new Date() }).catch(() => undefined);
+    }
+
     return {
       id: payload.sub,
       role: payload.role,

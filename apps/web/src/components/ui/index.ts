@@ -14,3 +14,5 @@ export type { BadgeTone } from './Badge';
 export { Alert } from './Alert';
 export type { AlertTone } from './Alert';
 export { LoadingState, EmptyState, ErrorState } from './States';
+export { Avatar } from './Avatar';
+export type { AvatarSize } from './Avatar';

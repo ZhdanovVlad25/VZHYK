@@ -10,6 +10,25 @@ type Step = 'phone' | 'code' | 'name';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
+// "+380" — незмінний префікс поля телефону: користувач вводить лише код оператора
+// й номер (9 цифр). Захист від реального інциденту цієї сесії — вручну надрукований
+// "+3800671112233" (зайвий 0 після 380) не збігався з жодним записаним OTP і завжди
+// падав з "Невірний код", хоча код був правильний.
+const PHONE_PREFIX = '+380';
+const PHONE_DIGITS_LENGTH = 9;
+
+/** Приймає як руками надруковані цифри, так і вставлений повний номер (з "+380"/"380"/пробілами). */
+function normalizePhoneDigits(raw: string): string {
+  let digits = raw.replace(/\D/g, '');
+  if (digits.startsWith('380')) {
+    digits = digits.slice(3);
+  }
+  // Код оператора (67/50/63/...) ніколи не починається з 0 — саме так виглядав реальний
+  // одрук цієї сесії ("+3800671112233"): зайвий 0 одразу після "380".
+  digits = digits.replace(/^0+/, '');
+  return digits.slice(0, PHONE_DIGITS_LENGTH);
+}
+
 // Бекенд дозволяє лише 3 запити коду на номер за 15 хв
 // (OTP_REQUEST_LIMIT_PER_PHONE_15MIN, docs/security.md §6) — кожен новий запит
 // інвалідовує попередній код, тож без таймера легко спамити "Надіслати ще раз"
@@ -25,7 +44,7 @@ export default function LoginPage() {
   const { requestOtp, verifyOtp, accessToken, setDisplayName } = useAuth();
 
   const [step, setStep] = useState<Step>('phone');
-  const [phone, setPhone] = useState('+380');
+  const [phone, setPhone] = useState(PHONE_PREFIX);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -104,16 +123,34 @@ export default function LoginPage() {
 
         {step === 'phone' ? (
           <Form ariaLabel="Вхід за номером телефону" onSubmit={handleRequestOtp}>
-            <Input
-              label="Номер телефону"
-              type="tel"
-              inputMode="tel"
-              hint="У форматі +380XXXXXXXXX"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              autoFocus
-              required
-            />
+            <div className="flex flex-col gap-1">
+              <label htmlFor="login-phone-digits" className="text-sm font-medium text-gray-700">
+                Номер телефону
+              </label>
+              <div className="flex h-10 items-center rounded-xl border border-gray-300 focus-within:border-brand-600">
+                <span className="select-none pl-3 text-sm text-gray-500" aria-hidden="true">
+                  {PHONE_PREFIX}
+                </span>
+                <input
+                  id="login-phone-digits"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  value={phone.slice(PHONE_PREFIX.length)}
+                  onChange={(e) => setPhone(PHONE_PREFIX + normalizePhoneDigits(e.target.value))}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    setPhone(PHONE_PREFIX + normalizePhoneDigits(e.clipboardData.getData('text')));
+                  }}
+                  placeholder="XXXXXXXXX"
+                  maxLength={PHONE_DIGITS_LENGTH}
+                  autoFocus
+                  required
+                  className="h-full min-w-0 flex-1 rounded-r-xl border-0 bg-transparent pl-1 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0"
+                />
+              </div>
+              <span className="text-xs text-gray-500">Код оператора й номер, без +380 — 9 цифр</span>
+            </div>
             <Button type="submit" isLoading={isSubmitting}>
               Надіслати код
             </Button>

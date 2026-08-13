@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import {
   ApiError,
+  listingDetailHref,
   searchAdminListings,
   updateAdminListing,
   type Listing,
@@ -222,7 +223,7 @@ export default function AdminListingsPage() {
                     <span className="text-xs text-gray-500">Створено {formatDate(listing.createdAt)}</span>
                     <span className="text-xs text-gray-400">Власник: {listing.userId.slice(0, 8)}</span>
                   </div>
-                  <Link href={`/listings/${listing.id}`} className="font-medium text-gray-900 hover:underline">
+                  <Link href={listingDetailHref(listing)} className="font-medium text-gray-900 hover:underline">
                     {listing.title}
                   </Link>
                   <p className="text-sm text-gray-600">{formatPrice(listing.price, listing.currency)}</p>

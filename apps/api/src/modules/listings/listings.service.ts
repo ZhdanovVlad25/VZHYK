@@ -148,7 +148,7 @@ export class ListingsService {
     await this.assertRequiredAttributesFilled(listing.id, listing.categoryId);
 
     const activeCount = await this.listings.count({
-      where: { userId, status: In(ACTIVE_SLOT_STATUSES) },
+      where: { userId, status: In(ACTIVE_SLOT_STATUSES), deletedAt: IsNull() },
     });
     const maxActive = await this.settings.getMaxActiveListingsPerUser();
     if (activeCount >= maxActive) {

@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { search, createSavedSearch, ApiError, type SearchResultItem, type SearchParams } from '@/lib/api';
+import { search, createSavedSearch, getCities, ApiError, type City, type SearchResultItem, type SearchParams } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ListingCard } from '@/components/listings/ListingCard';
 import { Button, Dropdown, EmptyState, ErrorState, LoadingState } from '@/components/ui';
@@ -27,9 +27,12 @@ function SearchPageContent() {
   const urlParams = useSearchParams();
   const q = urlParams.get('q') ?? '';
   const category = urlParams.get('category') ?? undefined;
+  const seller = urlParams.get('seller') ?? undefined;
   const { user, accessToken } = useAuth();
 
   const [sort, setSort] = useState<SearchParams['sort']>(q ? 'relevance' : 'newest');
+  const [location, setLocation] = useState<string | null>(urlParams.get('location'));
+  const [cities, setCities] = useState<City[]>([]);
   const [items, setItems] = useState<SearchResultItem[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,11 +41,15 @@ function SearchPageContent() {
   const [isSavingSearch, setIsSavingSearch] = useState(false);
   const [saveSearchMessage, setSaveSearchMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    getCities().then(setCities).catch(() => setCities([]));
+  }, []);
+
   const runSearch = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await search({ q: q || undefined, category, sort });
+      const result = await search({ q: q || undefined, category, seller, location: location ?? undefined, sort });
       setItems(result.items);
       setNextCursor(result.nextCursor);
     } catch (err) {
@@ -50,7 +57,7 @@ function SearchPageContent() {
     } finally {
       setIsLoading(false);
     }
-  }, [q, category, sort]);
+  }, [q, category, seller, location, sort]);
 
   useEffect(() => {
     runSearch();
@@ -60,7 +67,7 @@ function SearchPageContent() {
     if (!nextCursor) return;
     setIsLoadingMore(true);
     try {
-      const result = await search({ q: q || undefined, category, sort, cursor: nextCursor });
+      const result = await search({ q: q || undefined, category, seller, location: location ?? undefined, sort, cursor: nextCursor });
       setItems((prev) => [...prev, ...result.items]);
       setNextCursor(result.nextCursor);
     } catch (err) {
@@ -88,7 +95,9 @@ function SearchPageContent() {
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-xl font-semibold text-gray-900">
-          {q ? (
+          {seller ? (
+            'Оголошення продавця'
+          ) : q ? (
             <>
               Результати пошуку: <span className="text-brand-600">«{q}»</span>
             </>
@@ -105,6 +114,15 @@ function SearchPageContent() {
               {saveSearchMessage && <span className="text-xs text-gray-500">{saveSearchMessage}</span>}
             </div>
           )}
+          <div className="w-48">
+            <Dropdown
+              label="Місто"
+              options={cities.map((c) => ({ value: c.id, label: c.nameUk }))}
+              value={location}
+              onChange={setLocation}
+              placeholder="Усі міста"
+            />
+          </div>
           <div className="w-56">
             <Dropdown
               label="Сортування"

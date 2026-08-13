@@ -9,6 +9,7 @@ import { OtpPhoneThrottlerGuard } from './modules/auth/guards/otp-phone-throttle
 import { AuthModule } from './modules/auth/auth.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { LocationsModule } from './modules/location/locations.module';
 import { RedisModule } from './providers/redis.module';
 import { User } from './modules/users/user.entity';
 import { OtpCode } from './modules/auth/otp-code.entity';
@@ -91,6 +92,7 @@ import { HealthModule } from './modules/health/health.module';
     SettingsModule,
     AuthModule,
     CategoriesModule,
+    LocationsModule,
     ListingsModule,
     MediaModule,
     ProfilesModule,

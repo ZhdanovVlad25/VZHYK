@@ -36,6 +36,17 @@ module.exports = {
         sans: ['var(--font-rubik)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         display: ['var(--font-unbounded)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
+      keyframes: {
+        // Лого-лоадер (Logo.tsx animated=true): очі періодично "закриваються" — scaleY
+        // потребує transform-box:fill-box на елементі, інакше SVG масштабує від (0,0) viewport.
+        'vzhyk-blink': {
+          '0%, 90%, 100%': { transform: 'scaleY(1)' },
+          '95%': { transform: 'scaleY(0.1)' },
+        },
+      },
+      animation: {
+        'vzhyk-blink': 'vzhyk-blink 3s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

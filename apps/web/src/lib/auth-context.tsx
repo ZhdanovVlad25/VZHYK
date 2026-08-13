@@ -6,6 +6,7 @@ import {
   getMe,
   getMyProfile,
   requestOtp as apiRequestOtp,
+  setUnauthorizedHandler,
   verifyOtp as apiVerifyOtp,
 } from './api';
 
@@ -100,6 +101,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.localStorage.removeItem(STORAGE_KEY);
     setAuth(null);
   }, []);
+
+  useEffect(() => {
+    setUnauthorizedHandler(logout);
+    return () => setUnauthorizedHandler(null);
+  }, [logout]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

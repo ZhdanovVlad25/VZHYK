@@ -15,6 +15,17 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Access token живе 15 хв без автопродовження (auth-context.tsx) — рано чи пізно будь-який
+ * запит поверне 401. AuthProvider підписується сюди, щоб одразу скинути стару сесію: тоді
+ * `user` стає null і на сторінці спрацьовує вже наявний блок "потрібно увійти" замість сирого
+ * "Unauthorized" в ErrorState.
+ */
+let onUnauthorized: (() => void) | null = null;
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  onUnauthorized = handler;
+}
+
 interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   token?: string;
   body?: unknown;
@@ -54,6 +65,9 @@ async function apiFetch<T>(
 
   if (!res.ok) {
     const err = json?.error ?? {};
+    if (res.status === 401) {
+      onUnauthorized?.();
+    }
     throw new ApiError(
       res.status,
       err.code ?? 'UNKNOWN_ERROR',
@@ -79,6 +93,19 @@ export type ListingStatus =
   | 'EXPIRED'
   | 'ARCHIVED'
   | 'BLOCKED';
+
+/**
+ * Той самий набір, що PUBLICLY_VISIBLE_LISTING_STATUSES у listing.constants.ts на бекенді.
+ * `/listings/[id]` — server component, не має доступу до localStorage-токена (auth-context.tsx),
+ * тож для будь-якого іншого статусу бекенд поверне 404 навіть власнику/адміну — лінк має вести
+ * на `/listings/[id]/edit` (client-компонент, шле токен) замість публічної сторінки.
+ */
+const PUBLICLY_VISIBLE_LISTING_STATUSES: ListingStatus[] = ['ACTIVE', 'RESERVED', 'SOLD'];
+export function listingDetailHref(listing: { id: string; status: ListingStatus }): string {
+  return PUBLICLY_VISIBLE_LISTING_STATUSES.includes(listing.status)
+    ? `/listings/${listing.id}`
+    : `/listings/${listing.id}/edit`;
+}
 
 export interface Category {
   id: string;
@@ -148,6 +175,7 @@ export interface SearchResultItem {
   currency: string;
   categoryId: string;
   locationId: string | null;
+  locationName: string | null;
   publishedAt: string | null;
   mainMediaId: string | null;
   mainMediaUrl: string | null;
@@ -158,9 +186,21 @@ export interface SearchResult {
   nextCursor: string | null;
 }
 
+export interface City {
+  id: string;
+  nameUk: string;
+  slug: string;
+}
+
+export function getCities(revalidate?: number): Promise<City[]> {
+  return apiFetch('/locations/cities', { revalidate });
+}
+
 export interface SearchParams {
   q?: string;
   category?: string;
+  location?: string;
+  seller?: string;
   priceMin?: number;
   priceMax?: number;
   condition?: string;
@@ -221,10 +261,13 @@ export interface PublicProfile {
   reviewsCount: number | null;
   activeListingsCount: number;
   memberSince: string;
+  lastActiveAt: string | null;
+  /** null для анонімного запиту — бекенд віддає реальний номер лише авторизованим (users.controller.ts). */
+  phone: string | null;
 }
 
-export function getPublicProfile(userId: string): Promise<PublicProfile> {
-  return apiFetch(`/users/${userId}/public-profile`);
+export function getPublicProfile(userId: string, token?: string): Promise<PublicProfile> {
+  return apiFetch(`/users/${userId}/public-profile`, { token });
 }
 
 export interface MyProfile {
@@ -264,6 +307,8 @@ export function search(
   const qs = new URLSearchParams();
   if (params.q) qs.set('q', params.q);
   if (params.category) qs.set('category', params.category);
+  if (params.location) qs.set('location', params.location);
+  if (params.seller) qs.set('seller', params.seller);
   if (params.priceMin !== undefined)
     qs.set('priceMin', String(params.priceMin));
   if (params.priceMax !== undefined)
@@ -310,6 +355,7 @@ export interface CreateListingDto {
   currency?: string;
   isNegotiable?: boolean;
   condition?: 'new' | 'used' | 'for_parts';
+  locationId?: string;
   attributes?: AttributeValueInput[];
 }
 
@@ -548,6 +594,7 @@ export interface ModerationQueueItem {
     price: number | null;
     currency: string;
     userId: string;
+    status: ListingStatus;
     ownerRiskScore: number;
   } | null;
 }
@@ -840,6 +887,9 @@ export async function uploadListingMedia(
   const json = await res.json().catch(() => null);
   if (!res.ok) {
     const err = json?.error ?? {};
+    if (res.status === 401) {
+      onUnauthorized?.();
+    }
     throw new ApiError(
       res.status,
       err.code ?? 'UNKNOWN_ERROR',

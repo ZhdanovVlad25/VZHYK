@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ChatProvider, useChatContext } from './chat-context';
-import { Badge, Button, EmptyState, ErrorState, LoadingState } from '@/components/ui';
+import { Avatar, Badge, Button, EmptyState, ErrorState, LoadingState } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
 function formatTime(iso: string | null): string {
@@ -37,18 +37,26 @@ function ChatSidebar() {
                   href={`/chats/${chat.chatId}`}
                   className={cn('block border-b border-gray-100 px-4 py-3 hover:bg-gray-50', isActive && 'bg-brand-50')}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex min-w-0 items-center gap-1.5 truncate font-medium text-gray-900">
+                  <div className="flex items-center gap-2">
+                    <div className="relative shrink-0">
+                      <Avatar name={chat.otherDisplayName} size="sm" />
                       <span
-                        className={cn('h-2 w-2 shrink-0 rounded-full', isOnline ? 'bg-green-500' : 'bg-gray-300')}
+                        className={cn(
+                          'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white',
+                          isOnline ? 'bg-green-500' : 'bg-gray-300',
+                        )}
                         aria-hidden="true"
                       />
-                      <span className="truncate">{chat.otherDisplayName}</span>
-                    </span>
-                    {chat.unreadCount > 0 && <Badge tone="info">{chat.unreadCount}</Badge>}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate font-medium text-gray-900">{chat.otherDisplayName}</span>
+                        {chat.unreadCount > 0 && <Badge tone="info">{chat.unreadCount}</Badge>}
+                      </div>
+                      {chat.listingTitle && <p className="truncate text-xs text-gray-500">{chat.listingTitle}</p>}
+                      <p className="text-xs text-gray-400">{formatTime(chat.lastMessageAt)}</p>
+                    </div>
                   </div>
-                  {chat.listingTitle && <p className="truncate text-xs text-gray-500">{chat.listingTitle}</p>}
-                  <p className="text-xs text-gray-400">{formatTime(chat.lastMessageAt)}</p>
                 </Link>
               </li>
             );
@@ -75,9 +83,9 @@ export default function ChatsLayout({ children }: { children: ReactNode }) {
 
   return (
     <ChatProvider>
-      <div className="mx-auto flex max-w-6xl flex-col border-x border-gray-200 md:h-[calc(100vh-65px)] md:flex-row">
+      <div className="mx-auto flex h-full max-w-6xl flex-col border-x border-gray-200 md:flex-row">
         <ChatSidebar />
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="min-h-0 min-w-0 flex-1">{children}</div>
       </div>
     </ChatProvider>
   );

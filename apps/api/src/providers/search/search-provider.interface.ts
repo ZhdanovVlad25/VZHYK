@@ -7,6 +7,8 @@ export type SearchSort = 'relevance' | 'newest' | 'price_asc' | 'price_desc';
 export interface SearchFilters {
   q?: string;
   categoryId?: string;
+  locationId?: string;
+  userId?: string;
   priceMin?: number;
   priceMax?: number;
   condition?: string;
@@ -23,6 +25,7 @@ export interface SearchResultItem {
   currency: string;
   categoryId: string;
   locationId: string | null;
+  locationName: string | null;
   publishedAt: string | null;
   mainMediaId: string | null;
   /** Presigned GET URL для головного фото (StorageProvider) — null, якщо фото немає. */

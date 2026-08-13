@@ -10,6 +10,8 @@ export class SearchService {
     return this.provider.search({
       q: dto.q,
       categoryId: dto.category,
+      locationId: dto.location,
+      userId: dto.seller,
       priceMin: dto.priceMin,
       priceMax: dto.priceMax,
       condition: dto.condition,

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { ApiError, deleteListing, getMyListings, type Listing, type ListingStatus } from '@/lib/api';
+import { ApiError, deleteListing, getMyListings, listingDetailHref, type Listing, type ListingStatus } from '@/lib/api';
 import { Badge, Button, Dropdown, EmptyState, ErrorState, LoadingState, type BadgeTone } from '@/components/ui';
 
 const STATUS_LABELS: Record<ListingStatus, string> = {
@@ -120,7 +120,7 @@ export default function MyListingsPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {listings.map((listing) => {
-            const href = listing.status === 'DRAFT' ? `/listings/${listing.id}/edit` : `/listings/${listing.id}`;
+            const href = listingDetailHref(listing);
             return (
               <li key={listing.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-3">

@@ -17,6 +17,14 @@ export class SearchQueryDto {
   category?: string;
 
   @IsOptional()
+  @IsUUID()
+  location?: string;
+
+  @IsOptional()
+  @IsUUID()
+  seller?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)

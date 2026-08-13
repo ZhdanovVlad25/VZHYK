@@ -9,8 +9,10 @@ import {
   createListing,
   getCategoryAttributes,
   getCategoryTree,
+  getCities,
   type Category,
   type CategoryAttribute,
+  type City,
   type ListingType,
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
@@ -56,6 +58,8 @@ export default function NewListingPage() {
   const [price, setPrice] = useState('');
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
+  const [cities, setCities] = useState<City[]>([]);
+  const [locationId, setLocationId] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +68,7 @@ export default function NewListingPage() {
     getCategoryTree()
       .then((tree) => setLeafCategories(flattenLeafCategories(tree)))
       .catch(() => setLeafCategories([]));
+    getCities().then(setCities).catch(() => setCities([]));
   }, []);
 
   useEffect(() => {
@@ -108,6 +113,7 @@ export default function NewListingPage() {
           description: description || undefined,
           price: price === '' ? undefined : Number(price),
           condition: (condition as 'new' | 'used' | 'for_parts') ?? undefined,
+          locationId: locationId ?? undefined,
           isNegotiable,
           attributes: categoryAttributes
             .filter((attr) => attributeValues[attr.id] !== undefined && attributeValues[attr.id] !== '')
@@ -179,6 +185,14 @@ export default function NewListingPage() {
             />
             Торг можливий
           </label>
+
+          <Dropdown
+            label="Місто"
+            options={cities.map((c) => ({ value: c.id, label: c.nameUk }))}
+            value={locationId}
+            onChange={setLocationId}
+            placeholder="Не вказано"
+          />
 
           <Dropdown
             label="Стан"

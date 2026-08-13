@@ -7,6 +7,7 @@ import {
   ApiError,
   getCategoryAttributes,
   getCategoryTree,
+  getCities,
   getListing,
   getListingMedia,
   publishListing,
@@ -14,6 +15,7 @@ import {
   uploadListingMedia,
   type Category,
   type CategoryAttribute,
+  type City,
   type Listing,
   type ListingType,
   type Media,
@@ -81,6 +83,8 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [attributeValues, setAttributeValues] = useState<AttributeValues>({});
+  const [cities, setCities] = useState<City[]>([]);
+  const [locationId, setLocationId] = useState<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -106,6 +110,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       setPrice(listingResult.price === null ? '' : String(listingResult.price));
       setCondition(listingResult.condition);
       setIsNegotiable(listingResult.isNegotiable);
+      setLocationId(listingResult.locationId);
       setAttributeValues(Object.fromEntries(listingResult.attributes.map((a) => [a.categoryAttributeId, a.value])));
 
       const attrs = await getCategoryAttributes(listingResult.categoryId);
@@ -122,6 +127,10 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       load();
     }
   }, [accessToken, load]);
+
+  useEffect(() => {
+    getCities().then(setCities).catch(() => setCities([]));
+  }, []);
 
   const isEditable = useMemo(() => (listing ? !NOT_EDITABLE_STATUSES.includes(listing.status) : false), [listing]);
 
@@ -176,6 +185,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           description: description || undefined,
           price: price === '' ? undefined : Number(price),
           condition: (condition as 'new' | 'used' | 'for_parts') ?? undefined,
+          locationId: locationId ?? undefined,
           isNegotiable,
           attributes: categoryAttributes
             .filter((attr) => attributeValues[attr.id] !== undefined && attributeValues[attr.id] !== '')
@@ -217,6 +227,14 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         <h1 className="text-2xl font-semibold text-gray-900">{listing.title}</h1>
       </div>
       <p className="mb-6 text-xl font-extrabold text-accent-600">{formatPrice(listing.price, listing.currency)}</p>
+
+      {listing.status === 'PENDING_MODERATION' && (
+        <Alert tone="info" title="На модерації" className="mb-4">
+          Оголошення надіслано на розгляд модератору — форма нижче лишається доступною
+          для редагування, це нормально: результат ви побачите тут же, статус зміниться
+          на &quot;Активне&quot; після схвалення.
+        </Alert>
+      )}
 
       {actionError && (
         <Alert tone="danger" title="Помилка" className="mb-4">
@@ -317,6 +335,14 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
               />
               Торг можливий
             </label>
+
+            <Dropdown
+              label="Місто"
+              options={cities.map((c) => ({ value: c.id, label: c.nameUk }))}
+              value={locationId}
+              onChange={setLocationId}
+              placeholder="Не вказано"
+            />
 
             <Dropdown
               label="Стан"

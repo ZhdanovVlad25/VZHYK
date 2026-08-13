@@ -17,6 +17,9 @@ export interface PublicProfile {
   reviewsCount: number | null;
   activeListingsCount: number;
   memberSince: Date;
+  lastActiveAt: Date | null;
+  /** Тільки для авторизованих запитів (users.controller.ts OptionalJwtAuthGuard) — не віддаємо анонімно, щоб номер не збирали скрейпери. */
+  phone: string | null;
 }
 
 /** docs/api.md §3 Users & Profiles. */
@@ -59,7 +62,7 @@ export class ProfilesService {
   }
 
   /** Публічний перегляд — жодних side-effects (не створює Profile-рядок для анонімно переглянутого користувача). */
-  async getPublicProfile(userId: string): Promise<PublicProfile> {
+  async getPublicProfile(userId: string, requesterUserId?: string): Promise<PublicProfile> {
     const user = await this.users.findOne({ where: { id: userId, deletedAt: IsNull() } });
     if (!user) {
       throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'Користувача не знайдено' });
@@ -77,6 +80,8 @@ export class ProfilesService {
       reviewsCount: profile?.reviewsCount ?? null,
       activeListingsCount: profile?.activeListingsCount ?? 0,
       memberSince: user.createdAt,
+      lastActiveAt: user.lastActiveAt ?? null,
+      phone: requesterUserId ? user.phone : null,
     };
   }
 

@@ -1,14 +1,12 @@
 import { ReactNode } from 'react';
+import { Logo } from '../layout/Logo';
 import { Button } from './Button';
 
 /** aria-live="polite" + role="status": screen reader повідомляє про завантаження без переривання. */
 export function LoadingState({ label = 'Завантаження…' }: { label?: string }) {
   return (
-    <div role="status" aria-live="polite" className="flex items-center gap-2 py-6 text-gray-500">
-      <span
-        className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-brand-600"
-        aria-hidden="true"
-      />
+    <div role="status" aria-live="polite" className="flex flex-col items-center gap-2 py-6 text-gray-500">
+      <Logo animated className="h-10 w-10" />
       <span>{label}</span>
     </div>
   );

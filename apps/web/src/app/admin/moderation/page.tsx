@@ -7,6 +7,7 @@ import {
   ApiError,
   decideModerationCase,
   getModerationQueue,
+  listingDetailHref,
   type ModerationCaseStatus,
   type ModerationDecision,
   type ModerationQueueItem,
@@ -135,7 +136,7 @@ export default function ModerationQueuePage() {
                 {item.listing ? (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={`/listings/${item.listing.id}`} className="font-medium text-gray-900 hover:underline">
+                      <Link href={listingDetailHref(item.listing)} className="font-medium text-gray-900 hover:underline">
                         {item.listing.title}
                       </Link>
                       {item.listing.ownerRiskScore > 0 && (

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { useChatContext } from '../chat-context';
 import { ApiError, blockChat, getChatMessages, sendChatMessage, type Message } from '@/lib/api';
-import { Badge, Button, ErrorState, LoadingState } from '@/components/ui';
+import { Avatar, Badge, Button, ErrorState, LoadingState } from '@/components/ui';
 import { ReportButton } from '@/components/shared/ReportButton';
 import { cn } from '@/lib/cn';
 
@@ -150,8 +150,17 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
           <Link href="/chats" className="mb-1 block text-xs text-gray-500 md:hidden">
             ← Усі чати
           </Link>
-          <div className="flex items-center gap-1.5">
-            <span className={cn('h-2 w-2 shrink-0 rounded-full', isOnline ? 'bg-green-500' : 'bg-gray-300')} aria-hidden="true" />
+          <div className="flex items-center gap-2">
+            <div className="relative shrink-0">
+              <Avatar name={chat?.otherDisplayName ?? null} size="sm" />
+              <span
+                className={cn(
+                  'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white',
+                  isOnline ? 'bg-green-500' : 'bg-gray-300',
+                )}
+                aria-hidden="true"
+              />
+            </div>
             <span className="truncate font-medium text-gray-900">{chat?.otherDisplayName ?? 'Чат'}</span>
           </div>
           {chat?.listingId && chat.listingTitle && (
@@ -179,7 +188,7 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-3">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {isLoading ? (
           <LoadingState label="Завантаження повідомлень…" />
         ) : loadError ? (

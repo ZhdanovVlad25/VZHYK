@@ -28,7 +28,7 @@ export function Header() {
   }
 
   return (
-    <header className="border-b border-gray-200 bg-white">
+    <header className="shrink-0 border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
         <Link href="/" className="flex items-center gap-2 font-display text-xl font-extrabold text-brand-700">
           <Logo className="h-7 w-7" />

@@ -1,16 +1,21 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import {
   ApiError,
   getCategoryAttributes,
+  getCities,
   getListing,
   getListingMedia,
+  search,
 } from '@/lib/api';
 import { Badge, Card } from '@/components/ui';
 import { FavoriteButton } from '@/components/listings/FavoriteButton';
 import { StartChatButton } from '@/components/listings/StartChatButton';
+import { SellerPhoneButton } from '@/components/listings/SellerPhoneButton';
 import { OwnerEditLink } from '@/components/listings/OwnerEditLink';
+import { SellerCard } from '@/components/listings/SellerCard';
+import { ListingGallery } from '@/components/listings/ListingGallery';
+import { ListingCard } from '@/components/listings/ListingCard';
 import { ReportButton } from '@/components/shared/ReportButton';
 import { buildListingHref, parseListingIdParam } from '@/lib/slugify';
 import { SITE_URL } from '@/lib/site';
@@ -104,16 +109,25 @@ export default async function ListingDetailPage({
     throw err;
   }
 
-  const [media, categoryAttributes] = await Promise.all([
+  const [media, categoryAttributes, otherListings, cities] = await Promise.all([
     getListingMedia(id).catch(() => []),
     getCategoryAttributes(listing.categoryId).catch(() => []),
+    // Свідомо не фільтруємо за тією самою категорією — ширший показ "інших оголошень"
+    // по всьому маркетплейсу, не лише в межах поточної категорії.
+    search({ sort: 'newest', limit: 9 }, 60)
+      .then((r) => r.items.filter((item) => item.id !== id).slice(0, 8))
+      .catch(() => []),
+    getCities(3600).catch(() => []),
   ]);
+  const cityName = listing.locationId ? cities.find((c) => c.id === listing.locationId)?.nameUk ?? null : null;
 
   const attributeLabelById = new Map(
     categoryAttributes.map((attr) => [attr.id, attr.labelUk]),
   );
   const mainMedia = media.find((m) => m.isMain) ?? media[0];
-  const otherMedia = media.filter((m) => m.id !== mainMedia?.id);
+  const sortedMedia = mainMedia
+    ? [mainMedia, ...media.filter((m) => m.id !== mainMedia.id)]
+    : media;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -143,40 +157,7 @@ export default async function ListingDetailPage({
       <div className="mx-auto max-w-4xl px-4 py-8">
         <div className="grid gap-8 md:grid-cols-2">
           <div>
-            <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
-              {mainMedia ? (
-                <Image
-                  src={mainMedia.url}
-                  alt={listing.title}
-                  fill
-                  priority
-                  sizes="(min-width: 768px) 50vw, 100vw"
-                  className="object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm text-gray-400">
-                  Без фото
-                </div>
-              )}
-            </div>
-            {otherMedia.length > 0 && (
-              <div className="mt-2 grid grid-cols-4 gap-2">
-                {otherMedia.map((m) => (
-                  <div
-                    key={m.id}
-                    className="relative aspect-square w-full overflow-hidden rounded-xl border border-gray-200"
-                  >
-                    <Image
-                      src={m.url}
-                      alt=""
-                      fill
-                      sizes="25vw"
-                      className="object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+            <ListingGallery media={sortedMedia} title={listing.title} />
           </div>
 
           <div>
@@ -209,15 +190,21 @@ export default async function ListingDetailPage({
             {listing.isNegotiable && (
               <p className="mt-1 text-sm text-gray-500">Торг можливий</p>
             )}
+            {cityName && (
+              <p className="mt-1 flex items-center gap-1 text-sm font-medium text-gray-700">{cityName}</p>
+            )}
 
             <div className="mt-4 flex flex-wrap items-start gap-2">
               <StartChatButton
                 listingId={listing.id}
                 ownerId={listing.userId}
               />
+              <SellerPhoneButton sellerId={listing.userId} />
               <OwnerEditLink listingId={listing.id} ownerId={listing.userId} />
               <ReportButton targetType="LISTING" targetId={listing.id} />
             </div>
+
+            <SellerCard sellerId={listing.userId} />
 
             {listing.description && (
               <p className="mt-6 whitespace-pre-wrap text-gray-700">
@@ -247,6 +234,19 @@ export default async function ListingDetailPage({
             )}
           </div>
         </div>
+
+        {otherListings.length > 0 && (
+          <section aria-labelledby="other-listings-heading" className="mt-10">
+            <h2 id="other-listings-heading" className="mb-4 text-lg font-semibold text-gray-900">
+              Інші оголошення
+            </h2>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+              {otherListings.map((item) => (
+                <ListingCard key={item.id} item={item} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </>
   );
