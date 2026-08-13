@@ -15,6 +15,18 @@ import { ReportButton } from '@/components/shared/ReportButton';
 import { buildListingHref, parseListingIdParam } from '@/lib/slugify';
 import { SITE_URL } from '@/lib/site';
 
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Чернетка',
+  PENDING_MODERATION: 'На модерації',
+  ACTIVE: 'Активне',
+  REJECTED: 'Відхилено',
+  RESERVED: 'Зарезервовано',
+  SOLD: 'Продано',
+  EXPIRED: 'Термін минув',
+  ARCHIVED: 'В архіві',
+  BLOCKED: 'Заблоковано',
+};
+
 function formatPrice(price: number | null, currency: string): string {
   if (price === null) {
     return 'Ціна не вказана';
@@ -179,7 +191,7 @@ export default async function ListingDetailPage({
                         : 'warning'
                   }
                 >
-                  {listing.status}
+                  {STATUS_LABELS[listing.status] ?? listing.status}
                 </Badge>
                 <span className="text-sm text-gray-500">
                   {listing.viewsCount} переглядів

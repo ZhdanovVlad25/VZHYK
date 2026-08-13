@@ -79,7 +79,16 @@ export default function FavoritesPage() {
                     {fav.isUnavailable && <Badge tone="danger">Недоступне</Badge>}
                     {!fav.isUnavailable && fav.priceChanged && <Badge tone="warning">Ціна змінилась</Badge>}
                   </div>
-                  <p className="truncate font-medium text-gray-900">{fav.listing.title}</p>
+                  {fav.isUnavailable ? (
+                    <p className="truncate font-medium text-gray-900">{fav.listing.title}</p>
+                  ) : (
+                    <Link
+                      href={`/listings/${fav.listingId}`}
+                      className="block truncate font-medium text-gray-900 hover:text-brand-700 hover:underline"
+                    >
+                      {fav.listing.title}
+                    </Link>
+                  )}
                   <p className="text-sm text-gray-600">{formatPrice(fav.listing.price, fav.listing.currency)}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">

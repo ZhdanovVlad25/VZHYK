@@ -32,6 +32,18 @@ const LISTING_TYPE_OPTIONS: { value: ListingType; label: string }[] = [
 
 const NOT_EDITABLE_STATUSES = ['SOLD', 'ARCHIVED', 'BLOCKED'];
 
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Чернетка',
+  PENDING_MODERATION: 'На модерації',
+  ACTIVE: 'Активне',
+  REJECTED: 'Відхилено',
+  RESERVED: 'Зарезервовано',
+  SOLD: 'Продано',
+  EXPIRED: 'Термін минув',
+  ARCHIVED: 'В архіві',
+  BLOCKED: 'Заблоковано',
+};
+
 function formatPrice(price: number | null, currency: string): string {
   if (price === null) return 'Ціна не вказана';
   return new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
@@ -200,7 +212,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="mb-4 flex items-center gap-2">
         <Badge tone={listing.status === 'DRAFT' ? 'neutral' : listing.status === 'ACTIVE' ? 'success' : 'warning'}>
-          {listing.status}
+          {STATUS_LABELS[listing.status] ?? listing.status}
         </Badge>
         <h1 className="text-2xl font-semibold text-gray-900">{listing.title}</h1>
       </div>
@@ -225,15 +237,25 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
             />
           ))}
         </div>
+        {/* Нативна кнопка file-інпуту показує текст мовою браузера (не контролюється CSS/HTML) —
+            ховаємо сам input і керуємо вибором файлу через стилізовану кнопку сторінки. */}
         <input
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
           onChange={handleFileSelected}
           disabled={isUploading}
-          className="text-sm"
+          className="sr-only"
         />
-        {isUploading && <p className="mt-1 text-sm text-gray-500">Завантаження…</p>}
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          isLoading={isUploading}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          Додати фото
+        </Button>
       </Card>
 
       {!isEditable ? (

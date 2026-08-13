@@ -227,6 +227,32 @@ export function getPublicProfile(userId: string): Promise<PublicProfile> {
   return apiFetch(`/users/${userId}/public-profile`);
 }
 
+export interface MyProfile {
+  id: string;
+  userId: string;
+  displayName: string | null;
+  username: string | null;
+  avatarMediaId: string | null;
+  cityLocationId: string | null;
+  bio: string | null;
+}
+
+export function getMyProfile(token: string): Promise<MyProfile> {
+  return apiFetch('/profiles/me', { token });
+}
+
+export interface UpdateProfileDto {
+  displayName?: string;
+  username?: string;
+  cityLocationId?: string;
+  bio?: string;
+  avatarMediaId?: string;
+}
+
+export function updateProfile(dto: UpdateProfileDto, token: string): Promise<MyProfile> {
+  return apiFetch('/profiles/me', { method: 'PATCH', body: dto, token });
+}
+
 export function getListingMedia(id: string): Promise<Media[]> {
   return apiFetch(`/listings/${id}/media`);
 }
@@ -314,6 +340,10 @@ export function getMyListings(
 ): Promise<Listing[]> {
   const qs = status ? `?status=${status}` : '';
   return apiFetch(`/profiles/me/listings${qs}`, { token });
+}
+
+export function deleteListing(id: string, token: string): Promise<void> {
+  return apiFetch(`/listings/${id}`, { method: 'DELETE', token });
 }
 
 // ---- Favorites ----

@@ -2,13 +2,22 @@
 
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { cn } from '@/lib/cn';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
+import { Logo } from './Logo';
+
+const navLinkClass = (isActive: boolean) =>
+  cn(
+    'rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors',
+    isActive ? 'bg-brand-100 text-brand-700' : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600',
+  );
 
 export function Header() {
   const router = useRouter();
-  const { user, isLoading, logout } = useAuth();
+  const pathname = usePathname();
+  const { user, isLoading, displayName, logout } = useAuth();
   const [q, setQ] = useState('');
 
   function handleSearch(e: FormEvent) {
@@ -22,12 +31,7 @@ export function Header() {
     <header className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
         <Link href="/" className="flex items-center gap-2 font-display text-xl font-extrabold text-brand-700">
-          <span
-            className="flex h-7 w-7 items-center justify-center rounded-lg bg-highlight-400 text-sm font-extrabold text-highlight-900"
-            aria-hidden="true"
-          >
-            В
-          </span>
+          <Logo className="h-7 w-7" />
           Вжик
         </Link>
 
@@ -56,48 +60,48 @@ export function Header() {
                   + Додати оголошення
                 </Button>
               </Link>
-              <Link href="/my-listings" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+              <Link href="/my-listings" className={navLinkClass(pathname?.startsWith('/my-listings') ?? false)}>
                 Мої оголошення
               </Link>
-              <Link href="/chats" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+              <Link href="/chats" className={navLinkClass(pathname?.startsWith('/chats') ?? false)}>
                 Повідомлення
               </Link>
-              <Link href="/favorites" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+              <Link href="/favorites" className={navLinkClass(pathname?.startsWith('/favorites') ?? false)}>
                 Обране
               </Link>
-              <Link href="/saved-searches" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+              <Link href="/saved-searches" className={navLinkClass(pathname?.startsWith('/saved-searches') ?? false)}>
                 Збережені пошуки
               </Link>
               {(user.role === 'moderator' || user.role === 'admin') && (
                 <>
-                  <Link href="/admin/moderation" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                  <Link href="/admin/moderation" className={navLinkClass(pathname?.startsWith('/admin/moderation') ?? false)}>
                     Модерація
                   </Link>
-                  <Link href="/admin/reports" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                  <Link href="/admin/reports" className={navLinkClass(pathname?.startsWith('/admin/reports') ?? false)}>
                     Скарги
                   </Link>
                 </>
               )}
               {user.role === 'admin' && (
                 <>
-                  <Link href="/admin/dashboard" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                  <Link href="/admin/dashboard" className={navLinkClass(pathname?.startsWith('/admin/dashboard') ?? false)}>
                     Дашборд
                   </Link>
-                  <Link href="/admin/listings" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                  <Link href="/admin/listings" className={navLinkClass(pathname?.startsWith('/admin/listings') ?? false)}>
                     Оголошення (адмін)
                   </Link>
-                  <Link href="/admin/categories" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                  <Link href="/admin/categories" className={navLinkClass(pathname?.startsWith('/admin/categories') ?? false)}>
                     Категорії
                   </Link>
-                  <Link href="/admin/users" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                  <Link href="/admin/users" className={navLinkClass(pathname?.startsWith('/admin/users') ?? false)}>
                     Користувачі
                   </Link>
-                  <Link href="/admin/audit-log" className="text-sm font-medium text-gray-700 hover:text-brand-600">
+                  <Link href="/admin/audit-log" className={navLinkClass(pathname?.startsWith('/admin/audit-log') ?? false)}>
                     Журнал дій
                   </Link>
                 </>
               )}
-              <span className="text-sm text-gray-600">{user.phone}</span>
+              <span className="text-sm text-gray-600">{displayName ?? user.phone}</span>
               <Button variant="ghost" size="sm" onClick={logout}>
                 Вийти
               </Button>

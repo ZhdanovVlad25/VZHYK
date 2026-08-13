@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <defs>
+    <clipPath id="vzhyk-icon-clip">
+      <rect x="0" y="0" width="200" height="200" rx="40" />
+    </clipPath>
+  </defs>
+  <rect x="0" y="0" width="200" height="200" rx="40" fill="#238A80" />
+  <rect x="25" y="45" width="70" height="70" rx="16" fill="#F0C94A" />
+  <rect x="105" y="45" width="70" height="70" rx="16" fill="#F0C94A" />
+  <circle cx="65" cy="90" r="14" fill="#1A1A1A" />
+  <circle cx="61" cy="86" r="3" fill="#FFFFFF" />
+  <circle cx="135" cy="90" r="14" fill="#1A1A1A" />
+  <circle cx="131" cy="86" r="3" fill="#FFFFFF" />
+  <ellipse cx="100" cy="140" rx="16" ry="10" fill="#1A1A1A" />
+  <circle cx="94" cy="136" r="3" fill="#FFFFFF" />
+  <rect x="0" y="170" width="200" height="14" fill="#E13B32" clip-path="url(#vzhyk-icon-clip)" />
+  <rect x="0" y="184" width="200" height="16" fill="#9B241D" clip-path="url(#vzhyk-icon-clip)" />
+</svg>

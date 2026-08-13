@@ -4,9 +4,9 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, Form, Input, Alert } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
-import { ApiError } from '@/lib/api';
+import { ApiError, updateProfile } from '@/lib/api';
 
-type Step = 'phone' | 'code';
+type Step = 'phone' | 'code' | 'name';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -22,11 +22,12 @@ function handleGoogleLogin() {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { requestOtp, verifyOtp } = useAuth();
+  const { requestOtp, verifyOtp, accessToken, setDisplayName } = useAuth();
 
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('+380');
   const [code, setCode] = useState('');
+  const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -61,10 +62,31 @@ export default function LoginPage() {
     setError(null);
     setIsSubmitting(true);
     try {
-      await verifyOtp(phone, code);
-      router.push('/');
+      const { needsName } = await verifyOtp(phone, code);
+      if (needsName) {
+        setStep('name');
+      } else {
+        router.push('/');
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не вдалося підтвердити код. Спробуйте ще раз.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleSaveName(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      if (accessToken && name.trim()) {
+        await updateProfile({ displayName: name.trim() }, accessToken);
+        setDisplayName(name.trim());
+      }
+      router.push('/');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Не вдалося зберегти ім'я. Спробуйте ще раз.");
     } finally {
       setIsSubmitting(false);
     }
@@ -141,6 +163,27 @@ export default function LoginPage() {
                 Змінити номер
               </Button>
             </div>
+          </Form>
+        )}
+
+        {step === 'name' && (
+          <Form ariaLabel="Ваше ім'я" onSubmit={handleSaveName}>
+            <p className="text-sm text-gray-600">
+              Як до вас звертатися? Ім&apos;я буде видно іншим замість номера телефону.
+            </p>
+            <Input
+              label="Ім'я"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Наприклад, Олена"
+              autoFocus
+            />
+            <Button type="submit" isLoading={isSubmitting}>
+              Продовжити
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => router.push('/')}>
+              Пропустити
+            </Button>
           </Form>
         )}
       </Card>
