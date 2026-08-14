@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 
 /** docs/api.md §4 Categories & Attributes — публічні read-endpoints. */
@@ -9,6 +9,12 @@ export class CategoriesController {
   @Get()
   tree() {
     return this.categories.findTree();
+  }
+
+  // Статичний шлях має йти перед ':slug', інакше Express зловить "suggest" як slug.
+  @Get('suggest')
+  suggest(@Query('title') title?: string) {
+    return this.categories.suggest(title ?? '');
   }
 
   @Get(':slug')

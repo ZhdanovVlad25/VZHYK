@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { Logo } from './Logo';
+import { ProfileMenu } from './ProfileMenu';
 
 const navLinkClass = (isActive: boolean) =>
   cn(
@@ -17,7 +18,7 @@ const navLinkClass = (isActive: boolean) =>
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isLoading, displayName, logout } = useAuth();
+  const { user, isLoading } = useAuth();
   const [q, setQ] = useState('');
 
   function handleSearch(e: FormEvent) {
@@ -53,25 +54,14 @@ export function Header() {
         </form>
 
         <nav className="flex items-center gap-3">
+          {/* Завжди видима, навіть анонімним — /listings/new сама показує "увійдіть" з лінком на /login, якщо юзера нема. */}
+          <Link href="/listings/new">
+            <Button variant="accent" size="sm">
+              + Додати оголошення
+            </Button>
+          </Link>
           {isLoading ? null : user ? (
             <>
-              <Link href="/listings/new">
-                <Button variant="accent" size="sm">
-                  + Додати оголошення
-                </Button>
-              </Link>
-              <Link href="/my-listings" className={navLinkClass(pathname?.startsWith('/my-listings') ?? false)}>
-                Мої оголошення
-              </Link>
-              <Link href="/chats" className={navLinkClass(pathname?.startsWith('/chats') ?? false)}>
-                Повідомлення
-              </Link>
-              <Link href="/favorites" className={navLinkClass(pathname?.startsWith('/favorites') ?? false)}>
-                Обране
-              </Link>
-              <Link href="/saved-searches" className={navLinkClass(pathname?.startsWith('/saved-searches') ?? false)}>
-                Збережені пошуки
-              </Link>
               {(user.role === 'moderator' || user.role === 'admin') && (
                 <>
                   <Link href="/admin/moderation" className={navLinkClass(pathname?.startsWith('/admin/moderation') ?? false)}>
@@ -101,10 +91,7 @@ export function Header() {
                   </Link>
                 </>
               )}
-              <span className="text-sm text-gray-600">{displayName ?? user.phone}</span>
-              <Button variant="ghost" size="sm" onClick={logout}>
-                Вийти
-              </Button>
+              <ProfileMenu />
             </>
           ) : (
             <Link href="/login">

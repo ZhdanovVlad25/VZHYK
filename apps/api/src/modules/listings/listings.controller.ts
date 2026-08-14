@@ -55,12 +55,12 @@ export class ListingsController {
   @Get(':id')
   @UseGuards(OptionalJwtAuthGuard)
   findOne(@CurrentUser() user: AuthenticatedUser | undefined, @Param('id') id: string) {
-    return this.listings.findVisible(id, user?.id);
+    return this.listings.findVisible(id, user?.id, user?.role);
   }
 
   @Get(':id/price-history')
   @UseGuards(OptionalJwtAuthGuard)
   priceHistory(@CurrentUser() user: AuthenticatedUser | undefined, @Param('id') id: string) {
-    return this.listings.getPriceHistory(id, user?.id);
+    return this.listings.getPriceHistory(id, user?.id, user?.role);
   }
 }

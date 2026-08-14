@@ -13,6 +13,7 @@ import {
   type ModerationQueueItem,
 } from '@/lib/api';
 import { Badge, Button, Dropdown, EmptyState, ErrorState, LoadingState, type BadgeTone } from '@/components/ui';
+import { formatPrice } from '@/lib/format';
 
 const STATUS_LABELS: Record<ModerationCaseStatus, string> = {
   PENDING: 'Очікує',
@@ -32,11 +33,6 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'ALL', label: 'Усі' },
   ...(Object.keys(STATUS_LABELS) as ModerationCaseStatus[]).map((s) => ({ value: s, label: STATUS_LABELS[s] })),
 ];
-
-function formatPrice(price: number | null, currency: string): string {
-  if (price === null) return 'Ціна не вказана';
-  return new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
-}
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(

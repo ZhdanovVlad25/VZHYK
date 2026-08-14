@@ -6,9 +6,10 @@ import { Location } from '../location/location.entity';
 import { ProfilesService } from './profiles.service';
 import { ProfilesController } from './profiles.controller';
 import { ListingsModule } from '../listings/listings.module';
+import { MediaModule } from '../media/media.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Profile, User, Location]), ListingsModule],
+  imports: [TypeOrmModule.forFeature([Profile, User, Location]), ListingsModule, MediaModule],
   controllers: [ProfilesController],
   providers: [ProfilesService],
   exports: [ProfilesService],

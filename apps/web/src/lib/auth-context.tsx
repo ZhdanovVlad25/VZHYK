@@ -17,12 +17,14 @@ interface StoredAuth {
   refreshToken: string;
   user: AuthUser;
   displayName: string | null;
+  avatarUrl: string | null;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
   accessToken: string | null;
   displayName: string | null;
+  avatarUrl: string | null;
   isLoading: boolean;
   requestOtp: (phone: string) => Promise<void>;
   /** Повертає true, якщо профіль ще без імені — сторінка логіну показує додатковий крок. */
@@ -30,6 +32,7 @@ interface AuthContextValue {
   /** Google OAuth callback віддає лише токени в query — user підвантажується окремо через GET /auth/me. */
   loginWithTokens: (accessToken: string, refreshToken: string) => Promise<void>;
   setDisplayName: (name: string) => void;
+  setAvatarUrl: (url: string | null) => void;
   logout: () => void;
 }
 
@@ -69,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshToken: tokens.refreshToken,
       user: tokens.user,
       displayName: profile?.displayName ?? null,
+      avatarUrl: profile?.avatarUrl ?? null,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
     setAuth(stored);
@@ -83,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshToken,
       user: { id: me.id, role: me.role, phone: me.phone },
       displayName: profile?.displayName ?? null,
+      avatarUrl: profile?.avatarUrl ?? null,
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
     setAuth(stored);
@@ -92,6 +97,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuth((prev) => {
       if (!prev) return prev;
       const next = { ...prev, displayName: name };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const setAvatarUrl = useCallback((url: string | null) => {
+    setAuth((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, avatarUrl: url };
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
@@ -112,14 +126,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: auth?.user ?? null,
       accessToken: auth?.accessToken ?? null,
       displayName: auth?.displayName ?? null,
+      avatarUrl: auth?.avatarUrl ?? null,
       isLoading,
       requestOtp,
       verifyOtp,
       loginWithTokens,
       setDisplayName,
+      setAvatarUrl,
       logout,
     }),
-    [auth, isLoading, requestOtp, verifyOtp, loginWithTokens, setDisplayName, logout],
+    [auth, isLoading, requestOtp, verifyOtp, loginWithTokens, setDisplayName, setAvatarUrl, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

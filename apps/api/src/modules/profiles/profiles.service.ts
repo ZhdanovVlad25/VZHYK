@@ -5,12 +5,14 @@ import { Profile } from './profile.entity';
 import { User } from '../users/user.entity';
 import { Location } from '../location/location.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { MediaService } from '../media/media.service';
 
 export interface PublicProfile {
   userId: string;
   displayName: string | null;
   username: string | null;
   avatarMediaId: string | null;
+  avatarUrl: string | null;
   cityLocationId: string | null;
   bio: string | null;
   rating: number | null;
@@ -22,6 +24,10 @@ export interface PublicProfile {
   phone: string | null;
 }
 
+export interface MyProfileView extends Profile {
+  avatarUrl: string | null;
+}
+
 /** docs/api.md §3 Users & Profiles. */
 @Injectable()
 export class ProfilesService {
@@ -29,6 +35,7 @@ export class ProfilesService {
     @InjectRepository(Profile) private readonly profiles: Repository<Profile>,
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Location) private readonly locations: Repository<Location>,
+    private readonly media: MediaService,
   ) {}
 
   /** Профіль не створюється при реєстрації (Profiles module ще не існував у Phase 1) — lazy-create при першому зверненні. */
@@ -61,6 +68,37 @@ export class ProfilesService {
     return this.profiles.save(profile);
   }
 
+  /** Контролер завжди хоче й підписаний URL, не лише сирий avatarMediaId. */
+  async getOwnView(userId: string): Promise<MyProfileView> {
+    const profile = await this.getOrCreateOwn(userId);
+    const avatarUrl = await this.media.getUrlById(profile.avatarMediaId);
+    return { ...profile, avatarUrl };
+  }
+
+  async updateOwnView(userId: string, dto: UpdateProfileDto): Promise<MyProfileView> {
+    const profile = await this.updateOwn(userId, dto);
+    const avatarUrl = await this.media.getUrlById(profile.avatarMediaId);
+    return { ...profile, avatarUrl };
+  }
+
+  /**
+   * Завантаження/заміна фото профілю — media.entity.ts дозволяє listingId: null саме для
+   * такого standalone-медіа (раніше не було жодного UI, лише поле avatarMediaId без флоу).
+   * Стару аватарку видаляємо зі storage, щоб не накопичувати сирітські об'єкти.
+   */
+  async updateAvatar(userId: string, file: Express.Multer.File | undefined): Promise<MyProfileView> {
+    const profile = await this.getOrCreateOwn(userId);
+    const uploaded = await this.media.uploadStandalone(userId, 'avatars', file);
+
+    if (profile.avatarMediaId) {
+      await this.media.removeOwned(userId, profile.avatarMediaId).catch(() => undefined);
+    }
+
+    profile.avatarMediaId = uploaded.id;
+    const saved = await this.profiles.save(profile);
+    return { ...saved, avatarUrl: uploaded.url };
+  }
+
   /** Публічний перегляд — жодних side-effects (не створює Profile-рядок для анонімно переглянутого користувача). */
   async getPublicProfile(userId: string, requesterUserId?: string): Promise<PublicProfile> {
     const user = await this.users.findOne({ where: { id: userId, deletedAt: IsNull() } });
@@ -74,6 +112,7 @@ export class ProfilesService {
       displayName: profile?.displayName ?? null,
       username: profile?.username ?? null,
       avatarMediaId: profile?.avatarMediaId ?? null,
+      avatarUrl: await this.media.getUrlById(profile?.avatarMediaId ?? null),
       cityLocationId: profile?.cityLocationId ?? null,
       bio: profile?.bio ?? null,
       rating: profile?.rating ?? null,

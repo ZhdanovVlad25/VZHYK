@@ -189,8 +189,12 @@ export class ListingsService {
     await this.search.remove(id);
   }
 
-  async findVisible(id: string, requesterUserId?: string): Promise<Listing & { attributes: ListingAttributeValue[] }> {
-    const { listing } = await this.getVisibleOrThrow(id, requesterUserId);
+  async findVisible(
+    id: string,
+    requesterUserId?: string,
+    requesterRole?: string,
+  ): Promise<Listing & { attributes: ListingAttributeValue[] }> {
+    const { listing } = await this.getVisibleOrThrow(id, requesterUserId, requesterRole);
     const isOwner = Boolean(requesterUserId) && listing.userId === requesterUserId;
 
     const attributes = await this.attributeValues.find({ where: { listingId: id } });
@@ -204,19 +208,26 @@ export class ListingsService {
   }
 
   /** Не в docs/api.md буквально, але той самий "sibling resource" патерн, що й /listings/:id/media. */
-  async getPriceHistory(id: string, requesterUserId?: string): Promise<PriceHistory[]> {
-    await this.getVisibleOrThrow(id, requesterUserId);
+  async getPriceHistory(id: string, requesterUserId?: string, requesterRole?: string): Promise<PriceHistory[]> {
+    await this.getVisibleOrThrow(id, requesterUserId, requesterRole);
     return this.priceHistory.find({ where: { listingId: id }, order: { changedAt: 'DESC' } });
   }
 
-  private async getVisibleOrThrow(id: string, requesterUserId?: string): Promise<{ listing: Listing; isOwner: boolean }> {
+  private async getVisibleOrThrow(
+    id: string,
+    requesterUserId?: string,
+    requesterRole?: string,
+  ): Promise<{ listing: Listing; isOwner: boolean }> {
     const listing = await this.listings.findOne({ where: { id, deletedAt: IsNull() } });
     if (!listing) {
       throw new NotFoundException({ code: 'LISTING_NOT_FOUND', message: 'Оголошення не знайдено' });
     }
 
     const isOwner = Boolean(requesterUserId) && listing.userId === requesterUserId;
-    if (!isOwner && !PUBLICLY_VISIBLE_LISTING_STATUSES.includes(listing.status)) {
+    // Модератор/адмін мусить бачити оголошення на розгляді ще ДО схвалення (docs/moderation.md §4) —
+    // інакше рішення "Схвалити"/"Відхилити" приймається наосліп, без перегляду фото/опису.
+    const isModerator = requesterRole === 'admin' || requesterRole === 'moderator';
+    if (!isOwner && !isModerator && !PUBLICLY_VISIBLE_LISTING_STATUSES.includes(listing.status)) {
       // Не розкриваємо існування чужих чернеток/заблокованих оголошень.
       throw new NotFoundException({ code: 'LISTING_NOT_FOUND', message: 'Оголошення не знайдено' });
     }

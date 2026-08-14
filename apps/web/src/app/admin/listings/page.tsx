@@ -23,6 +23,7 @@ import {
   Modal,
   type BadgeTone,
 } from '@/components/ui';
+import { formatPrice } from '@/lib/format';
 
 const STATUS_LABELS: Record<ListingStatus, string> = {
   DRAFT: 'Чернетка',
@@ -58,11 +59,6 @@ const CURRENCY_OPTIONS = [
   { value: 'USD', label: 'USD' },
   { value: 'EUR', label: 'EUR' },
 ];
-
-function formatPrice(price: number | null, currency: string): string {
-  if (price === null) return 'Ціна не вказана';
-  return new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
-}
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso));

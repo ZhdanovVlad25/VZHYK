@@ -25,3 +25,13 @@ h2,
 h3 {
   font-family: var(--font-unbounded), ui-sans-serif, system-ui, sans-serif;
 }
+
+/* Горизонтальні карусельки (ListingCarousel.tsx) — навігація крапками замість
+   штатного скролбару, який тут лише шум поряд із крапками. */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

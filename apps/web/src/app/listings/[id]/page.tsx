@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   ApiError,
@@ -15,10 +16,11 @@ import { SellerPhoneButton } from '@/components/listings/SellerPhoneButton';
 import { OwnerEditLink } from '@/components/listings/OwnerEditLink';
 import { SellerCard } from '@/components/listings/SellerCard';
 import { ListingGallery } from '@/components/listings/ListingGallery';
-import { ListingCard } from '@/components/listings/ListingCard';
+import { ListingCarousel } from '@/components/listings/ListingCarousel';
 import { ReportButton } from '@/components/shared/ReportButton';
 import { buildListingHref, parseListingIdParam } from '@/lib/slugify';
 import { SITE_URL } from '@/lib/site';
+import { formatPrice } from '@/lib/format';
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Чернетка',
@@ -31,17 +33,6 @@ const STATUS_LABELS: Record<string, string> = {
   ARCHIVED: 'В архіві',
   BLOCKED: 'Заблоковано',
 };
-
-function formatPrice(price: number | null, currency: string): string {
-  if (price === null) {
-    return 'Ціна не вказана';
-  }
-  return new Intl.NumberFormat('uk-UA', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(price);
-}
 
 function formatAttributeValue(value: unknown): string {
   if (typeof value === 'boolean') return value ? 'Так' : 'Ні';
@@ -109,9 +100,12 @@ export default async function ListingDetailPage({
     throw err;
   }
 
-  const [media, categoryAttributes, otherListings, cities] = await Promise.all([
+  const [media, categoryAttributes, sellerListings, otherListings, cities] = await Promise.all([
     getListingMedia(id).catch(() => []),
     getCategoryAttributes(listing.categoryId).catch(() => []),
+    search({ seller: listing.userId, sort: 'newest', limit: 9 }, 60)
+      .then((r) => r.items.filter((item) => item.id !== id).slice(0, 8))
+      .catch(() => []),
     // Свідомо не фільтруємо за тією самою категорією — ширший показ "інших оголошень"
     // по всьому маркетплейсу, не лише в межах поточної категорії.
     search({ sort: 'newest', limit: 9 }, 60)
@@ -235,16 +229,26 @@ export default async function ListingDetailPage({
           </div>
         </div>
 
+        {sellerListings.length > 0 && (
+          <section aria-labelledby="seller-listings-heading" className="mt-10">
+            <div className="mb-4 flex items-center gap-3">
+              <h2 id="seller-listings-heading" className="text-lg font-semibold text-gray-900">
+                Усі оголошення автора
+              </h2>
+              <Link href={`/search?seller=${listing.userId}`} className="text-sm text-brand-600 hover:underline">
+                Дивитися всі →
+              </Link>
+            </div>
+            <ListingCarousel items={sellerListings} />
+          </section>
+        )}
+
         {otherListings.length > 0 && (
           <section aria-labelledby="other-listings-heading" className="mt-10">
             <h2 id="other-listings-heading" className="mb-4 text-lg font-semibold text-gray-900">
               Інші оголошення
             </h2>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-              {otherListings.map((item) => (
-                <ListingCard key={item.id} item={item} />
-              ))}
-            </div>
+            <ListingCarousel items={otherListings} />
           </section>
         )}
       </div>

@@ -59,6 +59,52 @@ export class MediaService {
     return Promise.all(items.map(async (item) => ({ ...item, url: await this.storage.getSignedUrl(item.storageKey) })));
   }
 
+  /**
+   * Медіа поза оголошенням (аватарки профілю) — той самий upload pipeline (whitelist +
+   * magic bytes), але без findOwnedListing (listingId: null, media.entity.ts §17 це
+   * навмисно дозволяє). keyPrefix розділяє простір ключів у storage (avatars/... vs listings/...).
+   */
+  async uploadStandalone(userId: string, keyPrefix: string, file: Express.Multer.File | undefined): Promise<Media & { url: string }> {
+    this.assertValidImage(file);
+    const validFile = file as Express.Multer.File;
+
+    const key = `${keyPrefix}/${userId}/${randomUUID()}.${extensionForMimeType(validFile.mimetype)}`;
+    const stored = await this.storage.upload(validFile.buffer, {
+      key,
+      mimeType: validFile.mimetype,
+      sizeBytes: validFile.size,
+    });
+
+    const saved = await this.media.save(
+      this.media.create({
+        listingId: null,
+        ownerUserId: userId,
+        storageKey: key,
+        mimeType: validFile.mimetype,
+        sizeBytes: validFile.size,
+        isMain: true,
+        sortOrder: 0,
+      }),
+    );
+
+    return { ...saved, url: stored.url };
+  }
+
+  /** Видалення власного standalone-медіа (аватарка при заміні) — м'яко ігнорує відсутній рядок. */
+  async removeOwned(userId: string, mediaId: string): Promise<void> {
+    const item = await this.media.findOne({ where: { id: mediaId, ownerUserId: userId } });
+    if (!item) return;
+    await this.storage.delete(item.storageKey);
+    await this.media.remove(item);
+  }
+
+  async getUrlById(mediaId: string | null): Promise<string | null> {
+    if (!mediaId) return null;
+    const item = await this.media.findOne({ where: { id: mediaId } });
+    if (!item) return null;
+    return this.storage.getSignedUrl(item.storageKey);
+  }
+
   async update(userId: string, listingId: string, mediaId: string, dto: UpdateMediaDto): Promise<Media & { url: string }> {
     await this.listings.findOwnedListing(userId, listingId);
     const item = await this.getOwnedMediaOrThrow(listingId, mediaId);

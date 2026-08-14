@@ -1,7 +1,10 @@
-import { Body, Controller, Get, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { ProfilesService } from './profiles.service';
 import { ListingsService } from '../listings/listings.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { MAX_MEDIA_SIZE_BYTES } from '../media/media.service';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 
@@ -16,12 +19,18 @@ export class ProfilesController {
 
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
-    return this.profiles.getOrCreateOwn(user.id);
+    return this.profiles.getOwnView(user.id);
   }
 
   @Patch('me')
   updateMe(@CurrentUser() user: AuthenticatedUser, @Body() dto: UpdateProfileDto) {
-    return this.profiles.updateOwn(user.id, dto);
+    return this.profiles.updateOwnView(user.id, dto);
+  }
+
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_MEDIA_SIZE_BYTES } }))
+  uploadAvatar(@CurrentUser() user: AuthenticatedUser, @UploadedFile() file: Express.Multer.File | undefined) {
+    return this.profiles.updateAvatar(user.id, file);
   }
 
   @Get('me/listings')

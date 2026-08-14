@@ -142,7 +142,7 @@ function SearchPageContent() {
         <EmptyState title="Нічого не знайдено" description="Спробуйте змінити запит або фільтри." />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
             {items.map((item) => (
               <ListingCard key={item.id} item={item} />
             ))}

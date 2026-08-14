@@ -7,6 +7,7 @@ import { CategoryAttribute } from '../attributes/category-attribute.entity';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { REDIS_CLIENT } from '../../providers/redis.provider';
+import { CATEGORY_KEYWORDS } from './category-keywords';
 
 const TREE_CACHE_KEY = 'categories:tree';
 const TREE_CACHE_TTL_SECONDS = 60;
@@ -14,8 +15,41 @@ const TREE_CACHE_TTL_SECONDS = 60;
 /** 0 = root (Category), 1 = Subcategory, 2 = Sub-subcategory — docs/categories.md §1 */
 const MAX_LEVEL = 2;
 
+/** Коротші заголовки не дають достатньо сигналу для ключових слів — уникнути шуму. */
+const SUGGEST_MIN_LENGTH = 3;
+
 export interface CategoryTreeNode extends Category {
   children: CategoryTreeNode[];
+}
+
+export interface CategorySuggestion {
+  topCategoryId: string;
+  topCategoryName: string;
+  subCategoryId: string | null;
+  subCategoryName: string | null;
+}
+
+function normalizeTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/['’ʼ]/g, '')
+    .replace(/[^a-zа-яіїєґ0-9\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Сума довжин збіглих основ — довші/специфічніші ключові слова важать більше. */
+function scoreMatch(normalizedTitle: string, stems: string[]): number {
+  const words = normalizedTitle.split(' ');
+  let score = 0;
+  for (const stem of stems) {
+    if (stem.includes(' ')) {
+      if (normalizedTitle.includes(stem)) score += stem.length;
+    } else if (words.some((word) => word.startsWith(stem))) {
+      score += stem.length;
+    }
+  }
+  return score;
 }
 
 /**
@@ -69,6 +103,63 @@ export class CategoriesService {
       }
     }
     return roots;
+  }
+
+  /**
+   * Підказує категорію/підкатегорію за назвою оголошення (ключові слова, не ML — docs
+   * не описують точнішого підходу, а датасет для навчання класифікатора відсутній).
+   * Користувач лише підтверджує підказку, тож хибне спрацювання не ламає флоу — воно
+   * просто не з'являється (score === 0 → null).
+   */
+  async suggest(rawTitle: string): Promise<CategorySuggestion | null> {
+    const normalized = normalizeTitle(rawTitle);
+    if (normalized.length < SUGGEST_MIN_LENGTH) {
+      return null;
+    }
+
+    const tree = await this.findTree();
+    const flat: CategoryTreeNode[] = [];
+    const collect = (nodes: CategoryTreeNode[]) => {
+      for (const node of nodes) {
+        flat.push(node);
+        collect(node.children);
+      }
+    };
+    collect(tree);
+
+    const bySlug = new Map(flat.map((c) => [c.slug, c]));
+    const byId = new Map(flat.map((c) => [c.id, c]));
+
+    let best: { category: CategoryTreeNode; score: number } | null = null;
+    for (const [slug, stems] of Object.entries(CATEGORY_KEYWORDS)) {
+      const category = bySlug.get(slug);
+      if (!category) continue;
+      const score = scoreMatch(normalized, stems);
+      if (score > 0 && (!best || score > best.score)) {
+        best = { category, score };
+      }
+    }
+    if (!best) {
+      return null;
+    }
+
+    const matched = best.category;
+    if (matched.parentId) {
+      const parent = byId.get(matched.parentId);
+      if (!parent) return null;
+      return {
+        topCategoryId: parent.id,
+        topCategoryName: parent.nameUk,
+        subCategoryId: matched.id,
+        subCategoryName: matched.nameUk,
+      };
+    }
+    return {
+      topCategoryId: matched.id,
+      topCategoryName: matched.nameUk,
+      subCategoryId: null,
+      subCategoryName: null,
+    };
   }
 
   async findBySlug(slug: string) {

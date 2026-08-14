@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -22,6 +23,7 @@ import {
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
 import { Alert, Badge, Button, Card, Dropdown, ErrorState, Form, Input, LoadingState } from '@/components/ui';
+import { formatPrice } from '@/lib/format';
 
 const LISTING_TYPE_OPTIONS: { value: ListingType; label: string }[] = [
   { value: 'sell', label: 'Продаю' },
@@ -45,11 +47,6 @@ const STATUS_LABELS: Record<string, string> = {
   ARCHIVED: 'В архіві',
   BLOCKED: 'Заблоковано',
 };
-
-function formatPrice(price: number | null, currency: string): string {
-  if (price === null) return 'Ціна не вказана';
-  return new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
-}
 
 function findCategoryLabel(categories: Category[], id: string, prefix = ''): string | null {
   for (const c of categories) {
@@ -133,6 +130,10 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   }, []);
 
   const isEditable = useMemo(() => (listing ? !NOT_EDITABLE_STATUSES.includes(listing.status) : false), [listing]);
+  // Бекенд (findVisible) тепер пускає сюди й модератора/адміна на чуже оголошення, що ще не
+  // на публічному статусі (docs/moderation.md §4 — треба бачити зміст ДО рішення в черзі).
+  // Це не власник, тож форма редагування недоречна — лише перегляд, без Save/Publish/Upload.
+  const isOwner = Boolean(user) && Boolean(listing) && listing?.userId === user?.id;
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -216,6 +217,86 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
 
   if (loadError || !listing) {
     return <ErrorState description={loadError ?? 'Оголошення не знайдено'} onRetry={load} />;
+  }
+
+  if (!isOwner) {
+    const cityName = locationId ? cities.find((c) => c.id === locationId)?.nameUk ?? null : null;
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-8">
+        <div className="mb-2 flex items-center gap-2">
+          <Badge tone={listing.status === 'DRAFT' ? 'neutral' : listing.status === 'ACTIVE' ? 'success' : 'warning'}>
+            {STATUS_LABELS[listing.status] ?? listing.status}
+          </Badge>
+          <h1 className="text-2xl font-semibold text-gray-900">{listing.title}</h1>
+        </div>
+        <p className="mb-4 text-xl font-extrabold text-accent-600">{formatPrice(listing.price, listing.currency)}</p>
+
+        <Alert tone="info" title="Перегляд для модерації" className="mb-4">
+          Це чуже оголошення — доступний лише перегляд перед рішенням у черзі модерації,
+          редагування недоступне.
+        </Alert>
+
+        {media.length > 0 && (
+          <Card className="mb-4">
+            <h2 className="mb-3 text-sm font-semibold text-gray-900">Фото</h2>
+            <div className="grid grid-cols-4 gap-2">
+              {media.map((m) => (
+                // eslint-disable-next-line @next/next/no-img-element -- presigned S3/MinIO URL
+                <img
+                  key={m.id}
+                  src={m.url}
+                  alt=""
+                  className="aspect-square w-full rounded-xl border border-gray-200 object-cover"
+                />
+              ))}
+            </div>
+          </Card>
+        )}
+
+        <Card className="mb-4">
+          <h2 className="mb-3 text-sm font-semibold text-gray-900">Деталі оголошення</h2>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <div className="contents">
+              <dt className="text-gray-500">Категорія</dt>
+              <dd className="text-gray-900">{categoryLabel ?? '—'}</dd>
+            </div>
+            <div className="contents">
+              <dt className="text-gray-500">Тип</dt>
+              <dd className="text-gray-900">
+                {LISTING_TYPE_OPTIONS.find((o) => o.value === listingType)?.label ?? listingType}
+              </dd>
+            </div>
+            {cityName && (
+              <div className="contents">
+                <dt className="text-gray-500">Місто</dt>
+                <dd className="text-gray-900">{cityName}</dd>
+              </div>
+            )}
+            {condition && (
+              <div className="contents">
+                <dt className="text-gray-500">Стан</dt>
+                <dd className="text-gray-900">
+                  {condition === 'new' ? 'Новий' : condition === 'used' ? 'Вживаний' : 'На запчастини'}
+                </dd>
+              </div>
+            )}
+            {categoryAttributes
+              .filter((attr) => attributeValues[attr.id] !== undefined && attributeValues[attr.id] !== '')
+              .map((attr) => (
+                <div key={attr.id} className="contents">
+                  <dt className="text-gray-500">{attr.labelUk}</dt>
+                  <dd className="text-gray-900">{String(attributeValues[attr.id])}</dd>
+                </div>
+              ))}
+          </dl>
+          {description && <p className="mt-4 whitespace-pre-wrap text-sm text-gray-700">{description}</p>}
+        </Card>
+
+        <Link href="/admin/moderation">
+          <Button variant="secondary">← Назад до черги модерації</Button>
+        </Link>
+      </div>
+    );
   }
 
   return (

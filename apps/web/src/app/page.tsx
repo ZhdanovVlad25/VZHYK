@@ -58,7 +58,7 @@ export default async function HomePage() {
             description="Скоро тут з'являться нові оголошення."
           />
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5">
             {listings.items.map((item) => (
               <ListingCard key={item.id} item={item} />
             ))}

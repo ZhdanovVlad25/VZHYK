@@ -15,6 +15,7 @@ import {
   type ReportStatus,
 } from '@/lib/api';
 import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, type BadgeTone } from '@/components/ui';
+import { formatPrice } from '@/lib/format';
 
 const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   DRAFT: 'Чернетка',
@@ -55,11 +56,6 @@ const REPORT_REASON_LABELS: Record<ReportReason, string> = {
   DUPLICATE: 'Дублікат',
   OTHER: 'Інше',
 };
-
-function formatPrice(price: number | null, currency: string): string {
-  if (price === null) return 'Ціна не вказана';
-  return new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
-}
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso));

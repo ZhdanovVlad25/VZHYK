@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, deleteListing, getMyListings, listingDetailHref, type Listing, type ListingStatus } from '@/lib/api';
 import { Badge, Button, Dropdown, EmptyState, ErrorState, LoadingState, type BadgeTone } from '@/components/ui';
+import { formatPrice } from '@/lib/format';
 
 const STATUS_LABELS: Record<ListingStatus, string> = {
   DRAFT: 'Чернетка',
@@ -34,11 +35,6 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'ALL', label: 'Усі статуси' },
   ...(Object.keys(STATUS_LABELS) as ListingStatus[]).map((status) => ({ value: status, label: STATUS_LABELS[status] })),
 ];
-
-function formatPrice(price: number | null, currency: string): string {
-  if (price === null) return 'Ціна не вказана';
-  return new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
-}
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso));

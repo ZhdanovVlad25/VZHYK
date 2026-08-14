@@ -2,17 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import type { SearchResultItem } from '@/lib/api';
 import { buildListingHref } from '@/lib/slugify';
-
-function formatPrice(price: number | null, currency: string): string {
-  if (price === null) {
-    return 'Ціна не вказана';
-  }
-  return new Intl.NumberFormat('uk-UA', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(price);
-}
+import { formatPrice } from '@/lib/format';
 
 /**
  * Не використовує спільний Card — у Card фіксований p-4 без варіанту "без відступів",

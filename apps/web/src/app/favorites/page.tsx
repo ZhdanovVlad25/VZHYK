@@ -5,11 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, getFavorites, removeFavorite, type FavoriteView } from '@/lib/api';
 import { Badge, Button, EmptyState, ErrorState, LoadingState } from '@/components/ui';
-
-function formatPrice(price: number | null, currency: string): string {
-  if (price === null) return 'Ціна не вказана';
-  return new Intl.NumberFormat('uk-UA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price);
-}
+import { formatPrice } from '@/lib/format';
 
 export default function FavoritesPage() {
   const { user, isLoading: authLoading, accessToken } = useAuth();

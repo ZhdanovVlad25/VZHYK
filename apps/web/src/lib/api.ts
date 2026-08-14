@@ -246,6 +246,17 @@ export function getCategoryAttributes(
   return apiFetch(`/categories/${categoryId}/attributes`);
 }
 
+export interface CategorySuggestion {
+  topCategoryId: string;
+  topCategoryName: string;
+  subCategoryId: string | null;
+  subCategoryName: string | null;
+}
+
+export function suggestCategory(title: string): Promise<CategorySuggestion | null> {
+  return apiFetch(`/categories/suggest?title=${encodeURIComponent(title)}`);
+}
+
 export function getListing(id: string, token?: string): Promise<Listing> {
   return apiFetch(`/listings/${id}`, { token });
 }
@@ -257,6 +268,7 @@ export interface PublicProfile {
   avatarMediaId: string | null;
   cityLocationId: string | null;
   bio: string | null;
+  avatarUrl: string | null;
   rating: number | null;
   reviewsCount: number | null;
   activeListingsCount: number;
@@ -276,6 +288,7 @@ export interface MyProfile {
   displayName: string | null;
   username: string | null;
   avatarMediaId: string | null;
+  avatarUrl: string | null;
   cityLocationId: string | null;
   bio: string | null;
 }
@@ -294,6 +307,27 @@ export interface UpdateProfileDto {
 
 export function updateProfile(dto: UpdateProfileDto, token: string): Promise<MyProfile> {
   return apiFetch('/profiles/me', { method: 'PATCH', body: dto, token });
+}
+
+export async function uploadAvatar(file: File, token: string): Promise<MyProfile> {
+  const form = new FormData();
+  form.append('file', file);
+
+  const res = await fetch(`${API_URL}/profiles/me/avatar`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+
+  const json = await res.json().catch(() => null);
+  if (!res.ok) {
+    const err = json?.error ?? {};
+    if (res.status === 401) {
+      onUnauthorized?.();
+    }
+    throw new ApiError(res.status, err.code ?? 'UNKNOWN_ERROR', err.message ?? res.statusText, err.details ?? null);
+  }
+  return json as MyProfile;
 }
 
 export function getListingMedia(id: string): Promise<Media[]> {
