@@ -12,7 +12,7 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
  * aria-invalid при помилці — базова accessibility (decisions.md DEC-09).
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, hint, error, id, className, ...props },
+  { label, hint, error, id, className, required, ...props },
   ref,
 ) {
   const autoId = useId();
@@ -24,10 +24,17 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     <div className="flex flex-col gap-1">
       <label htmlFor={inputId} className="text-sm font-medium text-gray-700">
         {label}
+        {required && (
+          <span className="text-accent-600" aria-hidden="true">
+            {' '}
+            *
+          </span>
+        )}
       </label>
       <input
         ref={ref}
         id={inputId}
+        required={required}
         aria-describedby={cn(hintId, errorId) || undefined}
         aria-invalid={Boolean(error) || undefined}
         className={cn(

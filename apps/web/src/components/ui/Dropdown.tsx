@@ -14,6 +14,7 @@ export interface DropdownProps {
   value: string | null;
   onChange: (value: string) => void;
   placeholder?: string;
+  required?: boolean;
 }
 
 /**
@@ -21,7 +22,7 @@ export interface DropdownProps {
  * role="listbox"/"option" для списку, keyboard: Enter/Space відкриває, Escape закриває,
  * стрілки перемикають опції — базова accessibility (decisions.md DEC-09).
  */
-export function Dropdown({ label, options, value, onChange, placeholder }: DropdownProps) {
+export function Dropdown({ label, options, value, onChange, placeholder, required }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const buttonId = useId();
@@ -65,6 +66,12 @@ export function Dropdown({ label, options, value, onChange, placeholder }: Dropd
     <div className="flex flex-col gap-1" ref={containerRef}>
       <span id={`${buttonId}-label`} className="text-sm font-medium text-gray-700">
         {label}
+        {required && (
+          <span className="text-accent-600" aria-hidden="true">
+            {' '}
+            *
+          </span>
+        )}
       </span>
       <div className="relative">
         <button

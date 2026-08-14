@@ -9,4 +9,9 @@ export class LocationsController {
   cities() {
     return this.locations.listCities();
   }
+
+  @Get('regions')
+  regions() {
+    return this.locations.listRegionsWithCities();
+  }
 }

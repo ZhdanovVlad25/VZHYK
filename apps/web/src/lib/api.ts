@@ -196,6 +196,17 @@ export function getCities(revalidate?: number): Promise<City[]> {
   return apiFetch('/locations/cities', { revalidate });
 }
 
+export interface Region {
+  id: string;
+  nameUk: string;
+  slug: string;
+  cities: City[];
+}
+
+export function getRegions(revalidate?: number): Promise<Region[]> {
+  return apiFetch('/locations/regions', { revalidate });
+}
+
 export interface SearchParams {
   q?: string;
   category?: string;

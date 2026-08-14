@@ -9,13 +9,13 @@ import {
   createListing,
   getCategoryAttributes,
   getCategoryTree,
-  getCities,
+  getRegions,
   suggestCategory,
   type Category,
   type CategoryAttribute,
   type CategorySuggestion,
-  type City,
   type ListingType,
+  type Region,
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
 import { Alert, Button, Card, Dropdown, Form, Input, LoadingState } from '@/components/ui';
@@ -28,6 +28,10 @@ const LISTING_TYPE_OPTIONS: { value: ListingType; label: string }[] = [
   { value: 'service', label: 'Послуга' },
   { value: 'rent', label: 'Оренда' },
 ];
+
+const TITLE_MIN_LENGTH = 5;
+// Достатньо, щоб відсіяти порожні "асд"-заглушки, але не заважати короткому опису одним реченням.
+const DESCRIPTION_MIN_LENGTH = 10;
 
 export default function NewListingPage() {
   const router = useRouter();
@@ -47,7 +51,8 @@ export default function NewListingPage() {
   const [price, setPrice] = useState('');
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
-  const [cities, setCities] = useState<City[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [regionId, setRegionId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,8 +62,14 @@ export default function NewListingPage() {
     getCategoryTree()
       .then(setCategoryTree)
       .catch(() => setCategoryTree([]));
-    getCities().then(setCities).catch(() => setCities([]));
+    getRegions().then(setRegions).catch(() => setRegions([]));
   }, []);
+
+  const selectedRegion = useMemo(
+    () => regions.find((r) => r.id === regionId) ?? null,
+    [regions, regionId],
+  );
+  const citiesInRegion = selectedRegion?.cities ?? [];
 
   const topCategories = categoryTree ?? [];
   const selectedTop = useMemo(
@@ -120,9 +131,13 @@ export default function NewListingPage() {
     );
   }
 
+  const isTitleValid = title.trim().length >= TITLE_MIN_LENGTH;
+  const isDescriptionValid = description.trim().length >= DESCRIPTION_MIN_LENGTH;
+  const canSubmit = Boolean(categoryId) && isTitleValid && isDescriptionValid && Boolean(locationId);
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!accessToken || !categoryId) return;
+    if (!accessToken || !canSubmit || !categoryId) return;
 
     setError(null);
     setIsSubmitting(true);
@@ -190,6 +205,15 @@ export default function NewListingPage() {
           )}
 
           <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
+            <Input
+              label="Назва"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              minLength={TITLE_MIN_LENGTH}
+              hint={`Мінімум ${TITLE_MIN_LENGTH} символів`}
+              required
+            />
+
             <Dropdown
               label="Категорія"
               options={topCategories.map((c) => ({ value: c.id, label: c.nameUk }))}
@@ -199,6 +223,7 @@ export default function NewListingPage() {
                 setSubCategoryId(null);
               }}
               placeholder="Оберіть категорію"
+              required
             />
 
             {subCategories.length > 0 && (
@@ -218,13 +243,13 @@ export default function NewListingPage() {
               onChange={(v) => setListingType(v as ListingType)}
             />
 
-            <Input label="Назва" value={title} onChange={(e) => setTitle(e.target.value)} minLength={5} required />
-
             <Input
               label="Опис"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              hint="Необов'язково"
+              minLength={DESCRIPTION_MIN_LENGTH}
+              hint={`Мінімум ${DESCRIPTION_MIN_LENGTH} символів`}
+              required
             />
 
             <Input
@@ -236,11 +261,24 @@ export default function NewListingPage() {
             />
 
             <Dropdown
+              label="Область"
+              options={regions.map((r) => ({ value: r.id, label: r.nameUk }))}
+              value={regionId}
+              onChange={(v) => {
+                setRegionId(v);
+                setLocationId(null);
+              }}
+              placeholder="Оберіть область"
+              required
+            />
+
+            <Dropdown
               label="Місто"
-              options={cities.map((c) => ({ value: c.id, label: c.nameUk }))}
+              options={citiesInRegion.map((c) => ({ value: c.id, label: c.nameUk }))}
               value={locationId}
               onChange={setLocationId}
-              placeholder="Не вказано"
+              placeholder={regionId ? 'Оберіть місто' : 'Спочатку оберіть область'}
+              required
             />
 
             <Dropdown
@@ -274,7 +312,7 @@ export default function NewListingPage() {
             />
           )}
 
-          <Button type="submit" isLoading={isSubmitting} disabled={!categoryId}>
+          <Button type="submit" isLoading={isSubmitting} disabled={!canSubmit}>
             Створити чернетку
           </Button>
         </Form>
