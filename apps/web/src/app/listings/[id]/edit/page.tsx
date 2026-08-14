@@ -11,6 +11,7 @@ import {
   getCities,
   getListing,
   getListingMedia,
+  getRegions,
   publishListing,
   updateListing,
   uploadListingMedia,
@@ -20,6 +21,7 @@ import {
   type Listing,
   type ListingType,
   type Media,
+  type Region,
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
 import { Alert, Badge, Button, Card, Dropdown, ErrorState, Form, Input, LoadingState } from '@/components/ui';
@@ -33,6 +35,20 @@ const LISTING_TYPE_OPTIONS: { value: ListingType; label: string }[] = [
   { value: 'service', label: 'Послуга' },
   { value: 'rent', label: 'Оренда' },
 ];
+
+const TITLE_MIN_LENGTH = 5;
+const DESCRIPTION_MIN_LENGTH = 10;
+
+const CURRENCY_OPTIONS = [
+  { value: 'UAH', label: 'грн' },
+  { value: 'USD', label: '$' },
+  { value: 'EUR', label: '€' },
+];
+
+/** Ціна не може бути відʼємною — прибираємо будь-який "-" одразу при вводі, а не лише min на спінері (той не блокує ручний ввід "-6"). */
+function sanitizeNonNegative(raw: string): string {
+  return raw.replace(/-/g, '');
+}
 
 const NOT_EDITABLE_STATUSES = ['SOLD', 'ARCHIVED', 'BLOCKED'];
 
@@ -77,10 +93,13 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+  const [currency, setCurrency] = useState('UAH');
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [attributeValues, setAttributeValues] = useState<AttributeValues>({});
   const [cities, setCities] = useState<City[]>([]);
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [regionId, setRegionId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -105,6 +124,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       setTitle(listingResult.title);
       setDescription(listingResult.description ?? '');
       setPrice(listingResult.price === null ? '' : String(listingResult.price));
+      setCurrency(listingResult.currency);
       setCondition(listingResult.condition);
       setIsNegotiable(listingResult.isNegotiable);
       setLocationId(listingResult.locationId);
@@ -127,7 +147,24 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
 
   useEffect(() => {
     getCities().then(setCities).catch(() => setCities([]));
+    getRegions().then(setRegions).catch(() => setRegions([]));
   }, []);
+
+  // Одноразово підтягує область для вже збереженого міста оголошення (locationId
+  // приходить з load(), regions — окремим fetch'ем; коли обидва готові, знаходимо
+  // батьківську область). Подальші ручні зміни regionId/locationId через дропдауни
+  // цей ефект не чіпають (locationId одразу null при зміні області — guard нижче).
+  useEffect(() => {
+    if (!locationId || regions.length === 0) return;
+    const parentRegion = regions.find((r) => r.cities.some((c) => c.id === locationId));
+    if (parentRegion) setRegionId(parentRegion.id);
+  }, [locationId, regions]);
+
+  const selectedRegion = useMemo(
+    () => regions.find((r) => r.id === regionId) ?? null,
+    [regions, regionId],
+  );
+  const citiesInRegion = selectedRegion?.cities ?? [];
 
   const isEditable = useMemo(() => (listing ? !NOT_EDITABLE_STATUSES.includes(listing.status) : false), [listing]);
   // Бекенд (findVisible) тепер пускає сюди й модератора/адміна на чуже оголошення, що ще не
@@ -171,9 +208,13 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
     }
   }
 
+  const isTitleValid = title.trim().length >= TITLE_MIN_LENGTH;
+  const isDescriptionValid = description.trim().length >= DESCRIPTION_MIN_LENGTH;
+  const canSave = isTitleValid && isDescriptionValid && Boolean(locationId);
+
   async function handleSave(e: FormEvent) {
     e.preventDefault();
-    if (!accessToken || !listing) return;
+    if (!accessToken || !listing || !canSave) return;
     setSaveError(null);
     setSaveMessage(null);
     setIsSaving(true);
@@ -185,6 +226,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           title,
           description: description || undefined,
           price: price === '' ? undefined : Number(price),
+          currency,
           condition: (condition as 'new' | 'used' | 'for_parts') ?? undefined,
           locationId: locationId ?? undefined,
           isNegotiable,
@@ -205,7 +247,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
 
   if (!authLoading && !user) {
     return (
-      <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700">
+      <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700 dark:text-gray-300">
         Щоб редагувати оголошення, потрібно увійти.
       </div>
     );
@@ -227,9 +269,9 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           <Badge tone={listing.status === 'DRAFT' ? 'neutral' : listing.status === 'ACTIVE' ? 'success' : 'warning'}>
             {STATUS_LABELS[listing.status] ?? listing.status}
           </Badge>
-          <h1 className="text-2xl font-semibold text-gray-900">{listing.title}</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{listing.title}</h1>
         </div>
-        <p className="mb-4 text-xl font-extrabold text-accent-600">{formatPrice(listing.price, listing.currency)}</p>
+        <p className="mb-4 text-xl font-extrabold text-accent-600 dark:text-accent-500">{formatPrice(listing.price, listing.currency)}</p>
 
         <Alert tone="info" title="Перегляд для модерації" className="mb-4">
           Це чуже оголошення — доступний лише перегляд перед рішенням у черзі модерації,
@@ -238,7 +280,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
 
         {media.length > 0 && (
           <Card className="mb-4">
-            <h2 className="mb-3 text-sm font-semibold text-gray-900">Фото</h2>
+            <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Фото</h2>
             <div className="grid grid-cols-4 gap-2">
               {media.map((m) => (
                 // eslint-disable-next-line @next/next/no-img-element -- presigned S3/MinIO URL
@@ -246,7 +288,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
                   key={m.id}
                   src={m.url}
                   alt=""
-                  className="aspect-square w-full rounded-xl border border-gray-200 object-cover"
+                  className="aspect-square w-full rounded-xl border border-gray-200 object-cover dark:border-gray-700"
                 />
               ))}
             </div>
@@ -254,28 +296,28 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         )}
 
         <Card className="mb-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">Деталі оголошення</h2>
+          <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Деталі оголошення</h2>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <div className="contents">
-              <dt className="text-gray-500">Категорія</dt>
-              <dd className="text-gray-900">{categoryLabel ?? '—'}</dd>
+              <dt className="text-gray-500 dark:text-gray-400">Категорія</dt>
+              <dd className="text-gray-900 dark:text-gray-100">{categoryLabel ?? '—'}</dd>
             </div>
             <div className="contents">
-              <dt className="text-gray-500">Тип</dt>
-              <dd className="text-gray-900">
+              <dt className="text-gray-500 dark:text-gray-400">Тип</dt>
+              <dd className="text-gray-900 dark:text-gray-100">
                 {LISTING_TYPE_OPTIONS.find((o) => o.value === listingType)?.label ?? listingType}
               </dd>
             </div>
             {cityName && (
               <div className="contents">
-                <dt className="text-gray-500">Місто</dt>
-                <dd className="text-gray-900">{cityName}</dd>
+                <dt className="text-gray-500 dark:text-gray-400">Місто</dt>
+                <dd className="text-gray-900 dark:text-gray-100">{cityName}</dd>
               </div>
             )}
             {condition && (
               <div className="contents">
-                <dt className="text-gray-500">Стан</dt>
-                <dd className="text-gray-900">
+                <dt className="text-gray-500 dark:text-gray-400">Стан</dt>
+                <dd className="text-gray-900 dark:text-gray-100">
                   {condition === 'new' ? 'Новий' : condition === 'used' ? 'Вживаний' : 'На запчастини'}
                 </dd>
               </div>
@@ -284,12 +326,12 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
               .filter((attr) => attributeValues[attr.id] !== undefined && attributeValues[attr.id] !== '')
               .map((attr) => (
                 <div key={attr.id} className="contents">
-                  <dt className="text-gray-500">{attr.labelUk}</dt>
-                  <dd className="text-gray-900">{String(attributeValues[attr.id])}</dd>
+                  <dt className="text-gray-500 dark:text-gray-400">{attr.labelUk}</dt>
+                  <dd className="text-gray-900 dark:text-gray-100">{String(attributeValues[attr.id])}</dd>
                 </div>
               ))}
           </dl>
-          {description && <p className="mt-4 whitespace-pre-wrap text-sm text-gray-700">{description}</p>}
+          {description && <p className="mt-4 whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">{description}</p>}
         </Card>
 
         <Link href="/admin/moderation">
@@ -305,9 +347,9 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         <Badge tone={listing.status === 'DRAFT' ? 'neutral' : listing.status === 'ACTIVE' ? 'success' : 'warning'}>
           {STATUS_LABELS[listing.status] ?? listing.status}
         </Badge>
-        <h1 className="text-2xl font-semibold text-gray-900">{listing.title}</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{listing.title}</h1>
       </div>
-      <p className="mb-6 text-xl font-extrabold text-accent-600">{formatPrice(listing.price, listing.currency)}</p>
+      <p className="mb-6 text-xl font-extrabold text-accent-600 dark:text-accent-500">{formatPrice(listing.price, listing.currency)}</p>
 
       {listing.status === 'PENDING_MODERATION' && (
         <Alert tone="info" title="На модерації" className="mb-4">
@@ -324,7 +366,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       )}
 
       <Card className="mb-4">
-        <h2 className="mb-3 text-sm font-semibold text-gray-900">Фото</h2>
+        <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Фото</h2>
         <div className="mb-3 grid grid-cols-4 gap-2">
           {media.map((m) => (
             // eslint-disable-next-line @next/next/no-img-element -- presigned S3/MinIO URL
@@ -332,7 +374,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
               key={m.id}
               src={m.url}
               alt=""
-              className="aspect-square w-full rounded-xl border border-gray-200 object-cover"
+              className="aspect-square w-full rounded-xl border border-gray-200 object-cover dark:border-gray-700"
             />
           ))}
         </div>
@@ -363,7 +405,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         </Alert>
       ) : (
         <Card className="mb-4">
-          <h2 className="mb-3 text-sm font-semibold text-gray-900">Деталі оголошення</h2>
+          <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Деталі оголошення</h2>
 
           {saveMessage && (
             <Alert tone="success" className="mb-4">
@@ -378,8 +420,8 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
 
           <Form ariaLabel="Редагування оголошення" onSubmit={handleSave}>
             {categoryLabel && (
-              <p className="text-sm text-gray-500">
-                Категорія: <span className="text-gray-900">{categoryLabel}</span>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Категорія: <span className="text-gray-900 dark:text-gray-100">{categoryLabel}</span>
               </p>
             )}
 
@@ -390,39 +432,69 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
               onChange={(v) => setListingType(v as ListingType)}
             />
 
-            <Input label="Назва" value={title} onChange={(e) => setTitle(e.target.value)} minLength={5} required />
+            <Input
+              label="Назва"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              minLength={TITLE_MIN_LENGTH}
+              hint={`Мінімум ${TITLE_MIN_LENGTH} символів`}
+              required
+            />
 
             <Input
               label="Опис"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              hint="Необов'язково"
+              minLength={DESCRIPTION_MIN_LENGTH}
+              hint={`Мінімум ${DESCRIPTION_MIN_LENGTH} символів`}
+              required
             />
 
-            <Input
-              label="Ціна, грн"
-              type="number"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              hint={listingType === 'buy' || listingType === 'give_away' ? "Необов'язково для цього типу" : undefined}
-            />
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input
+                  label="Ціна"
+                  type="number"
+                  min={0}
+                  value={price}
+                  onChange={(e) => setPrice(sanitizeNonNegative(e.target.value))}
+                  hint={listingType === 'buy' || listingType === 'give_away' ? "Необов'язково для цього типу" : undefined}
+                />
+              </div>
+              <div className="w-24">
+                <Dropdown label="Валюта" options={CURRENCY_OPTIONS} value={currency} onChange={setCurrency} />
+              </div>
+            </div>
 
-            <label className="flex items-center gap-2 text-sm text-gray-700">
+            <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
               <input
                 type="checkbox"
                 checked={isNegotiable}
                 onChange={(e) => setIsNegotiable(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300"
+                className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800"
               />
               Торг можливий
             </label>
 
             <Dropdown
+              label="Область"
+              options={regions.map((r) => ({ value: r.id, label: r.nameUk }))}
+              value={regionId}
+              onChange={(v) => {
+                setRegionId(v);
+                setLocationId(null);
+              }}
+              placeholder="Оберіть область"
+              required
+            />
+
+            <Dropdown
               label="Місто"
-              options={cities.map((c) => ({ value: c.id, label: c.nameUk }))}
+              options={citiesInRegion.map((c) => ({ value: c.id, label: c.nameUk }))}
               value={locationId}
               onChange={setLocationId}
-              placeholder="Не вказано"
+              placeholder={regionId ? 'Оберіть місто' : 'Спочатку оберіть область'}
+              required
             />
 
             <Dropdown
@@ -443,7 +515,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
               onChange={(id, value) => setAttributeValues((prev) => ({ ...prev, [id]: value }))}
             />
 
-            <Button type="submit" isLoading={isSaving}>
+            <Button type="submit" isLoading={isSaving} disabled={!canSave}>
               Зберегти зміни
             </Button>
           </Form>
