@@ -52,6 +52,7 @@ export const translations = {
     loginNamePlaceholder: 'Наприклад, Олена',
     loginContinue: 'Продовжити',
     loginSkip: 'Пропустити',
+    loginPhoneRequiredQuestion: 'Вкажіть номер телефону — покупці зможуть звʼязатися з вами щодо оголошень.',
   },
   en: {
     searchPlaceholder: 'What are you looking for?',
@@ -98,6 +99,7 @@ export const translations = {
     loginNamePlaceholder: 'e.g. Olena',
     loginContinue: 'Continue',
     loginSkip: 'Skip',
+    loginPhoneRequiredQuestion: 'Please add your phone number — buyers will be able to contact you about your listings.',
   },
 } satisfies Record<Language, Record<string, string>>;
 

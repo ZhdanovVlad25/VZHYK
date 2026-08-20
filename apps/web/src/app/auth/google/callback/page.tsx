@@ -28,7 +28,7 @@ function GoogleCallbackContent() {
       return;
     }
     loginWithTokens(accessToken, refreshToken)
-      .then(({ needsName }) => router.replace(needsName ? '/login?complete=1' : '/'))
+      .then(({ needsName, needsPhone }) => router.replace(needsName || needsPhone ? '/login?complete=1' : '/'))
       .catch(() => setError('Не вдалося завершити вхід через Google.'));
   }, [params, loginWithTokens, router]);
 

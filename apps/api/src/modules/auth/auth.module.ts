@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { OtpCode } from './otp-code.entity';
 import { User } from '../users/user.entity';
+import { Profile } from '../profiles/profile.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { requireEnv } from '../../shared/env';
@@ -14,7 +15,7 @@ import { SmsModule } from '../../providers/sms/sms.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, OtpCode]),
+    TypeOrmModule.forFeature([User, OtpCode, Profile]),
     PassportModule,
     ConfigModule,
     SmsModule,

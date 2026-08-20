@@ -384,6 +384,15 @@ export function getMe(token: string): Promise<Me> {
   return apiFetch('/auth/me', { token });
 }
 
+/** Прив'язка телефону до вже автентифікованого юзера (Google-логін без номера). */
+export function requestPhoneLink(phone: string, token: string): Promise<{ requested: true }> {
+  return apiFetch('/auth/phone/request', { method: 'POST', body: { phone }, token });
+}
+
+export function linkPhone(phone: string, code: string, token: string): Promise<{ phone: string }> {
+  return apiFetch('/auth/phone/link', { method: 'POST', body: { phone, code }, token });
+}
+
 // ---- Listings (authenticated mutations) ----
 
 export interface AttributeValueInput {

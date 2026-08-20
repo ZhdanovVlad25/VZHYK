@@ -5,9 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Card, Dropdown, Form, Input, Alert } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { useLanguage } from '@/lib/language-context';
-import { ApiError, getCities, updateProfile, type City } from '@/lib/api';
+import { ApiError, getCities, linkPhone, requestPhoneLink, updateProfile, type City } from '@/lib/api';
 
-type Step = 'phone' | 'code' | 'name';
+type Step = 'phone' | 'code' | 'linkPhone' | 'linkCode' | 'name';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 
@@ -52,12 +52,23 @@ export default function LoginPage() {
 function LoginPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { requestOtp, verifyOtp, accessToken, setDisplayName } = useAuth();
+  const {
+    requestOtp,
+    verifyOtp,
+    accessToken,
+    user,
+    displayName,
+    isLoading: authLoading,
+    setDisplayName,
+    setPhone: setStoredPhone,
+  } = useAuth();
   const { t } = useLanguage();
 
   // ?complete=1 — редірект з /auth/google/callback: користувач вже увійшов через Google,
-  // токен у сховищі є, лишилось лише дозаповнити ім'я/місто.
-  const [step, setStep] = useState<Step>(searchParams.get('complete') === '1' ? 'name' : 'phone');
+  // токен у сховищі є, лишилось лише дозаповнити відсутнє (номер і/або ім'я/місто).
+  // Google не віддає номер телефону, тож для щойно створених через Google акаунтів його
+  // завжди бракує — вирішується лише коли auth-контекст підвантажиться (не при першому рендері).
+  const [step, setStep] = useState<Step>(searchParams.get('complete') === '1' ? 'linkPhone' : 'phone');
   const [phone, setPhone] = useState(PHONE_PREFIX);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -70,6 +81,14 @@ function LoginPageContent() {
   useEffect(() => {
     getCities().then(setCities).catch(() => setCities([]));
   }, []);
+
+  // auth-контекст гідратується з localStorage асинхронно — доки authLoading, user.phone
+  // ще невідомий. Щойно підвантажився: якщо телефон уже є (напр. Google-акаунт, створений
+  // до цього фічі, або дублікат вкладки), одразу переходимо до кроку імені замість "linkPhone".
+  useEffect(() => {
+    if (searchParams.get('complete') !== '1' || authLoading) return;
+    if (user?.phone) setStep('name');
+  }, [searchParams, authLoading, user]);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -101,11 +120,53 @@ function LoginPageContent() {
     setError(null);
     setIsSubmitting(true);
     try {
+      // needsPhone тут завжди false — сам номер щойно верифіковано телефонним входом.
       const { needsName } = await verifyOtp(phone, code);
       if (needsName) {
         setStep('name');
       } else {
         router.push('/');
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('loginErrorVerify'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function sendLinkCode() {
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      if (!accessToken) throw new ApiError(401, 'UNAUTHENTICATED', t('loginErrorSend'), null);
+      await requestPhoneLink(phone, accessToken);
+      setStep('linkCode');
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : t('loginErrorSend'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleRequestPhoneLink(e: FormEvent) {
+    e.preventDefault();
+    await sendLinkCode();
+  }
+
+  async function handleConfirmPhoneLink(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      if (!accessToken) throw new ApiError(401, 'UNAUTHENTICATED', t('loginErrorVerify'), null);
+      const linked = await linkPhone(phone, code, accessToken);
+      setStoredPhone(linked.phone);
+      setCode('');
+      if (displayName) {
+        router.push('/');
+      } else {
+        setStep('name');
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('loginErrorVerify'));
@@ -220,6 +281,76 @@ function LoginPageContent() {
                 {resendCooldown > 0 ? `${t('loginResend')} (${resendCooldown})` : t('loginResend')}
               </Button>
               <Button type="button" variant="ghost" size="sm" onClick={() => setStep('phone')}>
+                {t('loginChangeNumber')}
+              </Button>
+            </div>
+          </Form>
+        )}
+
+        {step === 'linkPhone' && (
+          <Form ariaLabel="Прив'язка номера телефону" onSubmit={handleRequestPhoneLink}>
+            <p className="text-sm text-gray-600 dark:text-gray-400">{t('loginPhoneRequiredQuestion')}</p>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="link-phone-digits" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {t('loginPhoneLabel')}
+              </label>
+              <div className="flex h-10 items-center rounded-xl border border-gray-300 focus-within:border-brand-600 dark:border-gray-600">
+                <span className="select-none pl-3 text-sm text-gray-500 dark:text-gray-400" aria-hidden="true">
+                  {PHONE_PREFIX}
+                </span>
+                <input
+                  id="link-phone-digits"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  value={phone.slice(PHONE_PREFIX.length)}
+                  onChange={(e) => setPhone(PHONE_PREFIX + normalizePhoneDigits(e.target.value))}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    setPhone(PHONE_PREFIX + normalizePhoneDigits(e.clipboardData.getData('text')));
+                  }}
+                  placeholder="XXXXXXXXX"
+                  maxLength={PHONE_DIGITS_LENGTH}
+                  autoFocus
+                  required
+                  className="h-full min-w-0 flex-1 rounded-r-xl border-0 bg-transparent pl-1 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-gray-100 dark:placeholder:text-gray-500"
+                />
+              </div>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{t('loginPhoneHint')}</span>
+            </div>
+            <Button type="submit" isLoading={isSubmitting}>
+              {t('loginSendCode')}
+            </Button>
+          </Form>
+        )}
+
+        {step === 'linkCode' && (
+          <Form ariaLabel="Підтвердження коду" onSubmit={handleConfirmPhoneLink}>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {t('loginCodeSentTo')} <span className="font-medium text-gray-900 dark:text-gray-100">{phone}</span>
+            </p>
+            <Input
+              label={t('loginCodeLabel')}
+              inputMode="numeric"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              autoFocus
+              required
+            />
+            <Button type="submit" isLoading={isSubmitting}>
+              {t('loginConfirm')}
+            </Button>
+            <div className="flex items-center justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={resendCooldown > 0 || isSubmitting}
+                onClick={sendLinkCode}
+              >
+                {resendCooldown > 0 ? `${t('loginResend')} (${resendCooldown})` : t('loginResend')}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setStep('linkPhone')}>
                 {t('loginChangeNumber')}
               </Button>
             </div>
