@@ -154,6 +154,17 @@ function LoginPageContent() {
     await sendLinkCode();
   }
 
+  // СМС коштує грошей (TurboSMS тарифікує кожне повідомлення) — прив'язка телефону після
+  // Google-логіну лишається добровільною дією користувача, а не тим, що система нав'язує
+  // кожному новому Google-акаунту автоматично.
+  function skipPhoneLink() {
+    if (displayName) {
+      router.push('/');
+    } else {
+      setStep('name');
+    }
+  }
+
   async function handleConfirmPhoneLink(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -320,6 +331,9 @@ function LoginPageContent() {
             </div>
             <Button type="submit" isLoading={isSubmitting}>
               {t('loginSendCode')}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={skipPhoneLink}>
+              {t('loginSkip')}
             </Button>
           </Form>
         )}
