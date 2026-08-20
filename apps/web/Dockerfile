@@ -11,6 +11,13 @@ COPY apps/web ./
 CMD ["npm", "run", "dev"]
 
 FROM base AS build
+# NEXT_PUBLIC_* вшиваються в клієнтський бандл САМЕ під час build, не читаються в рантаймі —
+# Railway підставляє service-змінні як build args лише для тих, що явно оголошені тут через
+# ARG (Dockerfile-білди, на відміну від Nixpacks, не інжектять їх автоматично).
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_SITE_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 COPY apps/web ./apps/web
 RUN npm run build --workspace=apps/web
 

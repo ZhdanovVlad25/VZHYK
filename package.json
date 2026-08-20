@@ -25,6 +25,7 @@
     "argon2": "^0.45.1",
     "pg": "^8.23.0",
     "prettier": "^3.3.3",
+    "railway": "^3.10.0",
     "typescript": "^5.5.4"
   },
   "engines": {
