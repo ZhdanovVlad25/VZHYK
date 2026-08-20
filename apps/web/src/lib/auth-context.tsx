@@ -30,7 +30,7 @@ interface AuthContextValue {
   /** Повертає true, якщо профіль ще без імені — сторінка логіну показує додатковий крок. */
   verifyOtp: (phone: string, code: string) => Promise<{ needsName: boolean }>;
   /** Google OAuth callback віддає лише токени в query — user підвантажується окремо через GET /auth/me. */
-  loginWithTokens: (accessToken: string, refreshToken: string) => Promise<void>;
+  loginWithTokens: (accessToken: string, refreshToken: string) => Promise<{ needsName: boolean }>;
   setDisplayName: (name: string) => void;
   setAvatarUrl: (url: string | null) => void;
   logout: () => void;
@@ -91,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
     setAuth(stored);
+    return { needsName: !stored.displayName };
   }, []);
 
   const setDisplayName = useCallback((name: string) => {

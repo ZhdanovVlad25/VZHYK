@@ -132,6 +132,23 @@ export function Header() {
           {/* Тогли/nav/акаунт інлайн лише на md+ — на <md усе це переїжджає в drawer нижче. */}
           <div className="hidden shrink-0 items-center gap-3 md:flex">{renderNavItems()}</div>
 
+          {/* "Додати оголошення"/"Увійти" — головні дії, не мають ховатись за гамбургер разом
+              з другорядним (мова/тема/адмін). Займають простір, де на md+ була б форма пошуку. */}
+          <div className="ml-auto flex shrink-0 items-center gap-2 md:hidden">
+            <Link href="/listings/new">
+              <Button variant="accent" size="sm">
+                {t('addListing')}
+              </Button>
+            </Link>
+            {!isLoading && !user && (
+              <Link href="/login">
+                <Button variant="secondary" size="sm">
+                  {t('login')}
+                </Button>
+              </Link>
+            )}
+          </div>
+
           {/* Профіль лишається видимим завжди (навіть на <md) — вже компактний (аватар+ім'я),
               не варто ховати за гамбургер разом з рештою. */}
           {user && (

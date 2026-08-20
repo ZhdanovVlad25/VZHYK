@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button, Card, Form, Input, Alert } from '@/components/ui';
+import { Suspense, useEffect, useState, type FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Button, Card, Dropdown, Form, Input, Alert } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { useLanguage } from '@/lib/language-context';
-import { ApiError, updateProfile } from '@/lib/api';
+import { ApiError, getCities, updateProfile, type City } from '@/lib/api';
 
 type Step = 'phone' | 'code' | 'name';
 
@@ -40,18 +40,36 @@ function handleGoogleLogin() {
   window.location.href = `${API_URL}/auth/google`;
 }
 
+/** useSearchParams() вимагає Suspense-межу в App Router. */
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageContent />
+    </Suspense>
+  );
+}
+
+function LoginPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { requestOtp, verifyOtp, accessToken, setDisplayName } = useAuth();
   const { t } = useLanguage();
 
-  const [step, setStep] = useState<Step>('phone');
+  // ?complete=1 — редірект з /auth/google/callback: користувач вже увійшов через Google,
+  // токен у сховищі є, лишилось лише дозаповнити ім'я/місто.
+  const [step, setStep] = useState<Step>(searchParams.get('complete') === '1' ? 'name' : 'phone');
   const [phone, setPhone] = useState(PHONE_PREFIX);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
+  const [cities, setCities] = useState<City[]>([]);
+  const [cityLocationId, setCityLocationId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    getCities().then(setCities).catch(() => setCities([]));
+  }, []);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -101,9 +119,12 @@ export default function LoginPage() {
     setError(null);
     setIsSubmitting(true);
     try {
-      if (accessToken && name.trim()) {
-        await updateProfile({ displayName: name.trim() }, accessToken);
-        setDisplayName(name.trim());
+      if (accessToken && (name.trim() || cityLocationId)) {
+        await updateProfile(
+          { displayName: name.trim() || undefined, cityLocationId: cityLocationId ?? undefined },
+          accessToken,
+        );
+        if (name.trim()) setDisplayName(name.trim());
       }
       router.push('/');
     } catch (err) {
@@ -214,6 +235,13 @@ export default function LoginPage() {
               onChange={(e) => setName(e.target.value)}
               placeholder={t('loginNamePlaceholder')}
               autoFocus
+            />
+            <Dropdown
+              label={t('cityLabel')}
+              options={cities.map((c) => ({ value: c.id, label: c.nameUk }))}
+              value={cityLocationId}
+              onChange={setCityLocationId}
+              placeholder={t('allCities')}
             />
             <Button type="submit" isLoading={isSubmitting}>
               {t('loginContinue')}
