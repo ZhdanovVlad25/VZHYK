@@ -66,6 +66,7 @@ export default function NewListingPage() {
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [regions, setRegions] = useState<Region[]>([]);
+  const [isLoadingRegions, setIsLoadingRegions] = useState(true);
   const [regionId, setRegionId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
 
@@ -83,7 +84,8 @@ export default function NewListingPage() {
       .catch(() => !cancelled && setCategoryTree([]));
     getRegions()
       .then((r) => !cancelled && setRegions(r))
-      .catch(() => !cancelled && setRegions([]));
+      .catch(() => !cancelled && setRegions([]))
+      .finally(() => !cancelled && setIsLoadingRegions(false));
     return () => {
       cancelled = true;
     };
@@ -287,6 +289,7 @@ export default function NewListingPage() {
                 setSubCategoryId(null);
               }}
               placeholder="Оберіть категорію"
+              isLoading={categoryTree === null}
               required
             />
 
@@ -341,6 +344,7 @@ export default function NewListingPage() {
                 setLocationId(null);
               }}
               placeholder="Оберіть область"
+              isLoading={isLoadingRegions}
               required
             />
 

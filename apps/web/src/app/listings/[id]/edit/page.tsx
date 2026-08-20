@@ -99,6 +99,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [attributeValues, setAttributeValues] = useState<AttributeValues>({});
   const [cities, setCities] = useState<City[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
+  const [isLoadingRegions, setIsLoadingRegions] = useState(true);
   const [regionId, setRegionId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
 
@@ -166,7 +167,8 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       .catch(() => isMountedRef.current && setCities([]));
     getRegions()
       .then((r) => isMountedRef.current && setRegions(r))
-      .catch(() => isMountedRef.current && setRegions([]));
+      .catch(() => isMountedRef.current && setRegions([]))
+      .finally(() => isMountedRef.current && setIsLoadingRegions(false));
   }, []);
 
   // Одноразово підтягує область для вже збереженого міста оголошення (locationId
@@ -504,6 +506,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
                 setLocationId(null);
               }}
               placeholder="Оберіть область"
+              isLoading={isLoadingRegions}
               required
             />
 

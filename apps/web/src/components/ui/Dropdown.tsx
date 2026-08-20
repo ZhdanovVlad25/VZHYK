@@ -15,6 +15,10 @@ export interface DropdownProps {
   onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
+  /** Опції ще підвантажуються (напр. getRegions() у польоті) — без цього прапорця
+      відкритий список із порожнім options.length рендериться як згорнута до
+      кількох пікселів риска: <ul> без жодного <li> замість "триває завантаження". */
+  isLoading?: boolean;
 }
 
 /**
@@ -22,7 +26,7 @@ export interface DropdownProps {
  * role="listbox"/"option" для списку, keyboard: Enter/Space відкриває, Escape закриває,
  * стрілки перемикають опції — базова accessibility (decisions.md DEC-09).
  */
-export function Dropdown({ label, options, value, onChange, placeholder, required }: DropdownProps) {
+export function Dropdown({ label, options, value, onChange, placeholder, required, isLoading }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const buttonId = useId();
@@ -77,25 +81,31 @@ export function Dropdown({ label, options, value, onChange, placeholder, require
         <button
           id={buttonId}
           type="button"
+          disabled={isLoading}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
           aria-labelledby={`${buttonId}-label ${buttonId}`}
           onClick={() => setIsOpen((v) => !v)}
           onKeyDown={onKeyDown}
-          className="flex h-10 w-full items-center justify-between rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          className="flex h-10 w-full items-center justify-between rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 disabled:cursor-wait disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         >
           <span className={cn(!selected && 'text-gray-400 dark:text-gray-500')}>
-            {selected?.label ?? placeholder ?? 'Оберіть значення'}
+            {isLoading ? 'Завантаження…' : (selected?.label ?? placeholder ?? 'Оберіть значення')}
           </span>
           <span aria-hidden="true">▾</span>
         </button>
-        {isOpen && (
+        {isOpen && !isLoading && (
           <ul
             id={listId}
             role="listbox"
             aria-labelledby={`${buttonId}-label`}
             className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
           >
+            {options.length === 0 && (
+              <li className="px-3 py-2 text-sm text-gray-400 dark:text-gray-500" aria-disabled="true">
+                Немає варіантів
+              </li>
+            )}
             {options.map((option, index) => (
               <li
                 key={option.value}
