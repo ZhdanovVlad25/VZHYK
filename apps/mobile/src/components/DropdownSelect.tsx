@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
@@ -14,6 +14,9 @@ type DropdownSelectProps = {
   placeholder?: string;
   emptyHint?: string;
   searchPlaceholder?: string;
+  /** Список ще підвантажується — поле не мало показувати "порожньо" (emptyHint) в цей момент,
+      бо це виглядає як непрацююче поле (напр. "Область" завжди має опції, окрім миті завантаження). */
+  isLoading?: boolean;
 };
 
 /**
@@ -30,6 +33,7 @@ export function DropdownSelect({
   placeholder = 'Оберіть...',
   emptyHint,
   searchPlaceholder = 'Пошук...',
+  isLoading = false,
 }: DropdownSelectProps) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
@@ -52,7 +56,11 @@ export function DropdownSelect({
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
-      {options.length === 0 ? (
+      {isLoading ? (
+        <View style={styles.field}>
+          <ActivityIndicator size="small" color={colors.textMuted} />
+        </View>
+      ) : options.length === 0 ? (
         <Text style={styles.emptyHint}>{emptyHint ?? '—'}</Text>
       ) : (
         <Pressable style={styles.field} onPress={() => setOpen(true)}>

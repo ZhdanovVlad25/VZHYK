@@ -75,6 +75,7 @@ export function EditListingScreen({ route }: Props) {
   const [categoryLabel, setCategoryLabel] = useState<string | null>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
+  const [isLoadingRegions, setIsLoadingRegions] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -130,7 +131,10 @@ export function EditListingScreen({ route }: Props) {
 
   useEffect(() => {
     getCities().then(setCities).catch(() => setCities([]));
-    getRegions().then(setRegions).catch(() => setRegions([]));
+    getRegions()
+      .then(setRegions)
+      .catch(() => setRegions([]))
+      .finally(() => setIsLoadingRegions(false));
   }, []);
 
   // Одноразово підтягує область для вже збереженого міста (locationId з load(), regions — окремий fetch).
@@ -333,6 +337,7 @@ export function EditListingScreen({ route }: Props) {
                 setRegionId(v);
                 setLocationId(null);
               }}
+              isLoading={isLoadingRegions}
             />
 
             <DropdownSelect

@@ -58,6 +58,7 @@ export function AddListingScreen() {
   const [topCategoryId, setTopCategoryId] = useState<string | null>(null);
   const [subCategoryId, setSubCategoryId] = useState<string | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
+  const [isLoadingRegions, setIsLoadingRegions] = useState(true);
   const [regionId, setRegionId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
 
@@ -80,7 +81,10 @@ export function AddListingScreen() {
 
   useEffect(() => {
     getCategoryTree().then(setCategoryTree).catch(() => setCategoryTree([]));
-    getRegions().then(setRegions).catch(() => setRegions([]));
+    getRegions()
+      .then(setRegions)
+      .catch(() => setRegions([]))
+      .finally(() => setIsLoadingRegions(false));
   }, []);
 
   // Дебаунс: підказка категорії за назвою (backend `/categories/suggest`) — той самий
@@ -334,6 +338,7 @@ export function AddListingScreen() {
             setRegionId(v);
             setLocationId(null);
           }}
+          isLoading={isLoadingRegions}
         />
 
         <DropdownSelect
