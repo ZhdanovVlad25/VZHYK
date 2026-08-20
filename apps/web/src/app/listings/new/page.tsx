@@ -199,8 +199,11 @@ export default function NewListingPage() {
         },
         accessToken,
       );
+      let failedPhotoCount = 0;
       for (const file of pendingPhotos) {
-        await uploadListingMedia(listing.id, file, accessToken).catch(() => null);
+        await uploadListingMedia(listing.id, file, accessToken).catch(() => {
+          failedPhotoCount += 1;
+        });
       }
 
       let publishError: string | null = null;
@@ -217,6 +220,15 @@ export default function NewListingPage() {
       }
 
       // window.alert, не setError — сторінка одразу переходить на редагування, банер тут ніхто б не побачив.
+      // Фото, що не завантажились, раніше мовчки губились — тепер явно попереджаємо, бо
+      // "опубліковано без фото" виглядає як робочий результат, доки не глянеш на оголошення.
+      if (failedPhotoCount > 0) {
+        window.alert(
+          failedPhotoCount === pendingPhotos.length
+            ? 'Оголошення створено, але жодне фото не вдалося завантажити. Спробуйте додати їх ще раз на сторінці редагування.'
+            : `Оголошення створено, але ${failedPhotoCount} з ${pendingPhotos.length} фото не вдалося завантажити. Спробуйте додати їх ще раз на сторінці редагування.`,
+        );
+      }
       if (publishError) window.alert(publishError);
       router.push(`/listings/${listing.id}/edit`);
     } catch (err) {

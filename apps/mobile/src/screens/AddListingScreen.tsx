@@ -161,8 +161,11 @@ export function AddListingScreen() {
         },
         accessToken,
       );
+      let failedPhotoCount = 0;
       for (const asset of pendingPhotos) {
-        await uploadListingMedia(listing.id, assetToRNFile(asset), accessToken).catch(() => null);
+        await uploadListingMedia(listing.id, assetToRNFile(asset), accessToken).catch(() => {
+          failedPhotoCount += 1;
+        });
       }
 
       let publishError: string | null = null;
@@ -188,6 +191,14 @@ export function AddListingScreen() {
       setIsNegotiable(false);
       setPendingPhotos([]);
       // Alert, не setError — екран переходить на EditListing одразу, банер помилки тут ніхто б не побачив.
+      if (failedPhotoCount > 0) {
+        Alert.alert(
+          'Не всі фото завантажились',
+          failedPhotoCount === pendingPhotos.length
+            ? 'Оголошення створено, але жодне фото не вдалося завантажити. Спробуйте додати їх ще раз на екрані редагування.'
+            : `Оголошення створено, але ${failedPhotoCount} з ${pendingPhotos.length} фото не вдалося завантажити. Спробуйте додати їх ще раз на екрані редагування.`,
+        );
+      }
       if (publishError) Alert.alert('Не вдалося опублікувати', publishError);
       navigation.navigate('EditListing', { listingId: listing.id });
     } catch (err) {
