@@ -253,6 +253,28 @@ export class ListingsService {
     return this.listings.find({ where, order: { createdAt: 'DESC' } });
   }
 
+  /**
+   * Живий агрегат для "Профіль" — Profile.activeListingsCount ніколи не синхронізується
+   * (жоден код у цьому сервісі його не оновлює), тож рахуємо напряму замість покладатись
+   * на застарілу денормалізовану колонку. Один запит, покритий індексом (userId, status).
+   */
+  async getOwnStats(userId: string): Promise<{ totalListingsCount: number; activeListingsCount: number; totalViewsCount: number }> {
+    const row = await this.listings
+      .createQueryBuilder('l')
+      .select('COUNT(*)', 'totalListingsCount')
+      .addSelect(`COUNT(*) FILTER (WHERE l.status IN ('ACTIVE', 'RESERVED'))`, 'activeListingsCount')
+      .addSelect('COALESCE(SUM(l.viewsCount), 0)', 'totalViewsCount')
+      .where('l.userId = :userId', { userId })
+      .andWhere('l.deletedAt IS NULL')
+      .getRawOne<{ totalListingsCount: string; activeListingsCount: string; totalViewsCount: string }>();
+
+    return {
+      totalListingsCount: Number(row?.totalListingsCount ?? 0),
+      activeListingsCount: Number(row?.activeListingsCount ?? 0),
+      totalViewsCount: Number(row?.totalViewsCount ?? 0),
+    };
+  }
+
   /** Публічний для перевикористання ownership-перевірки в суміжних модулях (напр. MediaService). */
   async findOwnedListing(userId: string, id: string): Promise<Listing> {
     const listing = await this.listings.findOne({ where: { id, deletedAt: IsNull() } });

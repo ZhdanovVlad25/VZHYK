@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsUUID, Matches, MaxLength } from 'class-validator';
+import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
 export class UpdateProfileDto {
   @IsOptional()
@@ -13,7 +14,7 @@ export class UpdateProfileDto {
   username?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   cityLocationId?: string;
 
   @IsOptional()
@@ -23,6 +24,6 @@ export class UpdateProfileDto {
 
   /** Немає окремого endpoint для аватарки в цьому зрізі — приймаємо ID вже завантаженого Media. */
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   avatarMediaId?: string;
 }

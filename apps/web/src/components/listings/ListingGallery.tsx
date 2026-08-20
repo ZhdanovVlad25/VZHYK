@@ -33,8 +33,8 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
 
   if (media.length === 0) {
     return (
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
-        <div className="flex h-full w-full items-center justify-center text-sm text-gray-400">Без фото</div>
+      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex h-full w-full items-center justify-center text-sm text-gray-400 dark:text-gray-500">Без фото</div>
       </div>
     );
   }
@@ -43,7 +43,7 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
 
   return (
     <div>
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100">
+      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
         <Image
           src={active.url}
           alt={title}
@@ -95,7 +95,7 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
               aria-current={i === activeIndex}
               className={cn(
                 'relative aspect-square w-full overflow-hidden rounded-xl border',
-                i === activeIndex ? 'border-brand-600 ring-2 ring-brand-200' : 'border-gray-200',
+                i === activeIndex ? 'border-brand-600 ring-2 ring-brand-200' : 'border-gray-200 dark:border-gray-700',
               )}
             >
               <Image src={m.url} alt="" fill sizes="25vw" className="object-cover" />

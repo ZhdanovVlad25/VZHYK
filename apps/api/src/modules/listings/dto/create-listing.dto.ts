@@ -7,7 +7,6 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   Min,
   MaxLength,
   MinLength,
@@ -22,9 +21,10 @@ import {
   ListingType,
 } from '../listing.constants';
 import { AttributeValueInputDto } from './attribute-value-input.dto';
+import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
 export class CreateListingDto {
-  @IsUUID()
+  @IsUuidLike()
   categoryId: string;
 
   @IsIn(LISTING_TYPES)
@@ -58,7 +58,7 @@ export class CreateListingDto {
   condition?: ListingCondition;
 
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   locationId?: string;
 
   @IsOptional()

@@ -77,7 +77,7 @@ export default function AdminAuditLogPage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <p className="mb-4 text-gray-700">Щоб побачити журнал дій, потрібно увійти.</p>
+        <p className="mb-4 text-gray-700 dark:text-gray-300">Щоб побачити журнал дій, потрібно увійти.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -86,12 +86,12 @@ export default function AdminAuditLogPage() {
   }
 
   if (!authLoading && user && !isAdmin) {
-    return <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700">Доступ лише для адміністраторів.</div>;
+    return <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700 dark:text-gray-300">Доступ лише для адміністраторів.</div>;
   }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">Журнал дій</h1>
+      <h1 className="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">Журнал дій</h1>
 
       <div className="mb-6 flex flex-wrap items-end gap-3">
         <div className="w-48">
@@ -122,9 +122,9 @@ export default function AdminAuditLogPage() {
       ) : items.length === 0 ? (
         <EmptyState title="Журнал порожній" description="Мутуючі дії адмінів/модераторів з'являться тут." />
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
+        <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
+            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
               <tr>
                 <th className="px-3 py-2">Коли</th>
                 <th className="px-3 py-2">Дія</th>
@@ -135,20 +135,20 @@ export default function AdminAuditLogPage() {
             </thead>
             <tbody>
               {items.map((entry) => (
-                <tr key={entry.id} className="border-b border-gray-100 last:border-0">
-                  <td className="whitespace-nowrap px-3 py-2 text-gray-500">{formatDate(entry.createdAt)}</td>
+                <tr key={entry.id} className="border-b border-gray-100 last:border-0 dark:border-gray-800">
+                  <td className="whitespace-nowrap px-3 py-2 text-gray-500 dark:text-gray-400">{formatDate(entry.createdAt)}</td>
                   <td className="px-3 py-2">
                     <Badge tone="info">{entry.action}</Badge>
                   </td>
-                  <td className="px-3 py-2 text-gray-700">
+                  <td className="px-3 py-2 text-gray-700 dark:text-gray-300">
                     {entry.targetType}
-                    {entry.targetId && <span className="text-gray-400"> · {entry.targetId.slice(0, 8)}</span>}
+                    {entry.targetId && <span className="text-gray-400 dark:text-gray-500"> · {entry.targetId.slice(0, 8)}</span>}
                   </td>
-                  <td className="max-w-xs px-3 py-2 font-mono text-xs text-gray-600">
+                  <td className="max-w-xs px-3 py-2 font-mono text-xs text-gray-600 dark:text-gray-400">
                     {entry.before && <div>− {JSON.stringify(entry.before)}</div>}
                     {entry.after && <div>+ {JSON.stringify(entry.after)}</div>}
                   </td>
-                  <td className="px-3 py-2 text-gray-400">{entry.ip ?? '—'}</td>
+                  <td className="px-3 py-2 text-gray-400 dark:text-gray-500">{entry.ip ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

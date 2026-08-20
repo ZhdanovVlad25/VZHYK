@@ -7,7 +7,6 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  IsUUID,
   Min,
   MaxLength,
   MinLength,
@@ -22,6 +21,7 @@ import {
   ListingType,
 } from '../listing.constants';
 import { AttributeValueInputDto } from './attribute-value-input.dto';
+import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
 /** categoryId незмінний після створення — на нього зав'язані attributes (див. categories.md §2). */
 export class UpdateListingDto {
@@ -58,7 +58,7 @@ export class UpdateListingDto {
   condition?: ListingCondition;
 
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   locationId?: string;
 
   @IsOptional()

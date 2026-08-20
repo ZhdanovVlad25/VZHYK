@@ -64,7 +64,7 @@ export default function AdminUsersPage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <p className="mb-4 text-gray-700">Щоб побачити користувачів, потрібно увійти.</p>
+        <p className="mb-4 text-gray-700 dark:text-gray-300">Щоб побачити користувачів, потрібно увійти.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -73,12 +73,12 @@ export default function AdminUsersPage() {
   }
 
   if (!authLoading && user && !isAdmin) {
-    return <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700">Доступ лише для адміністраторів.</div>;
+    return <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700 dark:text-gray-300">Доступ лише для адміністраторів.</div>;
   }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">Користувачі</h1>
+      <h1 className="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">Користувачі</h1>
 
       <form onSubmit={handleSearchSubmit} className="mb-6 flex gap-2">
         <div className="flex-1">
@@ -94,7 +94,7 @@ export default function AdminUsersPage() {
         </Button>
       </form>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {authLoading || isLoading ? (
         <LoadingState label="Завантаження…" />
@@ -103,17 +103,17 @@ export default function AdminUsersPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {items.map((item) => (
-            <li key={item.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <li key={item.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="mb-1 flex items-center gap-2">
                     <Badge tone={item.status === 'blocked' ? 'danger' : 'success'}>{item.status}</Badge>
                     <Badge tone="neutral">{item.role}</Badge>
                   </div>
-                  <Link href={`/admin/users/${item.id}`} className="font-medium text-gray-900 hover:underline">
+                  <Link href={`/admin/users/${item.id}`} className="font-medium text-gray-900 hover:underline dark:text-gray-100">
                     {item.phone ?? item.email ?? item.id}
                   </Link>
-                  <p className="text-xs text-gray-500">Зареєстрований {formatDate(item.createdAt)}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Зареєстрований {formatDate(item.createdAt)}</p>
                 </div>
                 <Button
                   size="sm"

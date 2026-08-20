@@ -8,6 +8,7 @@ import { ApiError, blockChat, getChatMessages, sendChatMessage, type Message } f
 import { Avatar, Badge, Button, ErrorState, LoadingState } from '@/components/ui';
 import { ReportButton } from '@/components/shared/ReportButton';
 import { cn } from '@/lib/cn';
+import { formatPrice } from '@/lib/format';
 
 const TYPING_TIMEOUT_MS = 3000;
 
@@ -144,30 +145,28 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3">
+    <div className="flex flex-1 min-h-0 flex-col">
+      <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3 dark:border-gray-700">
         <div className="min-w-0">
-          <Link href="/chats" className="mb-1 block text-xs text-gray-500 md:hidden">
+          <Link href="/chats" className="mb-1 block text-xs text-gray-500 dark:text-gray-400 md:hidden">
             ← Усі чати
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <div className="relative shrink-0">
               <Avatar name={chat?.otherDisplayName ?? null} size="sm" />
               <span
                 className={cn(
-                  'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white',
-                  isOnline ? 'bg-green-500' : 'bg-gray-300',
+                  'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-gray-950',
+                  isOnline ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600',
                 )}
                 aria-hidden="true"
               />
             </div>
-            <span className="truncate font-medium text-gray-900">{chat?.otherDisplayName ?? 'Чат'}</span>
+            {/* min-w-0 обов'язковий разом з truncate — інакше flex-item за замовчуванням
+                (min-width:auto) відмовляється стискатись нижче повної ширини тексту,
+                truncate фактично ніколи не спрацьовує. */}
+            <span className="min-w-0 truncate font-medium text-gray-900 dark:text-gray-100">{chat?.otherDisplayName ?? 'Чат'}</span>
           </div>
-          {chat?.listingId && chat.listingTitle && (
-            <Link href={`/listings/${chat.listingId}`} className="truncate text-xs text-brand-600 hover:underline">
-              {chat.listingTitle}
-            </Link>
-          )}
         </div>
         {confirmingBlock ? (
           <div className="flex shrink-0 gap-2">
@@ -187,6 +186,26 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
           </div>
         )}
       </div>
+
+      {chat?.listingId && chat.listingTitle && (
+        <Link
+          href={`/listings/${chat.listingId}`}
+          className="flex shrink-0 items-center gap-3 border-b border-gray-200 bg-gray-50 px-4 py-2 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
+        >
+          <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-gray-200 dark:bg-gray-700">
+            {chat.listingMainMediaUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- presigned S3/MinIO URL
+              <img src={chat.listingMainMediaUrl} alt="" className="h-full w-full object-cover" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">{chat.listingTitle}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {formatPrice(chat.listingPrice, chat.listingCurrency ?? 'UAH')}
+            </p>
+          </div>
+        </Link>
+      )}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {isLoading ? (
@@ -210,11 +229,11 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
                     <div
                       className={cn(
                         'max-w-[75%] rounded-2xl px-3 py-2 text-sm',
-                        isMine ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-900',
+                        isMine ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100',
                       )}
                     >
                       <p className="whitespace-pre-wrap break-words">{m.text}</p>
-                      <p className={cn('mt-1 text-right text-[10px]', isMine ? 'text-brand-100' : 'text-gray-400')}>
+                      <p className={cn('mt-1 text-right text-[10px]', isMine ? 'text-brand-100' : 'text-gray-400 dark:text-gray-500')}>
                         {formatTime(m.createdAt)}
                       </p>
                     </div>
@@ -222,13 +241,13 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
                 );
               })}
             </ul>
-            {otherTyping && <p className="mt-2 text-xs text-gray-400">{chat?.otherDisplayName ?? 'Співрозмовник'} друкує…</p>}
+            {otherTyping && <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">{chat?.otherDisplayName ?? 'Співрозмовник'} друкує…</p>}
             <div ref={bottomRef} />
           </>
         )}
       </div>
 
-      <div className="border-t border-gray-200 p-3">
+      <div className="border-t border-gray-200 p-3 dark:border-gray-700">
         {isBlocked ? (
           <Badge tone="danger">Ви заблоковані в цьому чаті — надсилання недоступне</Badge>
         ) : (
@@ -242,14 +261,14 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
               onChange={(e) => handleTypingInput(e.target.value)}
               placeholder="Напишіть повідомлення…"
               maxLength={2000}
-              className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus-visible:outline-none"
+              className="flex-1 rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             />
             <Button type="submit" size="sm" isLoading={isSending} disabled={!text.trim()}>
               Надіслати
             </Button>
           </form>
         )}
-        {sendError && <p className="mt-1 text-xs text-red-600">{sendError}</p>}
+        {sendError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{sendError}</p>}
       </div>
     </div>
   );

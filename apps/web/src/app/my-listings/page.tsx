@@ -86,7 +86,7 @@ export default function MyListingsPage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-12 text-center">
-        <p className="mb-4 text-gray-600">Увійдіть, щоб побачити свої оголошення.</p>
+        <p className="mb-4 text-gray-600 dark:text-gray-400">Увійдіть, щоб побачити свої оголошення.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -97,7 +97,7 @@ export default function MyListingsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-xl font-semibold text-gray-900">Мої оголошення</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Мої оголошення</h1>
         <div className="w-56">
           <Dropdown label="Статус" options={STATUS_FILTER_OPTIONS} value={status} onChange={setStatus} />
         </div>
@@ -118,17 +118,17 @@ export default function MyListingsPage() {
           {listings.map((listing) => {
             const href = listingDetailHref(listing);
             return (
-              <li key={listing.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <li key={listing.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex items-center gap-2">
                       <Badge tone={STATUS_TONES[listing.status]}>{STATUS_LABELS[listing.status]}</Badge>
-                      <span className="text-xs text-gray-500">Створено {formatDate(listing.createdAt)}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Створено {formatDate(listing.createdAt)}</span>
                     </div>
-                    <Link href={href} className="block truncate font-medium text-gray-900 hover:text-brand-700 hover:underline">
+                    <Link href={href} className="block truncate font-medium text-gray-900 hover:text-brand-700 hover:underline dark:text-gray-100 dark:hover:text-brand-400">
                       {listing.title}
                     </Link>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {formatPrice(listing.price, listing.currency)} · {listing.viewsCount} переглядів
                     </p>
                   </div>

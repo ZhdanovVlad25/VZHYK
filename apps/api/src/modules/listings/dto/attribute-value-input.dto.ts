@@ -1,4 +1,5 @@
-import { IsDefined, IsUUID } from 'class-validator';
+import { IsDefined } from 'class-validator';
+import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
 /**
  * value без строгого декоратора типу — форма (string/number/boolean/масив/{min,max})
@@ -6,7 +7,7 @@ import { IsDefined, IsUUID } from 'class-validator';
  * @IsDefined() лише реєструє поле для whitelist ValidationPipe і вимагає його наявність.
  */
 export class AttributeValueInputDto {
-  @IsUUID()
+  @IsUuidLike()
   categoryAttributeId: string;
 
   @IsDefined()

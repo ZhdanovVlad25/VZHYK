@@ -7,7 +7,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = { UAH: '₴', USD: '$', EUR: '�
  * зайва робота й миготіння). Символ підставляємо самі — детерміновано однаково всюди.
  */
 export function formatPrice(price: number | null, currency: string): string {
-  if (price === null) return 'Ціна не вказана';
+  if (price === null) return 'Договірна';
   const symbol = CURRENCY_SYMBOLS[currency] ?? currency;
   return `${new Intl.NumberFormat('uk-UA').format(price)} ${symbol}`;
 }

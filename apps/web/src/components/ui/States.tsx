@@ -5,7 +5,7 @@ import { Button } from './Button';
 /** aria-live="polite" + role="status": screen reader повідомляє про завантаження без переривання. */
 export function LoadingState({ label = 'Завантаження…' }: { label?: string }) {
   return (
-    <div role="status" aria-live="polite" className="flex flex-col items-center gap-2 py-6 text-gray-500">
+    <div role="status" aria-live="polite" className="flex flex-col items-center gap-2 py-6 text-gray-500 dark:text-gray-400">
       <Logo animated className="h-10 w-10" />
       <span>{label}</span>
     </div>
@@ -27,8 +27,8 @@ export function EmptyState({ title, description, action, icon }: EmptyStateProps
           {icon}
         </div>
       )}
-      <h3 className="text-base font-semibold text-gray-900">{title}</h3>
-      {description && <p className="max-w-sm text-sm text-gray-500">{description}</p>}
+      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+      {description && <p className="max-w-sm text-sm text-gray-500 dark:text-gray-400">{description}</p>}
       {action && (
         <Button className="mt-2" onClick={action.onClick}>
           {action.label}
@@ -52,8 +52,8 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <div role="alert" className="flex flex-col items-center gap-2 py-12 text-center">
-      <h3 className="text-base font-semibold text-red-700">{title}</h3>
-      <p className="max-w-sm text-sm text-gray-500">{description}</p>
+      <h3 className="text-base font-semibold text-red-700 dark:text-red-400">{title}</h3>
+      <p className="max-w-sm text-sm text-gray-500 dark:text-gray-400">{description}</p>
       {onRetry && (
         <Button className="mt-2" variant="secondary" onClick={onRetry}>
           Спробувати ще раз

@@ -86,7 +86,7 @@ export default function ModerationQueuePage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <p className="mb-4 text-gray-700">Щоб побачити чергу модерації, потрібно увійти.</p>
+        <p className="mb-4 text-gray-700 dark:text-gray-300">Щоб побачити чергу модерації, потрібно увійти.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -96,7 +96,7 @@ export default function ModerationQueuePage() {
 
   if (!authLoading && user && !isModerator) {
     return (
-      <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700">
+      <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700 dark:text-gray-300">
         Доступ лише для модераторів та адміністраторів.
       </div>
     );
@@ -105,7 +105,7 @@ export default function ModerationQueuePage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-xl font-semibold text-gray-900">Черга модерації</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Черга модерації</h1>
         <div className="w-56">
           <Dropdown label="Статус" options={STATUS_FILTER_OPTIONS} value={status} onChange={setStatus} />
         </div>
@@ -122,17 +122,17 @@ export default function ModerationQueuePage() {
           {items.map((item) => {
             const isOpen = item.status === 'PENDING' || item.status === 'NEEDS_REVIEW';
             return (
-              <li key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <li key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Badge tone={STATUS_TONES[item.status]}>{STATUS_LABELS[item.status]}</Badge>
                   {item.autoFlagReason && <Badge tone="danger">Авто-флаг: {item.autoFlagReason}</Badge>}
-                  <span className="text-xs text-gray-500">Подано {formatDate(item.createdAt)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Подано {formatDate(item.createdAt)}</span>
                 </div>
 
                 {item.listing ? (
                   <>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Link href={listingDetailHref(item.listing)} className="font-medium text-gray-900 hover:underline">
+                      <Link href={listingDetailHref(item.listing)} className="font-medium text-gray-900 hover:underline dark:text-gray-100">
                         {item.listing.title}
                       </Link>
                       {item.listing.ownerRiskScore > 0 && (
@@ -141,10 +141,10 @@ export default function ModerationQueuePage() {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600">{formatPrice(item.listing.price, item.listing.currency)}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{formatPrice(item.listing.price, item.listing.currency)}</p>
                   </>
                 ) : (
-                  <p className="text-sm text-gray-400">Оголошення видалено</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">Оголошення видалено</p>
                 )}
 
                 {isOpen && (

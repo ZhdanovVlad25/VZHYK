@@ -3,6 +3,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ProfilesService } from './profiles.service';
 import { ListingsService } from '../listings/listings.service';
+import { FavoritesService } from '../favorites/favorites.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { MAX_MEDIA_SIZE_BYTES } from '../media/media.service';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
@@ -15,11 +16,22 @@ export class ProfilesController {
   constructor(
     private readonly profiles: ProfilesService,
     private readonly listings: ListingsService,
+    private readonly favorites: FavoritesService,
   ) {}
 
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.profiles.getOwnView(user.id);
+  }
+
+  @Get('me/stats')
+  async stats(@CurrentUser() user: AuthenticatedUser) {
+    const [listingStats, favoritesCount, memberSince] = await Promise.all([
+      this.listings.getOwnStats(user.id),
+      this.favorites.count(user.id),
+      this.profiles.getMemberSince(user.id),
+    ]);
+    return { ...listingStats, favoritesCount, memberSince };
   }
 
   @Patch('me')

@@ -48,6 +48,10 @@ export class FavoritesService {
     await this.favorites.delete({ userId, listingId });
   }
 
+  async count(userId: string): Promise<number> {
+    return this.favorites.count({ where: { userId } });
+  }
+
   async list(userId: string): Promise<FavoriteView[]> {
     const rows = await this.favorites.find({ where: { userId }, order: { createdAt: 'DESC' } });
     if (rows.length === 0) {

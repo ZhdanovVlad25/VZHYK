@@ -20,6 +20,7 @@ export interface ChatListItem {
   listingId: string | null;
   otherUserId: string | null;
   lastMessageAt: Date | null;
+  lastMessageText: string | null;
   unreadCount: number;
 }
 
@@ -106,6 +107,7 @@ export class ChatsService {
         listingId: chatById.get(p.chatId)?.listingId ?? null,
         otherUserId: otherUserByChatId.get(p.chatId) ?? null,
         lastMessageAt: chatById.get(p.chatId)?.lastMessageAt ?? null,
+        lastMessageText: chatById.get(p.chatId)?.lastMessageText ?? null,
         unreadCount: p.unreadCount,
       }))
       .sort((a, b) => (b.lastMessageAt?.getTime() ?? 0) - (a.lastMessageAt?.getTime() ?? 0));
@@ -154,7 +156,7 @@ export class ChatsService {
     }
 
     const message = await this.messages.save(this.messages.create({ chatId, senderId: userId, text }));
-    await this.chats.update({ id: chatId }, { lastMessageAt: message.createdAt });
+    await this.chats.update({ id: chatId }, { lastMessageAt: message.createdAt, lastMessageText: message.text });
 
     const others = await this.participants.find({ where: { chatId } });
     const recipientUserIds = others.filter((p) => p.userId !== userId).map((p) => p.userId);

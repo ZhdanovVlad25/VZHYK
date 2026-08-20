@@ -85,9 +85,9 @@ function CategoryNode({
 }) {
   return (
     <li>
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 py-2" style={{ paddingLeft: depth * 20 }}>
-        <span className={node.isActive ? 'font-medium text-gray-900' : 'text-gray-400 line-through'}>{node.nameUk}</span>
-        <span className="text-xs text-gray-400">/{node.slug}</span>
+      <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 py-2 dark:border-gray-800" style={{ paddingLeft: depth * 20 }}>
+        <span className={node.isActive ? 'font-medium text-gray-900 dark:text-gray-100' : 'text-gray-400 line-through dark:text-gray-500'}>{node.nameUk}</span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">/{node.slug}</span>
         {!node.isActive && <Badge tone="neutral">Неактивна</Badge>}
         <div className="ml-auto flex gap-2">
           <Button size="sm" variant="ghost" onClick={() => onAddChild(node.id)}>
@@ -276,7 +276,7 @@ export default function AdminCategoriesPage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <p className="mb-4 text-gray-700">Щоб керувати категоріями, потрібно увійти.</p>
+        <p className="mb-4 text-gray-700 dark:text-gray-300">Щоб керувати категоріями, потрібно увійти.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -285,7 +285,7 @@ export default function AdminCategoriesPage() {
   }
 
   if (!authLoading && user && !isAdmin) {
-    return <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700">Доступ лише для адміністраторів.</div>;
+    return <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700 dark:text-gray-300">Доступ лише для адміністраторів.</div>;
   }
 
   const parentOptions = [
@@ -310,7 +310,7 @@ export default function AdminCategoriesPage() {
         value={form.sortOrder}
         onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value }))}
       />
-      <label className="flex items-center gap-2 text-sm text-gray-700">
+      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
         <input
           type="checkbox"
           checked={form.isActive}
@@ -339,14 +339,14 @@ export default function AdminCategoriesPage() {
   const attributesPanel = (
     <div className="flex flex-col gap-4">
       {attributes.length === 0 ? (
-        <p className="text-sm text-gray-500">Атрибутів ще немає.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Атрибутів ще немає.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {attributes.map((attr) => {
             const edit = attrEdits[attr.id] ?? { labelUk: attr.labelUk, isRequired: attr.isRequired, isFilterable: attr.isFilterable };
             return (
-              <li key={attr.id} className="rounded-xl border border-gray-200 p-2">
-                <div className="mb-1 flex items-center gap-2 text-xs text-gray-500">
+              <li key={attr.id} className="rounded-xl border border-gray-200 p-2 dark:border-gray-700">
+                <div className="mb-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                   <span className="font-mono">{attr.key}</span>
                   <Badge tone="neutral">{DATA_TYPE_OPTIONS.find((o) => o.value === attr.dataType)?.label ?? attr.dataType}</Badge>
                 </div>
@@ -356,9 +356,9 @@ export default function AdminCategoriesPage() {
                     onChange={(e) =>
                       setAttrEdits((prev) => ({ ...prev, [attr.id]: { ...edit, labelUk: e.target.value } }))
                     }
-                    className="h-9 flex-1 rounded-xl border border-gray-300 px-2 text-sm"
+                    className="h-9 flex-1 rounded-xl border border-gray-300 bg-white px-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
                   />
-                  <label className="flex items-center gap-1 text-xs text-gray-600">
+                  <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
                     <input
                       type="checkbox"
                       checked={edit.isRequired}
@@ -368,7 +368,7 @@ export default function AdminCategoriesPage() {
                     />
                     Обов&apos;язковий
                   </label>
-                  <label className="flex items-center gap-1 text-xs text-gray-600">
+                  <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
                     <input
                       type="checkbox"
                       checked={edit.isFilterable}
@@ -388,20 +388,20 @@ export default function AdminCategoriesPage() {
         </ul>
       )}
 
-      <form onSubmit={handleAddAttribute} className="flex flex-col gap-2 border-t border-gray-200 pt-3">
-        <p className="text-sm font-medium text-gray-700">+ Атрибут</p>
+      <form onSubmit={handleAddAttribute} className="flex flex-col gap-2 border-t border-gray-200 pt-3 dark:border-gray-700">
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">+ Атрибут</p>
         <div className="flex flex-wrap gap-2">
           <input
             placeholder="key (напр. brand)"
             value={newAttr.key}
             onChange={(e) => setNewAttr((a) => ({ ...a, key: e.target.value }))}
-            className="h-9 flex-1 rounded-xl border border-gray-300 px-2 text-sm"
+            className="h-9 flex-1 rounded-xl border border-gray-300 bg-white px-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           />
           <input
             placeholder="Назва (укр.)"
             value={newAttr.labelUk}
             onChange={(e) => setNewAttr((a) => ({ ...a, labelUk: e.target.value }))}
-            className="h-9 flex-1 rounded-xl border border-gray-300 px-2 text-sm"
+            className="h-9 flex-1 rounded-xl border border-gray-300 bg-white px-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
           />
         </div>
         <div className="w-56">
@@ -413,7 +413,7 @@ export default function AdminCategoriesPage() {
           />
         </div>
         <div className="flex gap-3">
-          <label className="flex items-center gap-1 text-xs text-gray-600">
+          <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
             <input
               type="checkbox"
               checked={newAttr.isRequired}
@@ -421,7 +421,7 @@ export default function AdminCategoriesPage() {
             />
             Обов&apos;язковий
           </label>
-          <label className="flex items-center gap-1 text-xs text-gray-600">
+          <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
             <input
               type="checkbox"
               checked={newAttr.isFilterable}
@@ -440,16 +440,16 @@ export default function AdminCategoriesPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold text-gray-900">Категорії</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Категорії</h1>
         <Button onClick={() => openCreate(null)}>+ Категорія</Button>
       </div>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {authLoading || isLoading ? (
         <LoadingState label="Завантаження категорій…" />
       ) : (
-        <ul className="rounded-2xl border border-gray-200 bg-white">
+        <ul className="rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
           {tree.map((node) => (
             <CategoryNode key={node.id} node={node} depth={0} onEdit={openEdit} onAddChild={openCreate} />
           ))}

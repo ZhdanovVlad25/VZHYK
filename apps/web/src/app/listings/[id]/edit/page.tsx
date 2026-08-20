@@ -106,6 +106,18 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  // Захист від оновлення стану після того, як компонент уже розмонтований (користувач
+  // швидко пішов зі сторінки, поки load()/getCities()/getRegions() ще виконувались) —
+  // без цього React у dev-режимі лише попереджає в консоль, але в проді може лишити
+  // сторінку в суперечливому напівоновленому DOM-стані.
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const load = useCallback(async () => {
     if (!accessToken) return;
     setIsLoading(true);
@@ -116,6 +128,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         getListingMedia(params.id),
         getCategoryTree(),
       ]);
+      if (!isMountedRef.current) return;
       setListing(listingResult);
       setMedia(mediaResult);
       setCategoryLabel(findCategoryLabel(categories, listingResult.categoryId));
@@ -131,11 +144,13 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       setAttributeValues(Object.fromEntries(listingResult.attributes.map((a) => [a.categoryAttributeId, a.value])));
 
       const attrs = await getCategoryAttributes(listingResult.categoryId);
+      if (!isMountedRef.current) return;
       setCategoryAttributes(attrs);
     } catch (err) {
+      if (!isMountedRef.current) return;
       setLoadError(err instanceof ApiError ? err.message : 'Не вдалося завантажити оголошення.');
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) setIsLoading(false);
     }
   }, [params.id, accessToken]);
 
@@ -146,8 +161,12 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   }, [accessToken, load]);
 
   useEffect(() => {
-    getCities().then(setCities).catch(() => setCities([]));
-    getRegions().then(setRegions).catch(() => setRegions([]));
+    getCities()
+      .then((c) => isMountedRef.current && setCities(c))
+      .catch(() => isMountedRef.current && setCities([]));
+    getRegions()
+      .then((r) => isMountedRef.current && setRegions(r))
+      .catch(() => isMountedRef.current && setRegions([]));
   }, []);
 
   // Одноразово підтягує область для вже збереженого міста оголошення (locationId
@@ -271,7 +290,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           </Badge>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{listing.title}</h1>
         </div>
-        <p className="mb-4 text-xl font-extrabold text-accent-600 dark:text-accent-500">{formatPrice(listing.price, listing.currency)}</p>
+        <p className="mb-4 text-xl font-extrabold text-brand-700 dark:text-brand-400">{formatPrice(listing.price, listing.currency)}</p>
 
         <Alert tone="info" title="Перегляд для модерації" className="mb-4">
           Це чуже оголошення — доступний лише перегляд перед рішенням у черзі модерації,
@@ -281,7 +300,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         {media.length > 0 && (
           <Card className="mb-4">
             <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Фото</h2>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
               {media.map((m) => (
                 // eslint-disable-next-line @next/next/no-img-element -- presigned S3/MinIO URL
                 <img
@@ -349,7 +368,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         </Badge>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{listing.title}</h1>
       </div>
-      <p className="mb-6 text-xl font-extrabold text-accent-600 dark:text-accent-500">{formatPrice(listing.price, listing.currency)}</p>
+      <p className="mb-6 text-xl font-extrabold text-brand-700 dark:text-brand-400">{formatPrice(listing.price, listing.currency)}</p>
 
       {listing.status === 'PENDING_MODERATION' && (
         <Alert tone="info" title="На модерації" className="mb-4">
@@ -367,7 +386,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
 
       <Card className="mb-4">
         <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Фото</h2>
-        <div className="mb-3 grid grid-cols-4 gap-2">
+        <div className="mb-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
           {media.map((m) => (
             // eslint-disable-next-line @next/next/no-img-element -- presigned S3/MinIO URL
             <img

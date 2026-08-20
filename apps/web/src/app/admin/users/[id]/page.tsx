@@ -108,7 +108,7 @@ export default function AdminUserDetailPage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <p className="mb-4 text-gray-700">Щоб побачити користувача, потрібно увійти.</p>
+        <p className="mb-4 text-gray-700 dark:text-gray-300">Щоб побачити користувача, потрібно увійти.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -117,12 +117,12 @@ export default function AdminUserDetailPage() {
   }
 
   if (!authLoading && user && !isAdmin) {
-    return <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700">Доступ лише для адміністраторів.</div>;
+    return <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700 dark:text-gray-300">Доступ лише для адміністраторів.</div>;
   }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <Link href="/admin/users" className="mb-4 inline-block text-sm text-brand-600 hover:underline">
+      <Link href="/admin/users" className="mb-4 inline-block text-sm text-brand-600 hover:underline dark:text-brand-400">
         ← До списку користувачів
       </Link>
 
@@ -142,9 +142,9 @@ export default function AdminUserDetailPage() {
                     <Badge tone={detail.riskScore >= 15 ? 'danger' : 'warning'}>Risk score: {detail.riskScore}</Badge>
                   )}
                 </div>
-                <p className="text-lg font-semibold text-gray-900">{detail.phone ?? detail.email ?? detail.id}</p>
-                {detail.profile.displayName && <p className="text-sm text-gray-600">{detail.profile.displayName}</p>}
-                <p className="mt-1 text-xs text-gray-500">Зареєстрований {formatDate(detail.createdAt)}</p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{detail.phone ?? detail.email ?? detail.id}</p>
+                {detail.profile.displayName && <p className="text-sm text-gray-600 dark:text-gray-400">{detail.profile.displayName}</p>}
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Зареєстрований {formatDate(detail.createdAt)}</p>
               </div>
               <Button
                 variant={detail.status === 'blocked' ? 'secondary' : 'danger'}
@@ -157,7 +157,7 @@ export default function AdminUserDetailPage() {
           </Card>
 
           <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Оголошення ({detail.listings.length})
             </h2>
             {detail.listings.length === 0 ? (
@@ -165,14 +165,14 @@ export default function AdminUserDetailPage() {
             ) : (
               <ul className="flex flex-col gap-2">
                 {detail.listings.map((listing) => (
-                  <li key={listing.id} className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+                  <li key={listing.id} className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={LISTING_STATUS_TONES[listing.status]}>{LISTING_STATUS_LABELS[listing.status]}</Badge>
-                      <Link href={`/listings/${listing.id}`} className="font-medium text-gray-900 hover:underline">
+                      <Link href={`/listings/${listing.id}`} className="font-medium text-gray-900 hover:underline dark:text-gray-100">
                         {listing.title}
                       </Link>
                     </div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       {formatPrice(listing.price, listing.currency)} · {formatDate(listing.createdAt)}
                     </p>
                   </li>
@@ -182,7 +182,7 @@ export default function AdminUserDetailPage() {
           </div>
 
           <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Скарги ({detail.reports.length})
             </h2>
             {detail.reports.length === 0 ? (
@@ -190,14 +190,14 @@ export default function AdminUserDetailPage() {
             ) : (
               <ul className="flex flex-col gap-2">
                 {detail.reports.map((report) => (
-                  <li key={report.id} className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+                  <li key={report.id} className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={REPORT_STATUS_TONES[report.status]}>{report.status}</Badge>
                       <Badge tone="neutral">{REPORT_REASON_LABELS[report.reason]}</Badge>
-                      <span className="text-xs text-gray-500">{formatDate(report.createdAt)}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(report.createdAt)}</span>
                     </div>
                     {report.targetType === 'LISTING' && (
-                      <Link href={`/listings/${report.targetId}`} className="text-sm text-brand-600 hover:underline">
+                      <Link href={`/listings/${report.targetId}`} className="text-sm text-brand-600 hover:underline dark:text-brand-400">
                         Оголошення {report.targetId.slice(0, 8)}
                       </Link>
                     )}
@@ -208,7 +208,7 @@ export default function AdminUserDetailPage() {
           </div>
 
           <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
               Risk-сигнали ({detail.riskSignals.length})
             </h2>
             {detail.riskSignals.length === 0 ? (
@@ -216,11 +216,11 @@ export default function AdminUserDetailPage() {
             ) : (
               <ul className="flex flex-col gap-2">
                 {detail.riskSignals.map((signal) => (
-                  <li key={signal.id} className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+                  <li key={signal.id} className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone="warning">{signal.signalType}</Badge>
-                      <span className="text-sm text-gray-600">вага {signal.weight}</span>
-                      <span className="text-xs text-gray-500">{formatDate(signal.createdAt)}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">вага {signal.weight}</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">{formatDate(signal.createdAt)}</span>
                     </div>
                   </li>
                 ))}

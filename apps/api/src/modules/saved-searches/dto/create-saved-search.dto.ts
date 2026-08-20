@@ -1,4 +1,5 @@
-import { IsObject, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
 export class CreateSavedSearchDto {
   @IsOptional()
@@ -7,7 +8,7 @@ export class CreateSavedSearchDto {
   queryText?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   categoryId?: string;
 
   @IsOptional()
@@ -15,6 +16,6 @@ export class CreateSavedSearchDto {
   filters?: Record<string, unknown>;
 
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   regionLocationId?: string;
 }

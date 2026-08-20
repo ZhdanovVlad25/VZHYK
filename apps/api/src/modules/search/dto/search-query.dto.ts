@@ -1,7 +1,8 @@
 import { Transform, Type } from 'class-transformer';
-import { IsIn, IsInt, IsNumber, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from 'class-validator';
+import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { LISTING_CONDITIONS, ListingCondition } from '../../listings/listing.constants';
 import { SearchSort } from '../../../providers/search/search-provider.interface';
+import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
 const SORTS: SearchSort[] = ['relevance', 'newest', 'price_asc', 'price_desc'];
 
@@ -13,15 +14,15 @@ export class SearchQueryDto {
   q?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   category?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   location?: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   seller?: string;
 
   @IsOptional()

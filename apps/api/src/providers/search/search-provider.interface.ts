@@ -24,6 +24,7 @@ export interface SearchResultItem {
   price: number | null;
   currency: string;
   categoryId: string;
+  listingType: string;
   locationId: string | null;
   locationName: string | null;
   publishedAt: string | null;

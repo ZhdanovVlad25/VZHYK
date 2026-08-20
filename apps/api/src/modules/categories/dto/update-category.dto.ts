@@ -1,4 +1,5 @@
-import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Matches, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
 export class UpdateCategoryDto {
   @IsOptional()
@@ -16,7 +17,7 @@ export class UpdateCategoryDto {
 
   /** Переміщення категорії в дереві (docs/api.md §4). null = зробити top-level. */
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   parentId?: string | null;
 
   @IsOptional()

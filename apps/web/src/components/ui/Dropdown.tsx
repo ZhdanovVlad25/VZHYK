@@ -64,10 +64,10 @@ export function Dropdown({ label, options, value, onChange, placeholder, require
 
   return (
     <div className="flex flex-col gap-1" ref={containerRef}>
-      <span id={`${buttonId}-label`} className="text-sm font-medium text-gray-700">
+      <span id={`${buttonId}-label`} className="text-sm font-medium text-gray-700 dark:text-gray-300">
         {label}
         {required && (
-          <span className="text-accent-600" aria-hidden="true">
+          <span className="text-accent-600 dark:text-accent-500" aria-hidden="true">
             {' '}
             *
           </span>
@@ -82,9 +82,9 @@ export function Dropdown({ label, options, value, onChange, placeholder, require
           aria-labelledby={`${buttonId}-label ${buttonId}`}
           onClick={() => setIsOpen((v) => !v)}
           onKeyDown={onKeyDown}
-          className="flex h-10 w-full items-center justify-between rounded-xl border border-gray-300 px-3 text-sm"
+          className="flex h-10 w-full items-center justify-between rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
         >
-          <span className={cn(!selected && 'text-gray-400')}>
+          <span className={cn(!selected && 'text-gray-400 dark:text-gray-500')}>
             {selected?.label ?? placeholder ?? 'Оберіть значення'}
           </span>
           <span aria-hidden="true">▾</span>
@@ -94,7 +94,7 @@ export function Dropdown({ label, options, value, onChange, placeholder, require
             id={listId}
             role="listbox"
             aria-labelledby={`${buttonId}-label`}
-            className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg"
+            className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
           >
             {options.map((option, index) => (
               <li
@@ -102,8 +102,8 @@ export function Dropdown({ label, options, value, onChange, placeholder, require
                 role="option"
                 aria-selected={option.value === value}
                 className={cn(
-                  'cursor-pointer px-3 py-2 text-sm hover:bg-brand-50',
-                  index === activeIndex && 'bg-brand-50',
+                  'cursor-pointer px-3 py-2 text-sm text-gray-900 hover:bg-brand-50 dark:text-gray-100 dark:hover:bg-gray-700',
+                  index === activeIndex && 'bg-brand-50 dark:bg-gray-700',
                 )}
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => {

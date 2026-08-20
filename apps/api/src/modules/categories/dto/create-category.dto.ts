@@ -1,4 +1,5 @@
-import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Matches, MaxLength, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, Matches, MaxLength, Min } from 'class-validator';
+import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
 export class CreateCategoryDto {
   @IsString()
@@ -13,7 +14,7 @@ export class CreateCategoryDto {
   slug: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   parentId?: string | null;
 
   @IsOptional()

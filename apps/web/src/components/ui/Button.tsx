@@ -11,13 +11,14 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary: 'bg-brand-600 text-white hover:bg-brand-700 disabled:bg-gray-300',
-  secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400',
-  ghost: 'bg-transparent text-brand-700 hover:bg-brand-50 disabled:text-gray-400',
-  danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-300',
+  primary: 'bg-brand-600 text-white hover:bg-brand-700 disabled:bg-gray-300 dark:disabled:bg-gray-700',
+  secondary:
+    'bg-gray-100 text-gray-900 hover:bg-gray-200 disabled:bg-gray-50 disabled:text-gray-400 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 dark:disabled:bg-gray-800 dark:disabled:text-gray-500',
+  ghost: 'bg-transparent text-brand-700 hover:bg-brand-50 disabled:text-gray-400 dark:text-brand-400 dark:hover:bg-gray-800',
+  danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-300 dark:disabled:bg-gray-700',
   // Головна "продавай" дія (напр. "+ Додати оголошення") — червоний з футболки маскота,
   // виділяється на тлі бірюзового primary, не конкурує з ним за увагу.
-  accent: 'bg-accent-600 text-white hover:bg-accent-700 disabled:bg-gray-300',
+  accent: 'bg-accent-600 text-white hover:bg-accent-700 disabled:bg-gray-300 dark:disabled:bg-gray-700',
 };
 
 const sizeClasses: Record<ButtonSize, string> = {

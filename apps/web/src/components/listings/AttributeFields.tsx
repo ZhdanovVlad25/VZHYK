@@ -33,7 +33,9 @@ function AttributeField({
   value: unknown;
   onChange: (value: unknown) => void;
 }) {
-  const label = attr.isRequired ? `${attr.labelUk} *` : attr.labelUk;
+  // Не додаємо "*" вручну до label — Input/Dropdown самі малюють зірочку з required/isRequired,
+  // подвійне "* *" саме так і з'являлось раніше на обов'язкових атрибутах.
+  const label = attr.labelUk;
   const options = attr.enumOptions?.values ?? [];
 
   switch (attr.dataType) {
@@ -68,6 +70,11 @@ function AttributeField({
             className="h-4 w-4 rounded border-gray-300"
           />
           {label}
+          {attr.isRequired && (
+            <span className="text-accent-600 dark:text-accent-500" aria-hidden="true">
+              *
+            </span>
+          )}
         </label>
       );
 

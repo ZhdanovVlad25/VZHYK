@@ -49,7 +49,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
   }
 
   if (isSent) {
-    return <p className="text-xs text-gray-500">Скаргу надіслано, дякуємо</p>;
+    return <p className="text-xs text-gray-500 dark:text-gray-400">Скаргу надіслано, дякуємо</p>;
   }
 
   if (!isOpen) {
@@ -61,7 +61,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-gray-200 p-3">
+    <div className="flex flex-col gap-2 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
       <Dropdown
         label="Причина скарги"
         options={REASON_OPTIONS}
@@ -75,7 +75,7 @@ export function ReportButton({ targetType, targetId }: { targetType: ReportTarge
         onChange={(e) => setDescription(e.target.value)}
         hint="Необов'язково"
       />
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       <div className="flex gap-2">
         <Button size="sm" isLoading={isSubmitting} disabled={!reason} onClick={handleSubmit}>
           Надіслати

@@ -111,7 +111,7 @@ export default function AdminReportsPage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <p className="mb-4 text-gray-700">Щоб побачити скарги, потрібно увійти.</p>
+        <p className="mb-4 text-gray-700 dark:text-gray-300">Щоб побачити скарги, потрібно увійти.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -121,7 +121,7 @@ export default function AdminReportsPage() {
 
   if (!authLoading && user && !isModerator) {
     return (
-      <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700">
+      <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700 dark:text-gray-300">
         Доступ лише для модераторів та адміністраторів.
       </div>
     );
@@ -130,7 +130,7 @@ export default function AdminReportsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-xl font-semibold text-gray-900">Скарги</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Скарги</h1>
         <div className="flex gap-3">
           <div className="w-48">
             <Dropdown label="Статус" options={STATUS_FILTER_OPTIONS} value={status} onChange={setStatus} />
@@ -152,24 +152,24 @@ export default function AdminReportsPage() {
           {items.map((item) => {
             const isOpen = item.status === 'PENDING' || item.status === 'REVIEWING';
             return (
-              <li key={item.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <li key={item.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <Badge tone={STATUS_TONES[item.status]}>{STATUS_LABELS[item.status]}</Badge>
                   <Badge tone="neutral">{REASON_LABELS[item.reason]}</Badge>
-                  <span className="text-xs text-gray-500">Подано {formatDate(item.createdAt)}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Подано {formatDate(item.createdAt)}</span>
                 </div>
 
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-gray-700 dark:text-gray-300">
                   {TARGET_TYPE_LABELS[item.targetType]}:{' '}
                   {item.targetType === 'LISTING' ? (
-                    <Link href={`/listings/${item.targetId}`} className="text-brand-600 hover:underline">
+                    <Link href={`/listings/${item.targetId}`} className="text-brand-600 hover:underline dark:text-brand-400">
                       {item.targetId.slice(0, 8)}
                     </Link>
                   ) : (
-                    <span className="text-gray-500">{item.targetId.slice(0, 8)}</span>
+                    <span className="text-gray-500 dark:text-gray-400">{item.targetId.slice(0, 8)}</span>
                   )}
                 </p>
-                {item.description && <p className="mt-1 text-sm text-gray-600">{item.description}</p>}
+                {item.description && <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{item.description}</p>}
 
                 {isOpen && (
                   <div className="mt-3 flex flex-wrap gap-2">

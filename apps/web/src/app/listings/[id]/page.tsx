@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import {
   ApiError,
   getCategoryAttributes,
+  getCategoryTree,
   getCities,
   getListing,
   getListingMedia,
@@ -13,6 +14,7 @@ import { Badge, Card } from '@/components/ui';
 import { FavoriteButton } from '@/components/listings/FavoriteButton';
 import { StartChatButton } from '@/components/listings/StartChatButton';
 import { SellerPhoneButton } from '@/components/listings/SellerPhoneButton';
+import { PriceOfferButton } from '@/components/listings/PriceOfferButton';
 import { OwnerEditLink } from '@/components/listings/OwnerEditLink';
 import { SellerCard } from '@/components/listings/SellerCard';
 import { ListingGallery } from '@/components/listings/ListingGallery';
@@ -100,7 +102,7 @@ export default async function ListingDetailPage({
     throw err;
   }
 
-  const [media, categoryAttributes, sellerListings, otherListings, cities] = await Promise.all([
+  const [media, categoryAttributes, sellerListings, otherListings, cities, categoryTree] = await Promise.all([
     getListingMedia(id).catch(() => []),
     getCategoryAttributes(listing.categoryId).catch(() => []),
     search({ seller: listing.userId, sort: 'newest', limit: 9 }, 60)
@@ -112,8 +114,15 @@ export default async function ListingDetailPage({
       .then((r) => r.items.filter((item) => item.id !== id).slice(0, 8))
       .catch(() => []),
     getCities(3600).catch(() => []),
+    getCategoryTree(3600).catch(() => []),
   ]);
   const cityName = listing.locationId ? cities.find((c) => c.id === listing.locationId)?.nameUk ?? null : null;
+  // Топ-категорія оголошення (навіть якщо categoryId — підкатегорія) — потрібна лише для
+  // звуження діапазону слайдера "Хочу дешевше" на авто/нерухомості (PriceOfferButton).
+  const topCategoryName =
+    categoryTree.find((c) => c.id === listing.categoryId)?.nameUk ??
+    categoryTree.find((c) => c.children.some((child) => child.id === listing.categoryId))?.nameUk ??
+    null;
 
   const attributeLabelById = new Map(
     categoryAttributes.map((attr) => [attr.id, attr.labelUk]),
@@ -168,24 +177,24 @@ export default async function ListingDetailPage({
                 >
                   {STATUS_LABELS[listing.status] ?? listing.status}
                 </Badge>
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-500 dark:text-gray-400">
                   {listing.viewsCount} переглядів
                 </span>
               </div>
               <FavoriteButton listingId={listing.id} />
             </div>
 
-            <h1 className="text-2xl font-semibold text-gray-900">
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
               {listing.title}
             </h1>
-            <p className="mt-2 text-3xl font-extrabold text-accent-600">
+            <p className="mt-2 text-3xl font-extrabold text-brand-700 dark:text-brand-400">
               {formatPrice(listing.price, listing.currency)}
             </p>
             {listing.isNegotiable && (
-              <p className="mt-1 text-sm text-gray-500">Торг можливий</p>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Торг можливий</p>
             )}
             {cityName && (
-              <p className="mt-1 flex items-center gap-1 text-sm font-medium text-gray-700">{cityName}</p>
+              <p className="mt-1 flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">{cityName}</p>
             )}
 
             <div className="mt-4 flex flex-wrap items-start gap-2">
@@ -194,6 +203,15 @@ export default async function ListingDetailPage({
                 ownerId={listing.userId}
               />
               <SellerPhoneButton sellerId={listing.userId} />
+              {listing.price !== null && (
+                <PriceOfferButton
+                  listingId={listing.id}
+                  ownerId={listing.userId}
+                  price={listing.price}
+                  currency={listing.currency}
+                  topCategoryName={topCategoryName}
+                />
+              )}
               <OwnerEditLink listingId={listing.id} ownerId={listing.userId} />
               <ReportButton targetType="LISTING" targetId={listing.id} />
             </div>
@@ -201,24 +219,24 @@ export default async function ListingDetailPage({
             <SellerCard sellerId={listing.userId} />
 
             {listing.description && (
-              <p className="mt-6 whitespace-pre-wrap text-gray-700">
+              <p className="mt-6 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
                 {listing.description}
               </p>
             )}
 
             {listing.attributes.length > 0 && (
               <Card className="mt-6">
-                <h2 className="mb-3 text-sm font-semibold text-gray-900">
+                <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Характеристики
                 </h2>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                   {listing.attributes.map((attr) => (
                     <div key={attr.id} className="contents">
-                      <dt className="text-gray-500">
+                      <dt className="text-gray-500 dark:text-gray-400">
                         {attributeLabelById.get(attr.categoryAttributeId) ??
                           '—'}
                       </dt>
-                      <dd className="text-gray-900">
+                      <dd className="text-gray-900 dark:text-gray-100">
                         {formatAttributeValue(attr.value)}
                       </dd>
                     </div>
@@ -232,10 +250,10 @@ export default async function ListingDetailPage({
         {sellerListings.length > 0 && (
           <section aria-labelledby="seller-listings-heading" className="mt-10">
             <div className="mb-4 flex items-center gap-3">
-              <h2 id="seller-listings-heading" className="text-lg font-semibold text-gray-900">
+              <h2 id="seller-listings-heading" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Усі оголошення автора
               </h2>
-              <Link href={`/search?seller=${listing.userId}`} className="text-sm text-brand-600 hover:underline">
+              <Link href={`/search?seller=${listing.userId}`} className="text-sm text-brand-600 hover:underline dark:text-brand-400">
                 Дивитися всі →
               </Link>
             </div>
@@ -245,7 +263,7 @@ export default async function ListingDetailPage({
 
         {otherListings.length > 0 && (
           <section aria-labelledby="other-listings-heading" className="mt-10">
-            <h2 id="other-listings-heading" className="mb-4 text-lg font-semibold text-gray-900">
+            <h2 id="other-listings-heading" className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
               Інші оголошення
             </h2>
             <ListingCarousel items={otherListings} />

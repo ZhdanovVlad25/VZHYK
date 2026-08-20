@@ -21,8 +21,7 @@ interface SortConfig {
  *
  * Свідомо поза цим зрізом (задокументовано, не забуто): region/city/district — окремі
  * фільтри рівнів локації (потрібне розгортання дерева locations); attrs[] — фільтрація
- * за динамічними атрибутами категорії (потрібне приведення типів per data_type); category
- * фільтрує лише за точним categoryId, без рекурсії по підкатегоріях.
+ * за динамічними атрибутами категорії (потрібне приведення типів per data_type).
  */
 @Injectable()
 export class PostgresFtsSearchProvider implements SearchProvider {
@@ -58,7 +57,17 @@ export class PostgresFtsSearchProvider implements SearchProvider {
     }
     if (filters.categoryId) {
       params.push(filters.categoryId);
-      conditions.push(`l."categoryId" = $${params.length}`);
+      // Категорія-фільтр включає й підкатегорії (рекурсивно) — інакше клік на батьківську
+      // категорію ("Дитячий світ") не показує оголошення, заведені під її підкатегорією
+      // ("Дитячі коляски"), хоча вони туди й мають потрапляти.
+      conditions.push(`l."categoryId" IN (
+        WITH RECURSIVE cat_tree AS (
+          SELECT id FROM "categories" WHERE id = $${params.length}
+          UNION ALL
+          SELECT c.id FROM "categories" c INNER JOIN cat_tree t ON c."parentId" = t.id
+        )
+        SELECT id FROM cat_tree
+      )`);
     }
     if (filters.locationId) {
       params.push(filters.locationId);
@@ -98,7 +107,7 @@ export class PostgresFtsSearchProvider implements SearchProvider {
 
     params.push(limit + 1);
     const sql = `
-      SELECT l."id", l."title", l."price", l."currency", l."categoryId", l."locationId", l."publishedAt",
+      SELECT l."id", l."title", l."price", l."currency", l."categoryId", l."listingType", l."locationId", l."publishedAt",
              ${rankExpr} AS "rank",
              (SELECT loc."nameUk" FROM "locations" loc WHERE loc."id" = l."locationId") AS "locationName",
              (SELECT m."id" FROM "media" m WHERE m."listingId" = l."id" AND m."isMain" = true LIMIT 1) AS "mainMediaId",
@@ -182,6 +191,7 @@ export class PostgresFtsSearchProvider implements SearchProvider {
       price: row.price === null ? null : Number(row.price),
       currency: row.currency as string,
       categoryId: row.categoryId as string,
+      listingType: row.listingType as string,
       locationId: (row.locationId as string | null) ?? null,
       locationName: (row.locationName as string | null) ?? null,
       publishedAt: row.publishedAt ? new Date(row.publishedAt as string).toISOString() : null,

@@ -7,9 +7,10 @@ import { ProfilesService } from './profiles.service';
 import { ProfilesController } from './profiles.controller';
 import { ListingsModule } from '../listings/listings.module';
 import { MediaModule } from '../media/media.module';
+import { FavoritesModule } from '../favorites/favorites.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Profile, User, Location]), ListingsModule, MediaModule],
+  imports: [TypeOrmModule.forFeature([Profile, User, Location]), ListingsModule, MediaModule, FavoritesModule],
   controllers: [ProfilesController],
   providers: [ProfilesService],
   exports: [ProfilesService],

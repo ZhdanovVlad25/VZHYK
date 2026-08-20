@@ -47,13 +47,13 @@ export function SellerCard({ sellerId }: { sellerId: string }) {
   if (!profile) return null;
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-3 text-sm">
+    <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800">
       <Avatar name={profile.displayName} url={profile.avatarUrl} />
       <div className="min-w-0 flex-1">
-        <p className="font-medium text-gray-900">{profile.displayName ?? 'Продавець'}</p>
-        {profile.lastActiveAt && <p className="text-xs text-gray-500">{formatLastSeen(profile.lastActiveAt)}</p>}
+        <p className="font-medium text-gray-900 dark:text-gray-100">{profile.displayName ?? 'Продавець'}</p>
+        {profile.lastActiveAt && <p className="text-xs text-gray-500 dark:text-gray-400">{formatLastSeen(profile.lastActiveAt)}</p>}
       </div>
-      <Link href={`/search?seller=${sellerId}`} className="text-sm font-medium text-brand-700 hover:underline">
+      <Link href={`/search?seller=${sellerId}`} className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400">
         Інші оголошення автора
       </Link>
     </div>

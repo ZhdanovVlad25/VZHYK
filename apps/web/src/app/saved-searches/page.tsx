@@ -72,7 +72,7 @@ export default function SavedSearchesPage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-12 text-center">
-        <p className="mb-4 text-gray-600">Увійдіть, щоб побачити збережені пошуки.</p>
+        <p className="mb-4 text-gray-600 dark:text-gray-400">Увійдіть, щоб побачити збережені пошуки.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -82,7 +82,7 @@ export default function SavedSearchesPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">Збережені пошуки</h1>
+      <h1 className="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">Збережені пошуки</h1>
 
       {authLoading || isLoading ? (
         <LoadingState label="Завантаження…" />
@@ -96,16 +96,16 @@ export default function SavedSearchesPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {savedSearches.map((item) => (
-            <li key={item.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <li key={item.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-gray-900">
+                  <p className="font-medium text-gray-900 dark:text-gray-100">
                     {item.queryText ? `«${item.queryText}»` : 'Усі оголошення'}
                     {item.categoryId && (
-                      <span className="font-normal text-gray-600"> · {categoryLabels.get(item.categoryId) ?? 'Категорія'}</span>
+                      <span className="font-normal text-gray-600 dark:text-gray-400"> · {categoryLabels.get(item.categoryId) ?? 'Категорія'}</span>
                     )}
                   </p>
-                  <p className="text-xs text-gray-500">Збережено {formatDate(item.createdAt)}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Збережено {formatDate(item.createdAt)}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <Link href={searchHref(item)}>

@@ -99,6 +99,14 @@ export class ProfilesService {
     return { ...saved, avatarUrl: uploaded.url };
   }
 
+  async getMemberSince(userId: string): Promise<Date> {
+    const user = await this.users.findOne({ where: { id: userId, deletedAt: IsNull() } });
+    if (!user) {
+      throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'Користувача не знайдено' });
+    }
+    return user.createdAt;
+  }
+
   /** Публічний перегляд — жодних side-effects (не створює Profile-рядок для анонімно переглянутого користувача). */
   async getPublicProfile(userId: string, requesterUserId?: string): Promise<PublicProfile> {
     const user = await this.users.findOne({ where: { id: userId, deletedAt: IsNull() } });

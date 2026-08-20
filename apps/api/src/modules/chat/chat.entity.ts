@@ -17,6 +17,9 @@ export class Chat {
   @Column({ type: 'timestamptz', nullable: true })
   lastMessageAt: Date | null;
 
+  @Column({ type: 'text', nullable: true })
+  lastMessageText: string | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

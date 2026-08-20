@@ -172,7 +172,7 @@ export default function AdminListingsPage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <p className="mb-4 text-gray-700">Щоб керувати оголошеннями, потрібно увійти.</p>
+        <p className="mb-4 text-gray-700 dark:text-gray-300">Щоб керувати оголошеннями, потрібно увійти.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -181,13 +181,13 @@ export default function AdminListingsPage() {
   }
 
   if (!authLoading && user && !isAdmin) {
-    return <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700">Доступ лише для адміністраторів.</div>;
+    return <div className="mx-auto max-w-md px-4 py-16 text-center text-gray-700 dark:text-gray-300">Доступ лише для адміністраторів.</div>;
   }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-xl font-semibold text-gray-900">Оголошення (адмін)</h1>
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Оголошення (адмін)</h1>
         <div className="w-56">
           <Dropdown label="Статус" options={STATUS_FILTER_OPTIONS} value={status} onChange={setStatus} />
         </div>
@@ -202,7 +202,7 @@ export default function AdminListingsPage() {
         </Button>
       </form>
 
-      {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {authLoading || isLoading ? (
         <LoadingState label="Завантаження оголошень…" />
@@ -211,18 +211,18 @@ export default function AdminListingsPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {listings.map((listing) => (
-            <li key={listing.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <li key={listing.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <Badge tone={STATUS_TONES[listing.status]}>{STATUS_LABELS[listing.status]}</Badge>
-                    <span className="text-xs text-gray-500">Створено {formatDate(listing.createdAt)}</span>
-                    <span className="text-xs text-gray-400">Власник: {listing.userId.slice(0, 8)}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Створено {formatDate(listing.createdAt)}</span>
+                    <span className="text-xs text-gray-400 dark:text-gray-500">Власник: {listing.userId.slice(0, 8)}</span>
                   </div>
-                  <Link href={listingDetailHref(listing)} className="font-medium text-gray-900 hover:underline">
+                  <Link href={listingDetailHref(listing)} className="font-medium text-gray-900 hover:underline dark:text-gray-100">
                     {listing.title}
                   </Link>
-                  <p className="text-sm text-gray-600">{formatPrice(listing.price, listing.currency)}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{formatPrice(listing.price, listing.currency)}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   <Button size="sm" variant="secondary" onClick={() => openEdit(listing)}>
@@ -251,7 +251,7 @@ export default function AdminListingsPage() {
             onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
           />
           <div className="flex flex-col gap-1">
-            <label htmlFor="admin-listing-description" className="text-sm font-medium text-gray-700">
+            <label htmlFor="admin-listing-description" className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Опис
             </label>
             <textarea
@@ -259,7 +259,7 @@ export default function AdminListingsPage() {
               value={editForm.description}
               onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
               rows={4}
-              className="rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 focus-visible:border-brand-600"
+              className="rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:border-brand-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
             />
           </div>
           <Input

@@ -1,5 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  // 'class' а не 'media' — вибір теми має бути ручним перемикачем (ThemeProvider.tsx),
+  // а не сліпо йти за system prefers-color-scheme без можливості юзера override.
+  darkMode: 'class',
   content: ['./src/**/*.{ts,tsx}'],
   theme: {
     extend: {

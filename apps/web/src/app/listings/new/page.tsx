@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -10,7 +10,9 @@ import {
   getCategoryAttributes,
   getCategoryTree,
   getRegions,
+  publishListing,
   suggestCategory,
+  uploadListingMedia,
   type Category,
   type CategoryAttribute,
   type CategorySuggestion,
@@ -28,6 +30,17 @@ const LISTING_TYPE_OPTIONS: { value: ListingType; label: string }[] = [
   { value: 'service', label: 'Послуга' },
   { value: 'rent', label: 'Оренда' },
 ];
+
+const CURRENCY_OPTIONS = [
+  { value: 'UAH', label: 'грн' },
+  { value: 'USD', label: '$' },
+  { value: 'EUR', label: '€' },
+];
+
+/** Ціна не може бути відʼємною — прибираємо будь-який "-" одразу при вводі, а не лише min на спінері (той не блокує ручний ввід "-6"). */
+function sanitizeNonNegative(raw: string): string {
+  return raw.replace(/-/g, '');
+}
 
 const TITLE_MIN_LENGTH = 5;
 // Достатньо, щоб відсіяти порожні "асд"-заглушки, але не заважати короткому опису одним реченням.
@@ -49,20 +62,31 @@ export default function NewListingPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
+  const [currency, setCurrency] = useState('UAH');
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [regions, setRegions] = useState<Region[]>([]);
   const [regionId, setRegionId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
 
+  const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     getCategoryTree()
-      .then(setCategoryTree)
-      .catch(() => setCategoryTree([]));
-    getRegions().then(setRegions).catch(() => setRegions([]));
+      .then((tree) => !cancelled && setCategoryTree(tree))
+      .catch(() => !cancelled && setCategoryTree([]));
+    getRegions()
+      .then((r) => !cancelled && setRegions(r))
+      .catch(() => !cancelled && setRegions([]));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const selectedRegion = useMemo(
@@ -76,8 +100,8 @@ export default function NewListingPage() {
     () => (categoryTree ?? []).find((c) => c.id === topCategoryId) ?? null,
     [categoryTree, topCategoryId],
   );
-  // Дитячий світ — поки єдина категорія з підкатегоріями (max depth 1, docs/categories.md);
-  // якщо в неї немає дітей, вона сама вже кінцева й нічого обирати далі не треба.
+  // Дерево категорій має макс. глибину 1 (docs/categories.md) — якщо в обраної топ-категорії
+  // немає дітей, вона сама вже кінцева й нічого обирати далі не треба.
   const subCategories = selectedTop?.children ?? [];
   const categoryId = subCategories.length > 0 ? subCategoryId : topCategoryId;
 
@@ -85,6 +109,7 @@ export default function NewListingPage() {
   // Скидаємо "відхилено" і саму підказку щоразу, коли назва міняється — стара підказка
   // для іншого тексту не має сенсу.
   useEffect(() => {
+    let cancelled = false;
     setSuggestionDismissed(false);
     if (title.trim().length < 3) {
       setSuggestion(null);
@@ -92,10 +117,13 @@ export default function NewListingPage() {
     }
     const handle = setTimeout(() => {
       suggestCategory(title)
-        .then(setSuggestion)
-        .catch(() => setSuggestion(null));
+        .then((s) => !cancelled && setSuggestion(s))
+        .catch(() => !cancelled && setSuggestion(null));
     }, 500);
-    return () => clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
   }, [title]);
 
   const showSuggestion =
@@ -123,7 +151,7 @@ export default function NewListingPage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <p className="mb-4 text-gray-700">Щоб додати оголошення, потрібно увійти.</p>
+        <p className="mb-4 text-gray-700 dark:text-gray-300">Щоб додати оголошення, потрібно увійти.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -135,12 +163,22 @@ export default function NewListingPage() {
   const isDescriptionValid = description.trim().length >= DESCRIPTION_MIN_LENGTH;
   const canSubmit = Boolean(categoryId) && isTitleValid && isDescriptionValid && Boolean(locationId);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) setPendingPhotos((prev) => [...prev, file]);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function removePendingPhoto(index: number) {
+    setPendingPhotos((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  async function submit(publishNow: boolean) {
     if (!accessToken || !canSubmit || !categoryId) return;
 
     setError(null);
-    setIsSubmitting(true);
+    if (publishNow) setIsPublishing(true);
+    else setIsSubmitting(true);
     try {
       const listing = await createListing(
         {
@@ -149,6 +187,7 @@ export default function NewListingPage() {
           title,
           description: description || undefined,
           price: price === '' ? undefined : Number(price),
+          currency,
           condition: (condition as 'new' | 'used' | 'for_parts') ?? undefined,
           locationId: locationId ?? undefined,
           isNegotiable,
@@ -158,12 +197,37 @@ export default function NewListingPage() {
         },
         accessToken,
       );
+      for (const file of pendingPhotos) {
+        await uploadListingMedia(listing.id, file, accessToken).catch(() => null);
+      }
+
+      let publishError: string | null = null;
+      if (publishNow) {
+        try {
+          await publishListing(listing.id, accessToken);
+        } catch (err) {
+          // Оголошення вже створено (і фото завантажені) — не втрачаємо цей результат через
+          // помилку публікації, лише переносимо повідомлення на екран редагування, звідки
+          // публікацію можна повторити.
+          publishError =
+            err instanceof ApiError ? err.message : 'Оголошення створено, але не вдалося опублікувати.';
+        }
+      }
+
+      // window.alert, не setError — сторінка одразу переходить на редагування, банер тут ніхто б не побачив.
+      if (publishError) window.alert(publishError);
       router.push(`/listings/${listing.id}/edit`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не вдалося створити оголошення. Спробуйте ще раз.');
     } finally {
       setIsSubmitting(false);
+      setIsPublishing(false);
     }
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    submit(true);
   }
 
   if (authLoading || categoryTree === null) {
@@ -172,7 +236,7 @@ export default function NewListingPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">Нове оголошення</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-gray-900 dark:text-gray-100">Нове оголошення</h1>
       <Card>
         {error && (
           <Alert tone="danger" title="Помилка" className="mb-4">
@@ -182,14 +246,14 @@ export default function NewListingPage() {
 
         <Form ariaLabel="Створення оголошення" onSubmit={handleSubmit}>
           {showSuggestion && suggestion && (
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-3 text-sm">
-              <p className="flex-1 text-gray-700">
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800">
+              <p className="flex-1 text-gray-700 dark:text-gray-300">
                 Схоже, це{' '}
-                <span className="font-medium text-gray-900">
+                <span className="font-medium text-gray-900 dark:text-gray-100">
                   {suggestion.subCategoryName ?? suggestion.topCategoryName}
                 </span>
                 {suggestion.subCategoryName && (
-                  <span className="text-gray-500"> ({suggestion.topCategoryName})</span>
+                  <span className="text-gray-500 dark:text-gray-400"> ({suggestion.topCategoryName})</span>
                 )}
                 . Підтвердити категорію?
               </p>
@@ -252,13 +316,21 @@ export default function NewListingPage() {
               required
             />
 
-            <Input
-              label="Ціна, грн"
-              type="number"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              hint={listingType === 'buy' || listingType === 'give_away' ? 'Необов\'язково для цього типу' : undefined}
-            />
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input
+                  label="Ціна"
+                  type="number"
+                  min={0}
+                  value={price}
+                  onChange={(e) => setPrice(sanitizeNonNegative(e.target.value))}
+                  hint={listingType === 'buy' || listingType === 'give_away' ? 'Необов\'язково для цього типу' : undefined}
+                />
+              </div>
+              <div className="w-24">
+                <Dropdown label="Валюта" options={CURRENCY_OPTIONS} value={currency} onChange={setCurrency} />
+              </div>
+            </div>
 
             <Dropdown
               label="Область"
@@ -294,12 +366,52 @@ export default function NewListingPage() {
             />
           </div>
 
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <div>
+            <h2 className="mb-2 text-sm font-semibold text-gray-900 dark:text-gray-100">Фото</h2>
+            {pendingPhotos.length > 0 && (
+              <div className="mb-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
+                {pendingPhotos.map((file, index) => (
+                  <div key={`${file.name}-${index}`} className="group relative aspect-square">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- локальний File-прев'ю, не потребує next/image */}
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt=""
+                      className="h-full w-full rounded-xl border border-gray-200 object-cover dark:border-gray-700"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePendingPhoto(index)}
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-600 text-xs font-bold leading-none text-white"
+                      aria-label="Прибрати фото"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Нативна кнопка file-інпуту показує текст мовою браузера — ховаємо сам input
+                і керуємо вибором файлу через стилізовану кнопку сторінки (той самий патерн,
+                що в apps/web/src/app/listings/[id]/edit/page.tsx). */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileSelected}
+              className="sr-only"
+            />
+            <Button type="button" variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+              Додати фото
+            </Button>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Фото завантажаться одразу після створення оголошення</p>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input
               type="checkbox"
               checked={isNegotiable}
               onChange={(e) => setIsNegotiable(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
+              className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800"
             />
             Торг можливий
           </label>
@@ -312,9 +424,20 @@ export default function NewListingPage() {
             />
           )}
 
-          <Button type="submit" isLoading={isSubmitting} disabled={!canSubmit}>
-            Створити чернетку
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" isLoading={isPublishing} disabled={!canSubmit}>
+              Опублікувати
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              isLoading={isSubmitting}
+              disabled={!canSubmit}
+              onClick={() => submit(false)}
+            >
+              Зберегти як чернетку
+            </Button>
+          </div>
         </Form>
       </Card>
     </div>

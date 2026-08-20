@@ -47,7 +47,7 @@ export default function FavoritesPage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-12 text-center">
-        <p className="mb-4 text-gray-600">Увійдіть, щоб побачити обрані оголошення.</p>
+        <p className="mb-4 text-gray-600 dark:text-gray-400">Увійдіть, щоб побачити обрані оголошення.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -57,7 +57,7 @@ export default function FavoritesPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">Обране</h1>
+      <h1 className="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">Обране</h1>
 
       {authLoading || isLoading ? (
         <LoadingState label="Завантаження обраного…" />
@@ -68,7 +68,7 @@ export default function FavoritesPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {favorites.map((fav) => (
-            <li key={fav.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+            <li key={fav.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center gap-2">
@@ -76,16 +76,16 @@ export default function FavoritesPage() {
                     {!fav.isUnavailable && fav.priceChanged && <Badge tone="warning">Ціна змінилась</Badge>}
                   </div>
                   {fav.isUnavailable ? (
-                    <p className="truncate font-medium text-gray-900">{fav.listing.title}</p>
+                    <p className="truncate font-medium text-gray-900 dark:text-gray-100">{fav.listing.title}</p>
                   ) : (
                     <Link
                       href={`/listings/${fav.listingId}`}
-                      className="block truncate font-medium text-gray-900 hover:text-brand-700 hover:underline"
+                      className="block truncate font-medium text-gray-900 hover:text-brand-700 hover:underline dark:text-gray-100 dark:hover:text-brand-400"
                     >
                       {fav.listing.title}
                     </Link>
                   )}
-                  <p className="text-sm text-gray-600">{formatPrice(fav.listing.price, fav.listing.currency)}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">{formatPrice(fav.listing.price, fav.listing.currency)}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   {!fav.isUnavailable && (

@@ -35,23 +35,34 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   useEffect(() => {
-    getCities().then(setCities).catch(() => setCities([]));
+    let cancelled = false;
+    getCities()
+      .then((c) => !cancelled && setCities(c))
+      .catch(() => !cancelled && setCities([]));
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (!accessToken) return;
+    let cancelled = false;
     setIsLoading(true);
     setLoadError(null);
     getMyProfile(accessToken)
       .then((p) => {
+        if (cancelled) return;
         setProfile(p);
         setName(p.displayName ?? '');
         setUsername(p.username ?? '');
         setBio(p.bio ?? '');
         setCityLocationId(p.cityLocationId);
       })
-      .catch((err) => setLoadError(err instanceof ApiError ? err.message : 'Не вдалося завантажити профіль.'))
-      .finally(() => setIsLoading(false));
+      .catch((err) => !cancelled && setLoadError(err instanceof ApiError ? err.message : 'Не вдалося завантажити профіль.'))
+      .finally(() => !cancelled && setIsLoading(false));
+    return () => {
+      cancelled = true;
+    };
   }, [accessToken]);
 
   async function handleAvatarSelected(e: React.ChangeEvent<HTMLInputElement>) {
@@ -100,7 +111,7 @@ export default function ProfilePage() {
   if (!authLoading && !user) {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <p className="mb-4 text-gray-700">Щоб редагувати профіль, потрібно увійти.</p>
+        <p className="mb-4 text-gray-700 dark:text-gray-300">Щоб редагувати профіль, потрібно увійти.</p>
         <Link href="/login">
           <Button>Увійти</Button>
         </Link>
@@ -114,7 +125,7 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8">
-      <h1 className="mb-6 text-2xl font-semibold text-gray-900">Профіль</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-gray-900 dark:text-gray-100">Профіль</h1>
 
       <Card className="mb-4">
         <div className="flex items-center gap-4">
@@ -137,7 +148,7 @@ export default function ProfilePage() {
             >
               {profile?.avatarUrl ? 'Змінити фото' : 'Додати фото'}
             </Button>
-            {avatarError && <p className="mt-1 text-xs text-red-600">{avatarError}</p>}
+            {avatarError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{avatarError}</p>}
           </div>
         </div>
       </Card>
@@ -175,8 +186,8 @@ export default function ProfilePage() {
             placeholder="Не вказано"
           />
           <Input label="Про себе" value={bio} onChange={(e) => setBio(e.target.value)} hint="Необов'язково" />
-          <p className="text-sm text-gray-500">
-            Телефон: <span className="text-gray-900">{user?.phone ?? '—'}</span>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Телефон: <span className="text-gray-900 dark:text-gray-100">{user?.phone ?? '—'}</span>
           </p>
           <Button type="submit" isLoading={isSaving}>
             Зберегти

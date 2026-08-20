@@ -54,7 +54,13 @@ export function FavoriteButton({ listingId }: { listingId: string }) {
 
   return (
     <Button variant="secondary" size="sm" isLoading={isSubmitting || isCheckingStatus} onClick={toggle}>
-      {isFavorite ? '★ В обраному' : '☆ В обране'}
+      {isFavorite ? (
+        <>
+          <span className="text-highlight-500 dark:text-highlight-400">★</span> В обраному
+        </>
+      ) : (
+        '☆ В обране'
+      )}
     </Button>
   );
 }

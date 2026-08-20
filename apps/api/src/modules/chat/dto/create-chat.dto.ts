@@ -1,10 +1,11 @@
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsOptional } from 'class-validator';
+import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
 export class CreateChatDto {
-  @IsUUID()
+  @IsUuidLike()
   otherUserId: string;
 
   @IsOptional()
-  @IsUUID()
+  @IsUuidLike()
   listingId?: string;
 }

@@ -1,106 +1,181 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { cn } from '@/lib/cn';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
+import { useLanguage } from '@/lib/language-context';
+import { getCities, type City } from '@/lib/api';
 import { Logo } from './Logo';
 import { ProfileMenu } from './ProfileMenu';
-
-const navLinkClass = (isActive: boolean) =>
-  cn(
-    'rounded-lg px-2.5 py-1.5 text-sm font-medium transition-colors',
-    isActive ? 'bg-brand-100 text-brand-700' : 'text-gray-700 hover:bg-gray-100 hover:text-brand-600',
-  );
+import { AdminMenu } from './AdminMenu';
+import { ThemeToggle } from './ThemeToggle';
+import { LanguageToggle } from './LanguageToggle';
 
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
   const { user, isLoading } = useAuth();
+  const { t } = useLanguage();
   const [q, setQ] = useState('');
+  const [cities, setCities] = useState<City[]>([]);
+  const [location, setLocation] = useState<string | null>(null);
+  // md+ рендерить свою власну (не-мобільну) навігацію інлайн — цей стан лише для <md drawer.
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  function handleSearch(e: FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    getCities().then(setCities).catch(() => setCities([]));
+  }, []);
+
+  // Перехід між сторінками (клік лінка в мобільному меню) — закриваємо drawer, інакше
+  // лишається розкритим поверх нової сторінки.
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname]);
+
+  function navigateToSearch(nextQ: string, nextLocation: string | null) {
     const params = new URLSearchParams();
-    if (q.trim()) params.set('q', q.trim());
+    if (nextQ.trim()) params.set('q', nextQ.trim());
+    if (nextLocation) params.set('location', nextLocation);
     router.push(`/search${params.toString() ? `?${params.toString()}` : ''}`);
   }
 
-  return (
-    <header className="shrink-0 border-b border-gray-200 bg-white">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3">
-        <Link href="/" className="flex items-center gap-2 font-display text-xl font-extrabold text-brand-700">
-          <Logo className="h-7 w-7" />
-          Вжик
+  function handleSearch(e: FormEvent) {
+    e.preventDefault();
+    navigateToSearch(q, location);
+    setIsMenuOpen(false);
+  }
+
+  function handleLocationChange(value: string | null) {
+    setLocation(value);
+    navigateToSearch(q, value);
+  }
+
+  // idSuffix — форма рендериться двічі (десктоп-рядок + мобільний drawer), id/htmlFor мають
+  // лишатись унікальними в DOM.
+  function renderSearchForm(idSuffix: string) {
+    return (
+      <form onSubmit={handleSearch} role="search" className="flex w-full items-center gap-2">
+        <label htmlFor={`header-search-${idSuffix}`} className="sr-only">
+          Пошук оголошень
+        </label>
+        <input
+          id={`header-search-${idSuffix}`}
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={t('searchPlaceholder')}
+          className="h-9 w-full min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-400 focus-visible:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:placeholder:text-gray-500"
+        />
+        <select
+          aria-label={t('cityLabel')}
+          value={location ?? ''}
+          onChange={(e) => handleLocationChange(e.target.value || null)}
+          className="h-9 w-24 shrink-0 rounded-xl border border-gray-300 bg-white px-2 text-sm text-gray-900 focus-visible:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 sm:w-28"
+        >
+          <option value="">{t('allCities')}</option>
+          {cities.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nameUk}
+            </option>
+          ))}
+        </select>
+        <Button type="submit" size="sm" className="shrink-0">
+          {t('searchButton')}
+        </Button>
+      </form>
+    );
+  }
+
+  // Спільний вміст account/nav-блоку — на md+ рендериться інлайн у хедері, на <md — усередині drawer.
+  function renderNavItems(): ReactNode {
+    return (
+      <>
+        <div className="flex items-center gap-3">
+          <LanguageToggle />
+          <ThemeToggle />
+        </div>
+
+        {/* Завжди видима, навіть анонімним — /listings/new сама показує "увійдіть" з лінком на /login, якщо юзера нема. */}
+        <Link href="/listings/new" className="md:w-auto">
+          <Button variant="accent" size="sm" className="w-full md:w-auto">
+            {t('addListing')}
+          </Button>
         </Link>
 
-        <form onSubmit={handleSearch} role="search" className="flex min-w-[200px] flex-1 items-center gap-2">
-          <label htmlFor="header-search" className="sr-only">
-            Пошук оголошень
-          </label>
-          <input
-            id="header-search"
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Що шукаєте?"
-            className="h-8 w-full rounded-xl border border-gray-300 px-3 text-sm focus-visible:outline-none"
-          />
-          <Button type="submit" size="sm">
-            Знайти
-          </Button>
-        </form>
-
-        <nav className="flex items-center gap-3">
-          {/* Завжди видима, навіть анонімним — /listings/new сама показує "увійдіть" з лінком на /login, якщо юзера нема. */}
-          <Link href="/listings/new">
-            <Button variant="accent" size="sm">
-              + Додати оголошення
+        {isLoading ? null : user ? (
+          (user.role === 'moderator' || user.role === 'admin') && <AdminMenu role={user.role} />
+        ) : (
+          <Link href="/login" className="md:w-auto">
+            <Button variant="secondary" size="sm" className="w-full md:w-auto">
+              {t('login')}
             </Button>
           </Link>
-          {isLoading ? null : user ? (
-            <>
-              {(user.role === 'moderator' || user.role === 'admin') && (
-                <>
-                  <Link href="/admin/moderation" className={navLinkClass(pathname?.startsWith('/admin/moderation') ?? false)}>
-                    Модерація
-                  </Link>
-                  <Link href="/admin/reports" className={navLinkClass(pathname?.startsWith('/admin/reports') ?? false)}>
-                    Скарги
-                  </Link>
-                </>
-              )}
-              {user.role === 'admin' && (
-                <>
-                  <Link href="/admin/dashboard" className={navLinkClass(pathname?.startsWith('/admin/dashboard') ?? false)}>
-                    Дашборд
-                  </Link>
-                  <Link href="/admin/listings" className={navLinkClass(pathname?.startsWith('/admin/listings') ?? false)}>
-                    Оголошення (адмін)
-                  </Link>
-                  <Link href="/admin/categories" className={navLinkClass(pathname?.startsWith('/admin/categories') ?? false)}>
-                    Категорії
-                  </Link>
-                  <Link href="/admin/users" className={navLinkClass(pathname?.startsWith('/admin/users') ?? false)}>
-                    Користувачі
-                  </Link>
-                  <Link href="/admin/audit-log" className={navLinkClass(pathname?.startsWith('/admin/audit-log') ?? false)}>
-                    Журнал дій
-                  </Link>
-                </>
-              )}
+        )}
+      </>
+    );
+  }
+
+  return (
+    <header className="shrink-0 border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+      <div className="mx-auto max-w-6xl px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Link href="/" className="flex shrink-0 items-center gap-2 font-display text-xl font-extrabold text-brand-700 dark:text-brand-400">
+            <Logo className="h-7 w-7" />
+            <span className="hidden sm:inline">Вжик</span>
+          </Link>
+
+          {/* Пошук: своя строка на <md (нижче), інлайн поряд з лого на md+. */}
+          <div className="hidden min-w-[200px] flex-1 md:flex">{renderSearchForm('desktop')}</div>
+
+          {/* Тогли/nav/акаунт інлайн лише на md+ — на <md усе це переїжджає в drawer нижче. */}
+          <div className="hidden shrink-0 items-center gap-3 md:flex">{renderNavItems()}</div>
+
+          {/* Профіль лишається видимим завжди (навіть на <md) — вже компактний (аватар+ім'я),
+              не варто ховати за гамбургер разом з рештою. */}
+          {user && (
+            <div className="shrink-0 md:hidden">
               <ProfileMenu />
-            </>
-          ) : (
-            <Link href="/login">
-              <Button variant="secondary" size="sm">
-                Увійти
-              </Button>
-            </Link>
+            </div>
           )}
-        </nav>
+
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen((v) => !v)}
+            aria-expanded={isMenuOpen}
+            aria-label={isMenuOpen ? 'Закрити меню' : 'Відкрити меню'}
+            className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-700 md:hidden dark:border-gray-700 dark:text-gray-300"
+          >
+            {isMenuOpen ? (
+              <span className="text-xl leading-none">×</span>
+            ) : (
+              <span className="flex flex-col gap-[3px]">
+                <span className="block h-0.5 w-4 bg-current" />
+                <span className="block h-0.5 w-4 bg-current" />
+                <span className="block h-0.5 w-4 bg-current" />
+              </span>
+            )}
+          </button>
+
+          {/* ProfileMenu на md+ живе всередині renderNavItems-сусіда, а не тут — рендеримо
+              окремо праворуч від навігації тим самим порядком, що й раніше. */}
+          {user && (
+            <div className="hidden shrink-0 md:block">
+              <ProfileMenu />
+            </div>
+          )}
+        </div>
+
+        {/* Мобільний пошук — завжди видимий одразу під верхньою строкою, не ховається в drawer
+            (пошук — основна дія маркетплейсу, не другорядна навігація). */}
+        <div className="mt-3 md:hidden">{renderSearchForm('mobile')}</div>
+
+        {isMenuOpen && (
+          <div className="mt-3 flex flex-col items-stretch gap-3 border-t border-gray-100 pt-3 md:hidden dark:border-gray-800">
+            {renderNavItems()}
+          </div>
+        )}
       </div>
     </header>
   );

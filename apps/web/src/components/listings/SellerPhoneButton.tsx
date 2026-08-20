@@ -43,7 +43,7 @@ export function SellerPhoneButton({ sellerId }: { sellerId: string }) {
     return (
       <a
         href={`tel:${phone}`}
-        className="inline-flex h-8 items-center rounded-xl border border-brand-200 bg-brand-50 px-3 text-sm font-semibold text-brand-700 hover:bg-brand-100"
+        className="inline-flex h-8 items-center rounded-xl border border-brand-200 bg-brand-50 px-3 text-sm font-semibold text-brand-700 hover:bg-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-brand-400 dark:hover:bg-gray-700"
       >
         {phone}
       </a>
@@ -55,7 +55,7 @@ export function SellerPhoneButton({ sellerId }: { sellerId: string }) {
       <Button size="sm" variant="secondary" isLoading={isLoading} onClick={handleClick}>
         Показати телефон
       </Button>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }

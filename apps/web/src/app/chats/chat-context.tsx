@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { usePathname } from 'next/navigation';
 import { io, type Socket } from 'socket.io-client';
 import { useAuth } from '@/lib/auth-context';
-import { listChats, getPublicProfile, getListing, type ChatListItem } from '@/lib/api';
+import { listChats, getPublicProfile, getListing, getListingMedia, type ChatListItem } from '@/lib/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
 /** Gateway namespace живе поза глобальним REST-префіксом /api/v1 — див. chat.gateway.ts. */
@@ -13,6 +13,9 @@ const WS_ORIGIN = API_URL.replace(/\/api\/v1\/?$/, '');
 export interface EnrichedChat extends ChatListItem {
   otherDisplayName: string;
   listingTitle: string | null;
+  listingPrice: number | null;
+  listingCurrency: string | null;
+  listingMainMediaUrl: string | null;
 }
 
 interface MessageNewPayload {
@@ -37,21 +40,35 @@ async function enrichChats(items: ChatListItem[]): Promise<EnrichedChat[]> {
   const otherUserIds = [...new Set(items.map((c) => c.otherUserId).filter((id): id is string => Boolean(id)))];
   const listingIds = [...new Set(items.map((c) => c.listingId).filter((id): id is string => Boolean(id)))];
 
-  const [profiles, listings] = await Promise.all([
+  const [profiles, listings, mediaByListing] = await Promise.all([
     Promise.all(otherUserIds.map((id) => getPublicProfile(id).catch(() => null))),
     Promise.all(listingIds.map((id) => getListing(id).catch(() => null))),
+    Promise.all(listingIds.map((id) => getListingMedia(id).catch(() => []))),
   ]);
 
   const nameById = new Map(
     otherUserIds.map((id, i) => [id, profiles[i]?.displayName ?? profiles[i]?.username ?? `Користувач ${id.slice(0, 8)}`]),
   );
-  const titleById = new Map(listingIds.map((id, i) => [id, listings[i]?.title ?? null]));
+  const listingById = new Map(listingIds.map((id, i) => [id, listings[i]]));
+  const mainMediaUrlById = new Map(
+    listingIds.map((id, i) => {
+      const media = mediaByListing[i];
+      const main = media.find((m) => m.isMain) ?? media[0];
+      return [id, main?.url ?? null];
+    }),
+  );
 
-  return items.map((item) => ({
-    ...item,
-    otherDisplayName: item.otherUserId ? nameById.get(item.otherUserId) ?? 'Користувач' : 'Користувач',
-    listingTitle: item.listingId ? titleById.get(item.listingId) ?? null : null,
-  }));
+  return items.map((item) => {
+    const listing = item.listingId ? listingById.get(item.listingId) : null;
+    return {
+      ...item,
+      otherDisplayName: item.otherUserId ? nameById.get(item.otherUserId) ?? 'Користувач' : 'Користувач',
+      listingTitle: listing?.title ?? null,
+      listingPrice: listing?.price ?? null,
+      listingCurrency: listing?.currency ?? null,
+      listingMainMediaUrl: item.listingId ? mainMediaUrlById.get(item.listingId) ?? null : null,
+    };
+  });
 }
 
 export function ChatProvider({ children }: { children: ReactNode }) {

@@ -51,7 +51,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg focus:outline-none"
+        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-lg focus:outline-none dark:bg-gray-900"
       >
         <div className="flex items-start justify-between gap-4">
           <h2 id={titleId} className="text-lg font-semibold">
@@ -61,7 +61,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
             type="button"
             onClick={onClose}
             aria-label="Закрити"
-            className="rounded p-1 text-gray-500 hover:bg-gray-100"
+            className="rounded p-1 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
           >
             ✕
           </button>

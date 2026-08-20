@@ -5,10 +5,11 @@ import { EmptyState } from '@/components/ui';
 
 // Ротація світлих tint-фонів з палітри маскота (docs/design.md) — без цього
 // категорії губилися на білому тлі суцільною сірою рамкою.
+// dark: тільки реально наявні стопи (accent/highlight не мають повного 50-900 ряду, tailwind.config.js).
 const CATEGORY_TINTS = [
-  'bg-brand-100 text-brand-700',
-  'bg-accent-100 text-accent-700',
-  'bg-highlight-100 text-highlight-900',
+  'bg-brand-100 text-brand-700 dark:bg-brand-900 dark:text-brand-200',
+  'bg-accent-100 text-accent-700 dark:bg-accent-700/30 dark:text-accent-100',
+  'bg-highlight-100 text-highlight-900 dark:bg-highlight-500/20 dark:text-highlight-400',
 ];
 
 // Категорії/новинки не персоналізовані й без побічних ефектів на GET — безпечно кешувати (ISR).
@@ -17,7 +18,7 @@ export const revalidate = 60;
 export default async function HomePage() {
   const [categories, listings] = await Promise.all([
     getCategoryTree(300).catch(() => []),
-    search({ sort: 'newest', limit: 12 }, 60).catch(() => ({
+    search({ sort: 'newest', limit: 15 }, 60).catch(() => ({
       items: [],
       nextCursor: null,
     })),
@@ -28,7 +29,7 @@ export default async function HomePage() {
       <section aria-labelledby="categories-heading" className="mb-10">
         <h2
           id="categories-heading"
-          className="mb-4 text-lg font-semibold text-gray-900"
+          className="mb-4 text-lg font-semibold text-gray-900 dark:text-gray-100"
         >
           Категорії
         </h2>
@@ -46,12 +47,14 @@ export default async function HomePage() {
       </section>
 
       <section aria-labelledby="newest-heading">
-        <h2
-          id="newest-heading"
-          className="mb-4 text-lg font-semibold text-gray-900"
-        >
-          Нові оголошення
-        </h2>
+        <div className="mb-4 flex items-center gap-3">
+          <h2 id="newest-heading" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Нові оголошення
+          </h2>
+          <Link href="/search?sort=newest" className="text-sm text-brand-600 hover:underline dark:text-brand-400">
+            Переглянути всі →
+          </Link>
+        </div>
         {listings.items.length === 0 ? (
           <EmptyState
             title="Поки немає оголошень"
