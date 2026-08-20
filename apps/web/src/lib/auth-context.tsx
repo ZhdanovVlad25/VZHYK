@@ -27,14 +27,12 @@ interface AuthContextValue {
   avatarUrl: string | null;
   isLoading: boolean;
   requestOtp: (phone: string) => Promise<void>;
-  /** needsName/needsPhone — профіль ще без імені/номера, сторінка логіну показує додаткові кроки. */
-  verifyOtp: (phone: string, code: string) => Promise<{ needsName: boolean; needsPhone: boolean }>;
+  /** Повертає true, якщо профіль ще без імені — сторінка логіну показує додатковий крок. */
+  verifyOtp: (phone: string, code: string) => Promise<{ needsName: boolean }>;
   /** Google OAuth callback віддає лише токени в query — user підвантажується окремо через GET /auth/me. */
-  loginWithTokens: (accessToken: string, refreshToken: string) => Promise<{ needsName: boolean; needsPhone: boolean }>;
+  loginWithTokens: (accessToken: string, refreshToken: string) => Promise<{ needsName: boolean }>;
   setDisplayName: (name: string) => void;
   setAvatarUrl: (url: string | null) => void;
-  /** Викликається після успішної прив'язки номера (POST /auth/phone/link) — оновлює user.phone у сховищі. */
-  setPhone: (phone: string) => void;
   logout: () => void;
 }
 
@@ -78,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
     setAuth(stored);
-    return { needsName: !stored.displayName, needsPhone: !stored.user.phone };
+    return { needsName: !stored.displayName };
   }, []);
 
   const loginWithTokens = useCallback(async (accessToken: string, refreshToken: string) => {
@@ -93,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
     setAuth(stored);
-    return { needsName: !stored.displayName, needsPhone: !stored.user.phone };
+    return { needsName: !stored.displayName };
   }, []);
 
   const setDisplayName = useCallback((name: string) => {
@@ -109,15 +107,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuth((prev) => {
       if (!prev) return prev;
       const next = { ...prev, avatarUrl: url };
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
-
-  const setPhone = useCallback((phone: string) => {
-    setAuth((prev) => {
-      if (!prev) return prev;
-      const next = { ...prev, user: { ...prev.user, phone } };
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
@@ -145,10 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithTokens,
       setDisplayName,
       setAvatarUrl,
-      setPhone,
       logout,
     }),
-    [auth, isLoading, requestOtp, verifyOtp, loginWithTokens, setDisplayName, setAvatarUrl, setPhone, logout],
+    [auth, isLoading, requestOtp, verifyOtp, loginWithTokens, setDisplayName, setAvatarUrl, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

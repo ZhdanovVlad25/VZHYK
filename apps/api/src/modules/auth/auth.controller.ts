@@ -64,19 +64,4 @@ export class AuthController {
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.auth.me(user.id);
   }
-
-  /** Прив'язка телефону до вже автентифікованого юзера (Google-логін без номера) — purpose='verify', окремий otp-бакет від логіну. */
-  @Post('phone/request')
-  @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 3, ttl: 900_000 } })
-  requestPhoneLink(@Body() dto: RequestOtpDto, @Ip() ip: string) {
-    return this.auth.requestOtp(dto.phone, ip, 'verify');
-  }
-
-  @Post('phone/link')
-  @UseGuards(JwtAuthGuard)
-  @Throttle({ default: { limit: 5, ttl: 300_000 } })
-  linkPhone(@Body() dto: VerifyOtpDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.auth.linkPhone(user.id, dto.phone, dto.code);
-  }
 }
