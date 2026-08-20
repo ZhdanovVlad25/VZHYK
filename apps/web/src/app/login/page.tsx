@@ -127,6 +127,19 @@ function LoginPageContent() {
           </Alert>
         )}
 
+        {step === 'phone' && (
+          <>
+            <Button type="button" size="lg" onClick={handleGoogleLogin} className="w-full">
+              {t('loginWithGoogle')}
+            </Button>
+            <div className="my-4 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
+              <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+              {t('loginOr')}
+              <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+            </div>
+          </>
+        )}
+
         {step === 'phone' ? (
           <Form ariaLabel="Вхід за номером телефону" onSubmit={handleRequestOtp}>
             <div className="flex flex-col gap-1">
@@ -150,31 +163,17 @@ function LoginPageContent() {
                   }}
                   placeholder="XXXXXXXXX"
                   maxLength={PHONE_DIGITS_LENGTH}
-                  autoFocus
                   required
                   className="h-full min-w-0 flex-1 rounded-r-xl border-0 bg-transparent pl-1 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-0 dark:text-gray-100 dark:placeholder:text-gray-500"
                 />
               </div>
               <span className="text-xs text-gray-500 dark:text-gray-400">{t('loginPhoneHint')}</span>
             </div>
-            <Button type="submit" isLoading={isSubmitting}>
+            <Button type="submit" variant="secondary" isLoading={isSubmitting}>
               {t('loginSendCode')}
             </Button>
           </Form>
         ) : null}
-
-        {step === 'phone' && (
-          <>
-            <div className="my-4 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
-              <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-              {t('loginOr')}
-              <span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-            </div>
-            <Button type="button" variant="secondary" onClick={handleGoogleLogin} className="w-full">
-              {t('loginWithGoogle')}
-            </Button>
-          </>
-        )}
 
         {step === 'code' && (
           <Form ariaLabel="Підтвердження коду" onSubmit={handleVerifyOtp}>
