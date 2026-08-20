@@ -166,8 +166,8 @@ export default function NewListingPage() {
   const canSubmit = Boolean(categoryId) && isTitleValid && isDescriptionValid && Boolean(locationId);
 
   function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (file) setPendingPhotos((prev) => [...prev, file]);
+    const files = e.target.files;
+    if (files && files.length > 0) setPendingPhotos((prev) => [...prev, ...Array.from(files)]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
@@ -401,6 +401,7 @@ export default function NewListingPage() {
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp"
+              multiple
               onChange={handleFileSelected}
               className="sr-only"
             />

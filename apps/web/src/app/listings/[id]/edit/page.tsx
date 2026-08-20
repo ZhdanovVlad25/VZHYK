@@ -194,12 +194,14 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const isOwner = Boolean(user) && Boolean(listing) && listing?.userId === user?.id;
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !accessToken) return;
+    const files = e.target.files;
+    if (!files || files.length === 0 || !accessToken) return;
     setActionError(null);
     setIsUploading(true);
     try {
-      await uploadListingMedia(params.id, file, accessToken);
+      for (const file of Array.from(files)) {
+        await uploadListingMedia(params.id, file, accessToken);
+      }
       const fresh = await getListingMedia(params.id);
       setMedia(fresh);
     } catch (err) {
@@ -405,6 +407,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp"
+          multiple
           onChange={handleFileSelected}
           disabled={isUploading}
           className="sr-only"
