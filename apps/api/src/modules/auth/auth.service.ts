@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import * as argon2 from 'argon2';
 import { randomInt } from 'crypto';
@@ -31,11 +32,17 @@ export class AuthService {
     @InjectRepository(OtpCode) private readonly otpCodes: Repository<OtpCode>,
     @InjectRepository(Profile) private readonly profiles: Repository<Profile>,
     private readonly jwt: JwtService,
+    private readonly config: ConfigService,
     @Inject(SMS_PROVIDER_TOKEN) private readonly sms: SmsProvider,
   ) {}
 
   async requestOtp(phone: string, ip: string | null, purpose: 'login' | 'verify' = 'login'): Promise<{ requested: true }> {
-    const code = String(randomInt(100000, 999999));
+    // Постійний код лише для одного номера (FIXED_OTP_PHONE), явно за проханням користувача —
+    // усвідомлений компроміс: незмінний код на цей номер діє як постійний бекдор в акаунт,
+    // тож НЕ узагальнюємо цей механізм на інші номери без окремого явного запиту.
+    const fixedPhone = this.config.get<string>('FIXED_OTP_PHONE');
+    const fixedCode = this.config.get<string>('FIXED_OTP_CODE');
+    const code = phone === fixedPhone && fixedCode ? fixedCode : String(randomInt(100000, 999999));
     const codeHash = await argon2.hash(code);
 
     await this.otpCodes.save(
