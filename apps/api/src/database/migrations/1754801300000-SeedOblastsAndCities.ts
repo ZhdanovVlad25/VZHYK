@@ -172,8 +172,16 @@ export class SeedOblastsAndCities1754801300000 implements MigrationInterface {
   ];
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    const [ukraine] = await queryRunner.query(`SELECT id FROM locations WHERE slug = 'ukraine'`);
-    if (!ukraine) return;
+    // "Україна" (root, level='country') раніше існувала лише через ручний run-seed.ts,
+    // якого продакшн ніколи не запускав — ця міграція мовчки no-op'ала на порожній
+    // locations-таблиці (жодної помилки, просто return). Тепер створює корінь сама,
+    // якщо його ще нема, замість покладатись на зовнішній seed-скрипт.
+    let [ukraine] = await queryRunner.query(`SELECT id FROM locations WHERE slug = 'ukraine'`);
+    if (!ukraine) {
+      [ukraine] = await queryRunner.query(
+        `INSERT INTO locations (level, "nameUk", slug, "parentId") VALUES ('country', 'Україна', 'ukraine', NULL) RETURNING id`,
+      );
+    }
 
     for (const oblast of this.oblasts) {
       const [existingOblast] = await queryRunner.query(`SELECT id FROM locations WHERE slug = $1`, [oblast.slug]);
