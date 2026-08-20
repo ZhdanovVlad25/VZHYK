@@ -24,9 +24,11 @@ export default defineRailway(() => {
       JWT_REFRESH_SECRET: preserve(),
       JWT_REFRESH_TTL: "30d",
       JWT_KID: "prod-key-1",
-      // console — тимчасово: коди входу йдуть у логи Railway, не на реальні SMS.
-      // Замінити на twilio/turbosms перед реальним запуском для користувачів.
+      // console — тимчасово: sender name "VZHYK" у TurboSMS ще на модерації. Перемкнути на
+      // "turbosms", коли підтвердять — токен і sender вже виставлені й готові.
       SMS_PROVIDER: "console",
+      TURBOSMS_TOKEN: preserve(),
+      TURBOSMS_SENDER: preserve(),
       // Плейсхолдери — фото не вантажитимуться, доки не підключимо реальний S3 (Cloudflare R2).
       S3_ENDPOINT: "http://localhost:9000",
       S3_REGION: "us-east-1",
@@ -35,6 +37,9 @@ export default defineRailway(() => {
       S3_SECRET_KEY: "placeholder",
       S3_FORCE_PATH_STYLE: "true",
       WEB_ORIGIN: "https://web-production-baba8.up.railway.app",
+      GOOGLE_OAUTH_CLIENT_ID: preserve(),
+      GOOGLE_OAUTH_CLIENT_SECRET: preserve(),
+      GOOGLE_OAUTH_CALLBACK_URL: "https://api-production-ee5b.up.railway.app/api/v1/auth/google/callback",
     },
   });
 
