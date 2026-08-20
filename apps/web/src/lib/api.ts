@@ -384,6 +384,15 @@ export function getMe(token: string): Promise<Me> {
   return apiFetch('/auth/me', { token });
 }
 
+/** Профіль → "Додати номер телефону" — добровільна прив'язка до вже автентифікованого юзера. */
+export function requestPhoneLink(phone: string, token: string): Promise<{ requested: true }> {
+  return apiFetch('/auth/phone/request', { method: 'POST', body: { phone }, token });
+}
+
+export function linkPhone(phone: string, code: string, token: string): Promise<{ phone: string }> {
+  return apiFetch('/auth/phone/link', { method: 'POST', body: { phone, code }, token });
+}
+
 // ---- Listings (authenticated mutations) ----
 
 export interface AttributeValueInput {

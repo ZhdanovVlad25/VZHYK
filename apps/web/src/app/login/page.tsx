@@ -6,29 +6,11 @@ import { Button, Card, Dropdown, Form, Input, Alert } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { useLanguage } from '@/lib/language-context';
 import { ApiError, getCities, updateProfile, type City } from '@/lib/api';
+import { PHONE_PREFIX, PHONE_DIGITS_LENGTH, normalizePhoneDigits } from '@/lib/phone';
 
 type Step = 'phone' | 'code' | 'name';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
-
-// "+380" — незмінний префікс поля телефону: користувач вводить лише код оператора
-// й номер (9 цифр). Захист від реального інциденту цієї сесії — вручну надрукований
-// "+3800671112233" (зайвий 0 після 380) не збігався з жодним записаним OTP і завжди
-// падав з "Невірний код", хоча код був правильний.
-const PHONE_PREFIX = '+380';
-const PHONE_DIGITS_LENGTH = 9;
-
-/** Приймає як руками надруковані цифри, так і вставлений повний номер (з "+380"/"380"/пробілами). */
-function normalizePhoneDigits(raw: string): string {
-  let digits = raw.replace(/\D/g, '');
-  if (digits.startsWith('380')) {
-    digits = digits.slice(3);
-  }
-  // Код оператора (67/50/63/...) ніколи не починається з 0 — саме так виглядав реальний
-  // одрук цієї сесії ("+3800671112233"): зайвий 0 одразу після "380".
-  digits = digits.replace(/^0+/, '');
-  return digits.slice(0, PHONE_DIGITS_LENGTH);
-}
 
 // Бекенд дозволяє лише 3 запити коду на номер за 15 хв
 // (OTP_REQUEST_LIMIT_PER_PHONE_15MIN, docs/security.md §6) — кожен новий запит

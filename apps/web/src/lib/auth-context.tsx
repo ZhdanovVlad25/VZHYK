@@ -33,6 +33,8 @@ interface AuthContextValue {
   loginWithTokens: (accessToken: string, refreshToken: string) => Promise<{ needsName: boolean }>;
   setDisplayName: (name: string) => void;
   setAvatarUrl: (url: string | null) => void;
+  /** Викликається після успішної прив'язки номера (POST /auth/phone/link) — оновлює user.phone у сховищі. */
+  setPhone: (phone: string) => void;
   logout: () => void;
 }
 
@@ -112,6 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setPhone = useCallback((phone: string) => {
+    setAuth((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, user: { ...prev.user, phone } };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const logout = useCallback(() => {
     window.localStorage.removeItem(STORAGE_KEY);
     setAuth(null);
@@ -134,9 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loginWithTokens,
       setDisplayName,
       setAvatarUrl,
+      setPhone,
       logout,
     }),
-    [auth, isLoading, requestOtp, verifyOtp, loginWithTokens, setDisplayName, setAvatarUrl, logout],
+    [auth, isLoading, requestOtp, verifyOtp, loginWithTokens, setDisplayName, setAvatarUrl, setPhone, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

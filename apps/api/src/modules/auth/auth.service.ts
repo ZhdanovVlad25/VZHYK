@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -33,7 +34,7 @@ export class AuthService {
     @Inject(SMS_PROVIDER_TOKEN) private readonly sms: SmsProvider,
   ) {}
 
-  async requestOtp(phone: string, ip: string | null): Promise<{ requested: true }> {
+  async requestOtp(phone: string, ip: string | null, purpose: 'login' | 'verify' = 'login'): Promise<{ requested: true }> {
     const code = String(randomInt(100000, 999999));
     const codeHash = await argon2.hash(code);
 
@@ -41,7 +42,7 @@ export class AuthService {
       this.otpCodes.create({
         phone,
         codeHash,
-        purpose: 'login',
+        purpose,
         maxAttempts: OTP_MAX_ATTEMPTS,
         expiresAt: new Date(Date.now() + OTP_TTL_SECONDS * 1000),
         createdIp: ip,
@@ -54,9 +55,10 @@ export class AuthService {
     return { requested: true };
   }
 
-  async verifyOtp(phone: string, code: string) {
+  /** Спільна перевірка коду для verifyOtp() (purpose=login) і linkPhone() (purpose=verify) — консьюмить otp-рядок. */
+  private async consumeOtp(phone: string, code: string, purpose: 'login' | 'verify'): Promise<void> {
     const otp = await this.otpCodes.findOne({
-      where: { phone, consumedAt: undefined, purpose: 'login' },
+      where: { phone, consumedAt: undefined, purpose },
       order: { createdAt: 'DESC' },
     });
 
@@ -79,6 +81,10 @@ export class AuthService {
 
     otp.consumedAt = new Date();
     await this.otpCodes.save(otp);
+  }
+
+  async verifyOtp(phone: string, code: string) {
+    await this.consumeOtp(phone, code, 'login');
 
     let user = await this.users.findOne({ where: { phone } });
     if (!user) {
@@ -91,6 +97,29 @@ export class AuthService {
     }
 
     return this.issueTokens(user);
+  }
+
+  /**
+   * Прив'язка верифікованого номера до вже автентифікованого юзера (профіль → "Додати номер
+   * телефону") — на відміну від verifyOtp() не створює новий акаунт і не видає токени заново.
+   */
+  async linkPhone(userId: string, phone: string, code: string) {
+    await this.consumeOtp(phone, code, 'verify');
+
+    const existing = await this.users.findOne({ where: { phone } });
+    if (existing && existing.id !== userId) {
+      throw new ConflictException({ code: 'PHONE_TAKEN', message: 'Цей номер телефону вже прив’язано до іншого акаунту' });
+    }
+
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new BadRequestException({ code: 'USER_NOT_FOUND', message: 'Користувача не знайдено' });
+    }
+    user.phone = phone;
+    user.phoneVerifiedAt = new Date();
+    await this.users.save(user);
+
+    return { phone: user.phone };
   }
 
   /**
