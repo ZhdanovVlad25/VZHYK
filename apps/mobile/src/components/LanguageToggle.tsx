@@ -5,10 +5,10 @@ import type { Language } from '../lib/i18n';
 
 const OPTIONS: { value: Language; label: string }[] = [
   { value: 'uk', label: 'УКР' },
-  { value: 'ru', label: 'РУС' },
+  { value: 'en', label: 'EN' },
 ];
 
-/** УКР/РУС сегментований перемикач — той самий, що web LanguageToggle.tsx. */
+/** УКР/EN сегментований перемикач — той самий, що web LanguageToggle.tsx. */
 export function LanguageToggle() {
   const { language, setLanguage } = useLanguage();
   const { colors } = useTheme();

@@ -19,7 +19,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((stored) => {
-      if (stored === 'uk' || stored === 'ru') setLanguageState(stored);
+      if (stored === 'uk' || stored === 'en') setLanguageState(stored);
     });
   }, []);
 

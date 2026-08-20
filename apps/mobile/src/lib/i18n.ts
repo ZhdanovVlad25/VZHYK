@@ -1,9 +1,9 @@
-export type Language = 'uk' | 'ru';
+export type Language = 'uk' | 'en';
 
 /**
  * RN-порт apps/web/src/lib/i18n.ts + кілька мобільних ключів (nav*, favoritesEmpty).
  * Той самий свідомий скоуп, що на вебі: лише ключові екрани (вхід, таби, спільні стани),
- * решта лишається українською, навіть якщо обрано РУ.
+ * решта лишається українською, навіть якщо обрано EN.
  */
 export const translations = {
   uk: {
@@ -39,38 +39,38 @@ export const translations = {
     navChats: 'Чати',
     navProfile: 'Профіль',
   },
-  ru: {
-    login: 'Войти',
-    logout: 'Выйти',
-    myListings: 'Мои объявления',
-    messages: 'Сообщения',
-    favorites: 'Избранное',
-    newListings: 'Новые объявления',
-    viewAll: 'Смотреть все →',
-    loading: 'Загрузка…',
-    nothingFound: 'Ничего не найдено',
-    loginTitle: 'Вход',
-    loginPhoneLabel: 'Номер телефона',
-    loginPhoneHint: 'Код оператора и номер, без +380 — 9 цифр',
-    loginSendCode: 'Отправить код',
-    loginCodeSentTo: 'Код отправлен на',
-    loginCodeLabel: 'Код подтверждения',
-    loginConfirm: 'Подтвердить',
-    loginResend: 'Отправить ещё раз',
-    loginChangeNumber: 'Изменить номер',
-    loginErrorSend: 'Не удалось отправить код. Попробуйте ещё раз.',
-    loginErrorVerify: 'Не удалось подтвердить код. Попробуйте ещё раз.',
-    loginErrorSaveName: 'Не удалось сохранить имя. Попробуйте ещё раз.',
-    loginNameQuestion: 'Как к вам обращаться? Имя будет видно другим вместо номера телефона.',
-    loginNameLabel: 'Имя',
-    loginNamePlaceholder: 'Например, Елена',
-    loginContinue: 'Продолжить',
-    loginSkip: 'Пропустить',
-    navHome: 'Главная',
-    navSearch: 'Поиск',
-    navAdd: 'Добавить',
-    navChats: 'Чаты',
-    navProfile: 'Профиль',
+  en: {
+    login: 'Log in',
+    logout: 'Log out',
+    myListings: 'My listings',
+    messages: 'Messages',
+    favorites: 'Favorites',
+    newListings: 'New listings',
+    viewAll: 'View all →',
+    loading: 'Loading…',
+    nothingFound: 'Nothing found',
+    loginTitle: 'Log in',
+    loginPhoneLabel: 'Phone number',
+    loginPhoneHint: 'Operator code and number, without +380 — 9 digits',
+    loginSendCode: 'Send code',
+    loginCodeSentTo: 'Code sent to',
+    loginCodeLabel: 'Confirmation code',
+    loginConfirm: 'Confirm',
+    loginResend: 'Resend',
+    loginChangeNumber: 'Change number',
+    loginErrorSend: 'Failed to send code. Please try again.',
+    loginErrorVerify: 'Failed to verify code. Please try again.',
+    loginErrorSaveName: 'Failed to save name. Please try again.',
+    loginNameQuestion: 'What should we call you? Your name will be shown to others instead of your phone number.',
+    loginNameLabel: 'Name',
+    loginNamePlaceholder: 'e.g. Olena',
+    loginContinue: 'Continue',
+    loginSkip: 'Skip',
+    navHome: 'Home',
+    navSearch: 'Search',
+    navAdd: 'Add',
+    navChats: 'Chats',
+    navProfile: 'Profile',
   },
 } satisfies Record<Language, Record<string, string>>;
 

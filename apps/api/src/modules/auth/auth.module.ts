@@ -10,12 +10,14 @@ import { User } from '../users/user.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { requireEnv } from '../../shared/env';
+import { SmsModule } from '../../providers/sms/sms.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, OtpCode]),
     PassportModule,
     ConfigModule,
+    SmsModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
