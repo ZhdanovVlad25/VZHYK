@@ -66,8 +66,8 @@ export const CATEGORY_KEYWORDS: Record<string, string[]> = {
   // Мода і стиль — підкатегорії
   'zhinochyi-odiah': ['сукн', 'жіночий одяг'],
   'zhinoche-vzuttia': ['жіноче взуття', 'туфлі жіноч'],
-  'cholovichyi-odiah': ['чоловічий одяг', 'куртк', 'кросівк'],
-  'choloviche-vzuttia': ['чоловіче взуття'],
+  'cholovichyi-odiah': ['чоловічий одяг', 'куртк'],
+  'choloviche-vzuttia': ['чоловіче взуття', 'кросівк', 'кросовк', 'кед', 'туфл', 'черевик', 'чоботи'],
   'holovni-ubory': ['шапк', 'кепк', 'капелюх'],
 
   // Хобі, відпочинок і спорт — підкатегорії
