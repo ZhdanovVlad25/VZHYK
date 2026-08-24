@@ -158,8 +158,10 @@ export default async function ListingDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <div className="grid gap-8 md:grid-cols-2">
-          <div>
+        <div className="grid gap-8 md:grid-cols-2 md:items-start">
+          {/* sticky — права колонка (характеристики + опис) зазвичай значно довша за галерею,
+              інакше під фото лишається порожній простір на всю різницю висот при скролі. */}
+          <div className="md:sticky md:top-4">
             <ListingGallery media={sortedMedia} title={listing.title} />
           </div>
 
