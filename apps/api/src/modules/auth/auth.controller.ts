@@ -65,11 +65,16 @@ export class AuthController {
     return this.auth.me(user.id);
   }
 
-  /** Профіль → "Додати номер телефону" — добровільна дія автентифікованого юзера, не частина онбордингу. */
+  /**
+   * Профіль → "Додати номер телефону" — добровільна дія автентифікованого юзера, не частина
+   * онбордингу. Перевіряємо зайнятість номера ДО відправки SMS — інакше юзер дізнавався б
+   * про зайнятий номер лише після реального (платного) SMS і введеного коду.
+   */
   @Post('phone/request')
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { limit: 3, ttl: 900_000 } })
-  requestPhoneLink(@Body() dto: RequestOtpDto, @Ip() ip: string) {
+  async requestPhoneLink(@Body() dto: RequestOtpDto, @Ip() ip: string, @CurrentUser() user: AuthenticatedUser) {
+    await this.auth.assertPhoneAvailableForLink(user.id, dto.phone);
     return this.auth.requestOtp(dto.phone, ip, 'verify');
   }
 

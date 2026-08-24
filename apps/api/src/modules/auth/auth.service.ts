@@ -107,12 +107,27 @@ export class AuthService {
   }
 
   /**
+   * Перевірка зайнятості номера ПЕРЕД відправкою SMS у linkPhone-флоу (профіль → "Додати
+   * номер телефону") — без цього юзер дізнавався б, що номер уже зайнятий, лише після
+   * реального SMS і введеного коду: платний Twilio-запит витрачався марно щоразу.
+   */
+  async assertPhoneAvailableForLink(userId: string, phone: string): Promise<void> {
+    const existing = await this.users.findOne({ where: { phone } });
+    if (existing && existing.id !== userId) {
+      throw new ConflictException({ code: 'PHONE_TAKEN', message: 'Цей номер телефону вже прив’язано до іншого акаунту' });
+    }
+  }
+
+  /**
    * Прив'язка верифікованого номера до вже автентифікованого юзера (профіль → "Додати номер
    * телефону") — на відміну від verifyOtp() не створює новий акаунт і не видає токени заново.
    */
   async linkPhone(userId: string, phone: string, code: string) {
     await this.consumeOtp(phone, code, 'verify');
 
+    // Дублює assertPhoneAvailableForLink() — номер міг бути зайнятий ІНШИМ юзером саме
+    // в проміжку між запитом коду і його підтвердженням (TOCTOU), тож фінальна перевірка
+    // тут лишається обов'язковою, а не лише "про всяк випадок".
     const existing = await this.users.findOne({ where: { phone } });
     if (existing && existing.id !== userId) {
       throw new ConflictException({ code: 'PHONE_TAKEN', message: 'Цей номер телефону вже прив’язано до іншого акаунту' });
