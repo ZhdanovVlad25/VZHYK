@@ -29,12 +29,17 @@ export default defineRailway(() => {
       SMS_PROVIDER: "console",
       TURBOSMS_TOKEN: preserve(),
       TURBOSMS_SENDER: preserve(),
-      // Плейсхолдери — фото не вантажитимуться, доки не підключимо реальний S3 (Cloudflare R2).
-      S3_ENDPOINT: "http://localhost:9000",
-      S3_REGION: "us-east-1",
+      // Постійний код лише для одного адмін-номера (auth.service.ts requestOtp()) —
+      // значення навмисно не в git, лише на живому сервісі.
+      FIXED_OTP_PHONE: preserve(),
+      FIXED_OTP_CODE: preserve(),
+      // Cloudflare R2 (S3-сумісний) — bucket "vzhyk-media", account-scoped API token
+      // з правами Object Read & Write, обмежений саме цим bucket'ом.
+      S3_ENDPOINT: preserve(),
+      S3_REGION: "auto",
       S3_BUCKET: "vzhyk-media",
-      S3_ACCESS_KEY: "placeholder",
-      S3_SECRET_KEY: "placeholder",
+      S3_ACCESS_KEY: preserve(),
+      S3_SECRET_KEY: preserve(),
       S3_FORCE_PATH_STYLE: "true",
       WEB_ORIGIN: "https://web-production-baba8.up.railway.app",
       GOOGLE_OAUTH_CLIENT_ID: preserve(),
