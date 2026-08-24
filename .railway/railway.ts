@@ -49,6 +49,8 @@ export default defineRailway(() => {
       GOOGLE_OAUTH_CLIENT_ID: preserve(),
       GOOGLE_OAUTH_CLIENT_SECRET: preserve(),
       GOOGLE_OAUTH_CALLBACK_URL: "https://api-production-ee5b.up.railway.app/api/v1/auth/google/callback",
+      // Той самий Sentry DSN, що й web — один невеликий проєкт на обидва сервіси поки що.
+      SENTRY_DSN: preserve(),
     },
   });
 
@@ -59,6 +61,7 @@ export default defineRailway(() => {
       NODE_ENV: "production",
       NEXT_PUBLIC_API_URL: "https://api-production-ee5b.up.railway.app/api/v1",
       NEXT_PUBLIC_SITE_URL: "https://web-production-baba8.up.railway.app",
+      NEXT_PUBLIC_SENTRY_DSN: preserve(),
     },
   });
 
