@@ -71,6 +71,11 @@ export default function NewListingPage() {
   const [locationId, setLocationId] = useState<string | null>(null);
 
   const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
+  // createObjectURL створюється ОДИН РАЗ на файл (не на кожен рендер — інакше кожне
+  // натискання клавіші будь-де у формі створювало б нові URL на всі фото одразу, не
+  // звільняючи старі; для кількох реальних фото з телефону (по кілька МБ кожне) це
+  // швидко з'їдало пам'ять і на iOS Safari могло вбивати вкладку під час набору тексту).
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -90,6 +95,14 @@ export default function NewListingPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const urls = pendingPhotos.map((file) => URL.createObjectURL(file));
+    setPhotoPreviewUrls(urls);
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [pendingPhotos]);
 
   const selectedRegion = useMemo(
     () => regions.find((r) => r.id === regionId) ?? null,
@@ -390,7 +403,7 @@ export default function NewListingPage() {
                   <div key={`${file.name}-${index}`} className="group relative aspect-square">
                     {/* eslint-disable-next-line @next/next/no-img-element -- локальний File-прев'ю, не потребує next/image */}
                     <img
-                      src={URL.createObjectURL(file)}
+                      src={photoPreviewUrls[index]}
                       alt=""
                       className="h-full w-full rounded-xl border border-gray-200 object-cover dark:border-gray-700"
                     />

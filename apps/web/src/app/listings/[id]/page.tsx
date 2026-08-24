@@ -218,12 +218,6 @@ export default async function ListingDetailPage({
 
             <SellerCard sellerId={listing.userId} />
 
-            {listing.description && (
-              <p className="mt-6 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
-                {listing.description}
-              </p>
-            )}
-
             {listing.attributes.length > 0 && (
               <Card className="mt-6">
                 <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
@@ -242,6 +236,17 @@ export default async function ListingDetailPage({
                     </div>
                   ))}
                 </dl>
+              </Card>
+            )}
+
+            {listing.description && (
+              <Card className="mt-6">
+                <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Опис
+                </h2>
+                <p className="whitespace-pre-wrap leading-relaxed text-gray-700 dark:text-gray-300">
+                  {listing.description}
+                </p>
               </Card>
             )}
           </div>
