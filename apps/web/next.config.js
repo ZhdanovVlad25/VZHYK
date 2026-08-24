@@ -7,14 +7,19 @@ const nextConfig = {
   // .next/standalone містить лише трасовані залежності замість повного node_modules.
   output: 'standalone',
   images: {
-    // dev MinIO (docker-compose, S3_ENDPOINT=http://localhost:9000 у .env.example). Продакшн
-    // деплой має додати сюди реальний S3/CDN-хост — next/image відмовляється оптимізувати
-    // зображення з хостів поза цим списком.
+    // next/image відмовляється оптимізувати зображення з хостів поза цим списком.
     remotePatterns: [
       {
+        // dev MinIO (docker-compose, S3_ENDPOINT=http://localhost:9000 у .env.example).
         protocol: 'http',
         hostname: 'localhost',
         port: '9000',
+        pathname: '/vzhyk-media/**',
+      },
+      {
+        // Продакшн — Cloudflare R2 (S3_ENDPOINT на api-сервісі), presigned GetObject URL.
+        protocol: 'https',
+        hostname: 'f942c3d3fc6dc1eb228b8198299d5b75.r2.cloudflarestorage.com',
         pathname: '/vzhyk-media/**',
       },
     ],
