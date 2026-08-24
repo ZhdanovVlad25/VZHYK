@@ -20,7 +20,7 @@ import {
   type Region,
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
-import { Alert, Button, Card, Dropdown, Form, Input, LoadingState } from '@/components/ui';
+import { Alert, Button, Card, Dropdown, Form, Input, LoadingState, Textarea } from '@/components/ui';
 
 const LISTING_TYPE_OPTIONS: { value: ListingType; label: string }[] = [
   { value: 'sell', label: 'Продаю' },
@@ -335,12 +335,13 @@ export default function NewListingPage() {
               onChange={(v) => setListingType(v as ListingType)}
             />
 
-            <Input
+            <Textarea
               label="Опис"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               minLength={DESCRIPTION_MIN_LENGTH}
               hint={`Мінімум ${DESCRIPTION_MIN_LENGTH} символів`}
+              rows={6}
               required
             />
 

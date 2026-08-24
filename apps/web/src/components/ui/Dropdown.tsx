@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 
 export interface DropdownOption {
@@ -19,19 +19,44 @@ export interface DropdownProps {
       відкритий список із порожнім options.length рендериться як згорнута до
       кількох пікселів риска: <ul> без жодного <li> замість "триває завантаження". */
   isLoading?: boolean;
+  /** Поле пошуку зверху списку (фільтрує за підрядком, без урахування регістру) — для
+      довгих списків (міста, області), щоб не гортати вручну. За замовчуванням увімкнено
+      лише коли options.length > 8 — короткі списки (стан, коробка передач) в пошуку
+      не потребують, зайве поле лише займало б місце. */
+  searchable?: boolean;
 }
+
+const SEARCH_THRESHOLD = 8;
 
 /**
  * Доступний dropdown: справжня <button> як trigger з aria-haspopup/aria-expanded,
  * role="listbox"/"option" для списку, keyboard: Enter/Space відкриває, Escape закриває,
  * стрілки перемикають опції — базова accessibility (decisions.md DEC-09).
  */
-export function Dropdown({ label, options, value, onChange, placeholder, required, isLoading }: DropdownProps) {
+export function Dropdown({
+  label,
+  options,
+  value,
+  onChange,
+  placeholder,
+  required,
+  isLoading,
+  searchable,
+}: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [query, setQuery] = useState('');
   const buttonId = useId();
   const listId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const showSearch = searchable ?? options.length > SEARCH_THRESHOLD;
+  const filteredOptions = useMemo(() => {
+    if (!showSearch || !query.trim()) return options;
+    const q = query.trim().toLowerCase();
+    return options.filter((o) => o.label.toLowerCase().includes(q));
+  }, [options, query, showSearch]);
 
   const selected = options.find((o) => o.value === value);
 
@@ -45,21 +70,49 @@ export function Dropdown({ label, options, value, onChange, placeholder, require
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setQuery('');
+      setActiveIndex(0);
+      return;
+    }
+    if (showSearch) searchInputRef.current?.focus();
+  }, [isOpen, showSearch]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
   function onKeyDown(event: React.KeyboardEvent) {
     if (event.key === 'Escape') {
       setIsOpen(false);
     } else if (event.key === 'ArrowDown') {
       event.preventDefault();
       setIsOpen(true);
-      setActiveIndex((i) => Math.min(i + 1, options.length - 1));
+      setActiveIndex((i) => Math.min(i + 1, filteredOptions.length - 1));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, 0));
-    } else if (event.key === 'Enter' || event.key === ' ') {
+    } else if (event.key === 'Enter') {
       event.preventDefault();
       if (isOpen) {
-        onChange(options[activeIndex].value);
-        setIsOpen(false);
+        if (filteredOptions[activeIndex]) {
+          onChange(filteredOptions[activeIndex].value);
+          setIsOpen(false);
+        }
+      } else {
+        setIsOpen(true);
+      }
+    } else if (event.key === ' ' && !showSearch) {
+      // Пробіл відкриває/обирає лише коли немає пошукового поля — інакше неможливо
+      // ввести пробіл у назві (напр. "Івано-Франківськ" тут не має пробілу, але деякі
+      // варіанти — можуть).
+      event.preventDefault();
+      if (isOpen) {
+        if (filteredOptions[activeIndex]) {
+          onChange(filteredOptions[activeIndex].value);
+          setIsOpen(false);
+        }
       } else {
         setIsOpen(true);
       }
@@ -95,36 +148,45 @@ export function Dropdown({ label, options, value, onChange, placeholder, require
           <span aria-hidden="true">▾</span>
         </button>
         {isOpen && !isLoading && (
-          <ul
-            id={listId}
-            role="listbox"
-            aria-labelledby={`${buttonId}-label`}
-            className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800"
-          >
-            {options.length === 0 && (
-              <li className="px-3 py-2 text-sm text-gray-400 dark:text-gray-500" aria-disabled="true">
-                Немає варіантів
-              </li>
+          <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+            {showSearch && (
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder="Пошук…"
+                aria-label="Пошук у списку"
+                className="w-full border-b border-gray-200 bg-transparent px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none dark:border-gray-700 dark:text-gray-100 dark:placeholder:text-gray-500"
+              />
             )}
-            {options.map((option, index) => (
-              <li
-                key={option.value}
-                role="option"
-                aria-selected={option.value === value}
-                className={cn(
-                  'cursor-pointer px-3 py-2 text-sm text-gray-900 hover:bg-brand-50 dark:text-gray-100 dark:hover:bg-gray-700',
-                  index === activeIndex && 'bg-brand-50 dark:bg-gray-700',
-                )}
-                onMouseEnter={() => setActiveIndex(index)}
-                onClick={() => {
-                  onChange(option.value);
-                  setIsOpen(false);
-                }}
-              >
-                {option.label}
-              </li>
-            ))}
-          </ul>
+            <ul id={listId} role="listbox" aria-labelledby={`${buttonId}-label`} className="max-h-60 overflow-auto">
+              {filteredOptions.length === 0 && (
+                <li className="px-3 py-2 text-sm text-gray-400 dark:text-gray-500" aria-disabled="true">
+                  {options.length === 0 ? 'Немає варіантів' : 'Нічого не знайдено'}
+                </li>
+              )}
+              {filteredOptions.map((option, index) => (
+                <li
+                  key={option.value}
+                  role="option"
+                  aria-selected={option.value === value}
+                  className={cn(
+                    'cursor-pointer px-3 py-2 text-sm text-gray-900 hover:bg-brand-50 dark:text-gray-100 dark:hover:bg-gray-700',
+                    index === activeIndex && 'bg-brand-50 dark:bg-gray-700',
+                  )}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onClick={() => {
+                    onChange(option.value);
+                    setIsOpen(false);
+                  }}
+                >
+                  {option.label}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
     </div>

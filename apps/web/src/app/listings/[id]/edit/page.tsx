@@ -24,7 +24,7 @@ import {
   type Region,
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
-import { Alert, Badge, Button, Card, Dropdown, ErrorState, Form, Input, LoadingState } from '@/components/ui';
+import { Alert, Badge, Button, Card, Dropdown, ErrorState, Form, Input, LoadingState, Textarea } from '@/components/ui';
 import { formatPrice } from '@/lib/format';
 
 const LISTING_TYPE_OPTIONS: { value: ListingType; label: string }[] = [
@@ -465,12 +465,13 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
               required
             />
 
-            <Input
+            <Textarea
               label="Опис"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               minLength={DESCRIPTION_MIN_LENGTH}
               hint={`Мінімум ${DESCRIPTION_MIN_LENGTH} символів`}
+              rows={6}
               required
             />
 
