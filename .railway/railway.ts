@@ -24,9 +24,13 @@ export default defineRailway(() => {
       JWT_REFRESH_SECRET: preserve(),
       JWT_REFRESH_TTL: "30d",
       JWT_KID: "prod-key-1",
-      // console — тимчасово: sender name "VZHYK" у TurboSMS ще на модерації. Перемкнути на
-      // "turbosms", коли підтвердять — токен і sender вже виставлені й готові.
-      SMS_PROVIDER: "console",
+      // TurboSMS відхилив реєстрацію sender name для фізосіб (потрібен ФОП/ТОВ) — перейшли
+      // на Twilio (приймає фізосіб, реєстрація по карті). TURBOSMS_* лишені на випадок
+      // повернення до нього пізніше (напр. якщо оформиться ФОП).
+      SMS_PROVIDER: "twilio",
+      TWILIO_ACCOUNT_SID: preserve(),
+      TWILIO_AUTH_TOKEN: preserve(),
+      TWILIO_FROM_NUMBER: preserve(),
       TURBOSMS_TOKEN: preserve(),
       TURBOSMS_SENDER: preserve(),
       // Постійний код лише для одного адмін-номера (auth.service.ts requestOtp()) —
