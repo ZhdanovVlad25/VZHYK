@@ -88,7 +88,9 @@ export function Header() {
     );
   }
 
-  // Спільний вміст account/nav-блоку — на md+ рендериться інлайн у хедері, на <md — усередині drawer.
+  // Другорядне (мова/тема/адмінка) — на md+ інлайн у хедері, на <md усередині drawer.
+  // "Додати оголошення"/"Увійти" сюди навмисно НЕ входять — вони окремо, завжди видимі
+  // (renderCallToAction), інакше на <md дублювались би: і в постійному рядку, і в drawer.
   function renderNavItems(): ReactNode {
     return (
       <>
@@ -97,16 +99,22 @@ export function Header() {
           <ThemeToggle />
         </div>
 
-        {/* Завжди видима, навіть анонімним — /listings/new сама показує "увійдіть" з лінком на /login, якщо юзера нема. */}
+        {!isLoading && user && (user.role === 'moderator' || user.role === 'admin') && <AdminMenu role={user.role} />}
+      </>
+    );
+  }
+
+  // Головні дії — завжди видимі (і на md+ інлайн, і на <md у постійному рядку зверху,
+  // поза drawer). /listings/new сама показує "увійдіть" з лінком на /login, якщо юзера нема.
+  function renderCallToAction(): ReactNode {
+    return (
+      <>
         <Link href="/listings/new" className="md:w-auto">
           <Button variant="accent" size="sm" className="w-full md:w-auto">
             {t('addListing')}
           </Button>
         </Link>
-
-        {isLoading ? null : user ? (
-          (user.role === 'moderator' || user.role === 'admin') && <AdminMenu role={user.role} />
-        ) : (
+        {!isLoading && !user && (
           <Link href="/login" className="md:w-auto">
             <Button variant="secondary" size="sm" className="w-full md:w-auto">
               {t('login')}
@@ -130,24 +138,14 @@ export function Header() {
           <div className="hidden min-w-[200px] flex-1 md:flex">{renderSearchForm('desktop')}</div>
 
           {/* Тогли/nav/акаунт інлайн лише на md+ — на <md усе це переїжджає в drawer нижче. */}
-          <div className="hidden shrink-0 items-center gap-3 md:flex">{renderNavItems()}</div>
-
-          {/* "Додати оголошення"/"Увійти" — головні дії, не мають ховатись за гамбургер разом
-              з другорядним (мова/тема/адмін). Займають простір, де на md+ була б форма пошуку. */}
-          <div className="ml-auto flex shrink-0 items-center gap-2 md:hidden">
-            <Link href="/listings/new">
-              <Button variant="accent" size="sm">
-                {t('addListing')}
-              </Button>
-            </Link>
-            {!isLoading && !user && (
-              <Link href="/login">
-                <Button variant="secondary" size="sm">
-                  {t('login')}
-                </Button>
-              </Link>
-            )}
+          <div className="hidden shrink-0 items-center gap-3 md:flex">
+            {renderNavItems()}
+            {renderCallToAction()}
           </div>
+
+          {/* Головні дії на <md — завжди видимі, поза drawer. Займають простір, де на md+
+              була б форма пошуку. */}
+          <div className="ml-auto flex shrink-0 items-center gap-2 md:hidden">{renderCallToAction()}</div>
 
           {/* Профіль лишається видимим завжди (навіть на <md) — вже компактний (аватар+ім'я),
               не варто ховати за гамбургер разом з рештою. */}
