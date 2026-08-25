@@ -335,15 +335,20 @@ export default function NewListingPage() {
               onChange={(v) => setListingType(v as ListingType)}
             />
 
-            <Textarea
-              label="Опис"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              minLength={DESCRIPTION_MIN_LENGTH}
-              hint={`Мінімум ${DESCRIPTION_MIN_LENGTH} символів`}
-              rows={6}
-              required
-            />
+            {/* col-span-2 — textarea без цього ділить рядок сітки з коротким полем поруч
+                (напр. "Тип оголошення"): CSS Grid вирівнює висоту рядка по найвищому елементу,
+                тож коротке поле лишало під собою величезний порожній простір під висоту textarea. */}
+            <div className="md:col-span-2">
+              <Textarea
+                label="Опис"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                minLength={DESCRIPTION_MIN_LENGTH}
+                hint={`Мінімум ${DESCRIPTION_MIN_LENGTH} символів`}
+                rows={6}
+                required
+              />
+            </div>
 
             <div className="flex items-end gap-2">
               <div className="flex-1">
