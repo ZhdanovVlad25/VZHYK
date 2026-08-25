@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { setDefaultResultOrder } from 'dns';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
@@ -6,6 +7,13 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 import { initSentry } from './shared/sentry';
 import { JsonLogger } from './shared/json-logger';
+
+// Railway (і деякі інші контейнерні мережі) резолвлять зовнішні хости в IPv6 (AAAA), але
+// не мають робочого IPv6-маршруту назовні — TCP-з'єднання падає з ENETUNREACH замість
+// одразу пробувати IPv4. Знайдено на живому прикладі: GmailSmtpProvider (nodemailer) не
+// чіпляв власний `family: 4` в опціях транспорту, тож фікс — на рівні Node.js DNS,
+// глобально для всього процесу, а не per-provider.
+setDefaultResultOrder('ipv4first');
 
 function resolveCorsOrigin(): boolean | string {
   if (process.env.NODE_ENV !== 'production') {

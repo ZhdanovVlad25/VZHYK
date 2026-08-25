@@ -14,21 +14,18 @@ export class GmailSmtpProvider implements EmailProvider {
   constructor(config: ConfigService) {
     this.fromAddress = requireEnv(config, 'GMAIL_USER');
     const appPassword = requireEnv(config, 'GMAIL_APP_PASSWORD');
-    // family: 4 — деякі контейнерні мережі (Railway включно) резолвлять smtp.gmail.com в
-    // AAAA (IPv6), але не мають робочого IPv6-маршруту назовні: з'єднання не відхиляється
-    // одразу, а висить хвилинами до таймауту. Форсуємо IPv4, де маршрут точно є.
-    // `family` не входить у типізацію SMTPTransport.Options, хоч nodemailer передає його
-    // далі в net.connect() — тому cast через unknown замість "as SMTPTransport.Options" напряму.
-    const options = {
+    // Короткі таймаути — нехай впаде швидко й помітно в логах, а не висить хвилинами.
+    // IPv6-connectivity фікс — окремо, глобально для процесу (main.ts setDefaultResultOrder;
+    // nodemailer не форвардить власний `family` в підключення, тестовано наживо).
+    const options: SMTPTransport.Options = {
       host: 'smtp.gmail.com',
       port: 465,
       secure: true,
       auth: { user: this.fromAddress, pass: appPassword },
-      family: 4,
       connectionTimeout: 15_000,
       greetingTimeout: 15_000,
       socketTimeout: 15_000,
-    } as unknown as SMTPTransport.Options;
+    };
     this.transporter = nodemailer.createTransport(options);
   }
 
