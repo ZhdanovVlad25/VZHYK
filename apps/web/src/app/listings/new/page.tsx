@@ -21,6 +21,7 @@ import {
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
 import { Alert, Button, Card, Dropdown, Form, Input, LoadingState, Textarea } from '@/components/ui';
+import { getConditionOptions } from '@/lib/listing-condition';
 
 const LISTING_TYPE_OPTIONS: { value: ListingType; label: string }[] = [
   { value: 'sell', label: 'Продаю' },
@@ -119,6 +120,10 @@ export default function NewListingPage() {
   // немає дітей, вона сама вже кінцева й нічого обирати далі не треба.
   const subCategories = selectedTop?.children ?? [];
   const categoryId = subCategories.length > 0 ? subCategoryId : topCategoryId;
+  // Для варіантів "Стан" потрібен slug кінцевої (обраної) категорії, не topCategoryId —
+  // "На запчастини" виключається/лишається залежно від конкретної підкатегорії (напр. шини).
+  const categorySlug =
+    (subCategories.length > 0 ? subCategories : topCategories).find((c) => c.id === categoryId)?.slug ?? null;
 
   // Дебаунс: підказка категорії за назвою (backend `/categories/suggest`, ключові слова).
   // Скидаємо "відхилено" і саму підказку щоразу, коли назва міняється — стара підказка
@@ -390,11 +395,7 @@ export default function NewListingPage() {
 
             <Dropdown
               label="Стан"
-              options={[
-                { value: 'new', label: 'Новий' },
-                { value: 'used', label: 'Вживаний' },
-                { value: 'for_parts', label: 'На запчастини' },
-              ]}
+              options={getConditionOptions(categorySlug, condition)}
               value={condition}
               onChange={setCondition}
               placeholder="Не вказано"

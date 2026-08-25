@@ -26,6 +26,7 @@ import {
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
 import { Alert, Badge, Button, Card, Dropdown, ErrorState, Form, Input, LoadingState, Textarea } from '@/components/ui';
 import { formatPrice } from '@/lib/format';
+import { getConditionOptions } from '@/lib/listing-condition';
 
 const LISTING_TYPE_OPTIONS: { value: ListingType; label: string }[] = [
   { value: 'sell', label: 'Продаю' },
@@ -74,6 +75,15 @@ function findCategoryLabel(categories: Category[], id: string, prefix = ''): str
   return null;
 }
 
+function findCategorySlug(categories: Category[], id: string): string | null {
+  for (const c of categories) {
+    if (c.id === id) return c.slug;
+    const found = findCategorySlug(c.children, id);
+    if (found) return found;
+  }
+  return null;
+}
+
 export default function EditListingPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const { user, isLoading: authLoading, accessToken } = useAuth();
@@ -82,6 +92,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [listing, setListing] = useState<Listing | null>(null);
   const [media, setMedia] = useState<Media[]>([]);
   const [categoryLabel, setCategoryLabel] = useState<string | null>(null);
+  const [categorySlug, setCategorySlug] = useState<string | null>(null);
   const [categoryAttributes, setCategoryAttributes] = useState<CategoryAttribute[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -133,6 +144,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       setListing(listingResult);
       setMedia(mediaResult);
       setCategoryLabel(findCategoryLabel(categories, listingResult.categoryId));
+      setCategorySlug(findCategorySlug(categories, listingResult.categoryId));
 
       setListingType(listingResult.listingType);
       setTitle(listingResult.title);
@@ -525,11 +537,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
 
             <Dropdown
               label="Стан"
-              options={[
-                { value: 'new', label: 'Новий' },
-                { value: 'used', label: 'Вживаний' },
-                { value: 'for_parts', label: 'На запчастини' },
-              ]}
+              options={getConditionOptions(categorySlug, condition)}
               value={condition}
               onChange={setCondition}
               placeholder="Не вказано"
