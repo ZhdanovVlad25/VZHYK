@@ -50,6 +50,10 @@ export class Profile {
   @Column({ type: 'int', default: 0 })
   activeListingsCount: number;
 
+  /** Якщо false — номер телефону не показується покупцям взагалі (навіть автентифікованим), лишається лише чат. */
+  @Column({ type: 'boolean', default: true })
+  acceptsCalls: boolean;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

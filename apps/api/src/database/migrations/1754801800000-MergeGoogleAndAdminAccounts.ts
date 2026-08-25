@@ -20,7 +20,7 @@ export class MergeGoogleAndAdminAccounts1754801800000 implements MigrationInterf
   name = 'MergeGoogleAndAdminAccounts1754801800000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`UPDATE "audit_log" SET "actorUserId" = $1 WHERE "actorUserId" = $2`, [
+    await queryRunner.query(`UPDATE "audit_logs" SET "actorUserId" = $1 WHERE "actorUserId" = $2`, [
       REAL_GOOGLE_USER_ID,
       TEST_ADMIN_USER_ID,
     ]);

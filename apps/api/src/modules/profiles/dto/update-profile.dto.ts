@@ -1,4 +1,4 @@
-import { IsOptional, IsString, Matches, MaxLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
 export class UpdateProfileDto {
@@ -26,4 +26,9 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsUuidLike()
   avatarMediaId?: string;
+
+  /** "Не дзвонити, лише писати" — якщо false, номер телефону не показується покупцям (users.controller.ts / profiles.service.ts). */
+  @IsOptional()
+  @IsBoolean()
+  acceptsCalls?: boolean;
 }

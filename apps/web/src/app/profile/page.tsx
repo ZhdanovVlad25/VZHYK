@@ -46,6 +46,12 @@ export default function ProfilePage() {
   const [isPhoneSubmitting, setIsPhoneSubmitting] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
+  // "Приймати дзвінки" — окремий тумблер поза основною формою (зберігається одразу при
+  // зміні, а не разом з рештою полів — інакше вимкнення прапорця й забудькуватість натиснути
+  // "Зберегти" призвели б до розбіжності між тим, що бачить юзер, і реальним станом на сервері).
+  const [acceptsCalls, setAcceptsCalls] = useState(true);
+  const [isSavingAcceptsCalls, setIsSavingAcceptsCalls] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     getCities()
@@ -69,6 +75,7 @@ export default function ProfilePage() {
         setUsername(p.username ?? '');
         setBio(p.bio ?? '');
         setCityLocationId(p.cityLocationId);
+        setAcceptsCalls(p.acceptsCalls);
       })
       .catch((err) => !cancelled && setLoadError(err instanceof ApiError ? err.message : 'Не вдалося завантажити профіль.'))
       .finally(() => !cancelled && setIsLoading(false));
@@ -122,6 +129,19 @@ export default function ProfilePage() {
       setPhoneError(err instanceof ApiError ? err.message : 'Не вдалося підтвердити код.');
     } finally {
       setIsPhoneSubmitting(false);
+    }
+  }
+
+  async function handleToggleAcceptsCalls(next: boolean) {
+    if (!accessToken) return;
+    setAcceptsCalls(next);
+    setIsSavingAcceptsCalls(true);
+    try {
+      await updateProfile({ acceptsCalls: next }, accessToken);
+    } catch {
+      setAcceptsCalls(!next);
+    } finally {
+      setIsSavingAcceptsCalls(false);
     }
   }
 
@@ -238,7 +258,24 @@ export default function ProfilePage() {
       <Card className="mt-4">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Телефон</span>
         {user?.phone ? (
-          <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{user.phone}</p>
+          <>
+            <p className="mt-1 text-sm text-gray-900 dark:text-gray-100">{user.phone}</p>
+            <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={acceptsCalls}
+                disabled={isSavingAcceptsCalls}
+                onChange={(e) => handleToggleAcceptsCalls(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+              />
+              Приймати дзвінки
+            </label>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              {acceptsCalls
+                ? 'Покупці бачать ваш номер і можуть зателефонувати.'
+                : 'Номер прихований від покупців — лише повідомлення в чаті.'}
+            </p>
+          </>
         ) : (
           <div className="mt-2 flex flex-col gap-2">
             {phoneError && <Alert tone="danger">{phoneError}</Alert>}

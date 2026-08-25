@@ -20,8 +20,13 @@ export interface PublicProfile {
   activeListingsCount: number;
   memberSince: Date;
   lastActiveAt: Date | null;
-  /** Тільки для авторизованих запитів (users.controller.ts OptionalJwtAuthGuard) — не віддаємо анонімно, щоб номер не збирали скрейпери. */
+  /**
+   * null або якщо запит анонімний (users.controller.ts OptionalJwtAuthGuard — не віддаємо
+   * анонімно, щоб номер не збирали скрейпери), або якщо власник вимкнув acceptsCalls —
+   * тоді номер прихований навіть від автентифікованих покупців, лишається лише чат.
+   */
   phone: string | null;
+  acceptsCalls: boolean;
 }
 
 export interface MyProfileView extends Profile {
@@ -63,6 +68,7 @@ export class ProfilesService {
       cityLocationId: dto.cityLocationId ?? profile.cityLocationId,
       bio: dto.bio ?? profile.bio,
       avatarMediaId: dto.avatarMediaId ?? profile.avatarMediaId,
+      acceptsCalls: dto.acceptsCalls ?? profile.acceptsCalls,
     });
 
     return this.profiles.save(profile);
@@ -115,6 +121,7 @@ export class ProfilesService {
     }
 
     const profile = await this.profiles.findOne({ where: { userId } });
+    const acceptsCalls = profile?.acceptsCalls ?? true;
     return {
       userId,
       displayName: profile?.displayName ?? null,
@@ -128,7 +135,8 @@ export class ProfilesService {
       activeListingsCount: profile?.activeListingsCount ?? 0,
       memberSince: user.createdAt,
       lastActiveAt: user.lastActiveAt ?? null,
-      phone: requesterUserId ? user.phone : null,
+      phone: requesterUserId && acceptsCalls ? user.phone : null,
+      acceptsCalls,
     };
   }
 

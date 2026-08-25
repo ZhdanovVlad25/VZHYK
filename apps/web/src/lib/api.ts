@@ -285,8 +285,9 @@ export interface PublicProfile {
   activeListingsCount: number;
   memberSince: string;
   lastActiveAt: string | null;
-  /** null для анонімного запиту — бекенд віддає реальний номер лише авторизованим (users.controller.ts). */
+  /** null для анонімного запиту або якщо продавець вимкнув acceptsCalls — тоді лишається лише чат. */
   phone: string | null;
+  acceptsCalls: boolean;
 }
 
 export function getPublicProfile(userId: string, token?: string): Promise<PublicProfile> {
@@ -302,6 +303,7 @@ export interface MyProfile {
   avatarUrl: string | null;
   cityLocationId: string | null;
   bio: string | null;
+  acceptsCalls: boolean;
 }
 
 export function getMyProfile(token: string): Promise<MyProfile> {
@@ -314,6 +316,7 @@ export interface UpdateProfileDto {
   cityLocationId?: string;
   bio?: string;
   avatarMediaId?: string;
+  acceptsCalls?: boolean;
 }
 
 export function updateProfile(dto: UpdateProfileDto, token: string): Promise<MyProfile> {

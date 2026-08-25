@@ -5,6 +5,7 @@ import { Listing } from './listing.entity';
 import { ListingAttributeValue } from './listing-attribute-value.entity';
 import { PriceHistory } from './price-history.entity';
 import { Category } from '../categories/category.entity';
+import { User } from '../users/user.entity';
 import { CategoryAttribute } from '../attributes/category-attribute.entity';
 import { SettingsService } from '../settings/settings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
@@ -43,6 +44,7 @@ export class ListingsService {
     @InjectRepository(Category) private readonly categories: Repository<Category>,
     @InjectRepository(CategoryAttribute) private readonly categoryAttributes: Repository<CategoryAttribute>,
     @InjectRepository(PriceHistory) private readonly priceHistory: Repository<PriceHistory>,
+    @InjectRepository(User) private readonly users: Repository<User>,
     private readonly settings: SettingsService,
     @Inject(SEARCH_PROVIDER) private readonly search: SearchProvider,
     private readonly moderation: ModerationService,
@@ -134,6 +136,18 @@ export class ListingsService {
       throw new BadRequestException({
         code: 'LISTING_INVALID_TRANSITION',
         message: `Публікація недоступна зі статусу ${listing.status}`,
+      });
+    }
+
+    // Покупець мусить мати спосіб зв'язатись з продавцем (чат є завжди, але дзвінок —
+    // основний канал для частини категорій, напр. авто) — Google-логін не дає телефону
+    // автоматично, тож без цієї перевірки оголошення могло піти в публікацію взагалі без
+    // жодного номера в профілі.
+    const user = await this.users.findOne({ where: { id: userId } });
+    if (!user?.phone) {
+      throw new BadRequestException({
+        code: 'PHONE_REQUIRED',
+        message: 'Щоб опублікувати оголошення, спершу додайте номер телефону в профілі',
       });
     }
 
