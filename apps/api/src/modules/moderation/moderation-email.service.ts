@@ -51,10 +51,7 @@ export class ModerationEmailService {
     }
 
     try {
-      // Єдиний реальний use case зараз: власник проєкту сам собі модератор — беремо
-      // найпершого зареєстрованого admin (ASC), щоб рішення з листа коректно приписувалось
-      // в audit log саме йому, а не випадковому пізніше доданому адміну.
-      const moderator = await this.users.findOne({ where: { role: 'admin' }, order: { createdAt: 'ASC' } });
+      const moderator = await this.resolveModerator();
       if (!moderator) {
         this.logger.warn('Немає жодного admin-користувача — email-сповіщення про модерацію пропущено');
         return;
@@ -77,6 +74,21 @@ export class ModerationEmailService {
       // Best-effort — збій відправки email не має ламати публікацію оголошення власником.
       this.logger.error(`Не вдалось надіслати email про модерацію: ${(err as Error).message}`);
     }
+  }
+
+  /**
+   * FIXED_OTP_PHONE — той самий номер, для якого auth.service.ts вже має постійний OTP-код
+   * (власник проєкту сам собі адмін) — надійніший якір для "хто вирішує з листа", ніж
+   * "перший admin за датою реєстрації", яку легко переплутати з другим доданим адміном
+   * (+380631670509, доданий пізніше).
+   */
+  private async resolveModerator(): Promise<User | null> {
+    const fixedPhone = this.config.get<string>('FIXED_OTP_PHONE');
+    if (fixedPhone) {
+      const byPhone = await this.users.findOne({ where: { phone: fixedPhone, role: 'admin' } });
+      if (byPhone) return byPhone;
+    }
+    return this.users.findOne({ where: { role: 'admin' }, order: { createdAt: 'ASC' } });
   }
 
   /** Перевіряє HMAC-підпис токена з посилання в листі. Повертає null для невалідного/підробленого токена. */
