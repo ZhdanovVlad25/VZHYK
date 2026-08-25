@@ -63,7 +63,10 @@ export class ModerationService {
       }),
     );
 
-    await this.moderationEmail.notifyNewCase(listing, saved);
+    // Fire-and-forget: notifyNewCase() уже ловить власні помилки, а SMTP-запит (навіть з
+    // таймаутами провайдера) не має тримати відповідь publish() відкритою для юзера, поки
+    // десь у фоні надсилається лист адміну.
+    void this.moderationEmail.notifyNewCase(listing, saved);
     return saved;
   }
 
