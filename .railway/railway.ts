@@ -52,9 +52,8 @@ export default defineRailway(() => {
       // Той самий Sentry DSN, що й web — один невеликий проєкт на обидва сервіси поки що.
       SENTRY_DSN: preserve(),
       // "Модерація поштою" (moderation-email.service.ts) — лист з фото/описом і кнопками
-      // Схвалити/Відхилити на кожне нове оголошення. EMAIL_PROVIDER=console, поки не додані
-      // GMAIL_USER/GMAIL_APP_PASSWORD — інакше GmailSmtpProvider впав би на старті (requireEnv).
-      EMAIL_PROVIDER: "console",
+      // Схвалити/Відхилити на кожне нове оголошення.
+      EMAIL_PROVIDER: "gmail",
       GMAIL_USER: preserve(),
       GMAIL_APP_PASSWORD: preserve(),
       MODERATION_NOTIFY_EMAIL: "zhdanov.vlad.work@gmail.com",
