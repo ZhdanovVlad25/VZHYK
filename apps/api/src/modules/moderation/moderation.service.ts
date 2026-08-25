@@ -8,6 +8,7 @@ import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-p
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { RiskService } from '../risk/risk.service';
 import { SettingsService } from '../settings/settings.service';
+import { ModerationEmailService } from './moderation-email.service';
 
 export interface ModerationQueueItem extends Omit<ModerationCase, 'listing'> {
   listing: {
@@ -36,6 +37,7 @@ export class ModerationService {
     private readonly auditLog: AuditLogService,
     private readonly risk: RiskService,
     private readonly settings: SettingsService,
+    private readonly moderationEmail: ModerationEmailService,
   ) {}
 
   /** Викликається з ListingsService.publish() одразу після переведення listing у PENDING_MODERATION. */
@@ -53,13 +55,16 @@ export class ModerationService {
       flagReason = `RISK_SCORE:${ownerRiskScore}`;
     }
 
-    return this.cases.save(
+    const saved = await this.cases.save(
       this.cases.create({
         listingId: listing.id,
         status: flagReason ? 'NEEDS_REVIEW' : 'PENDING',
         autoFlagReason: flagReason,
       }),
     );
+
+    await this.moderationEmail.notifyNewCase(listing, saved);
+    return saved;
   }
 
   async findQueue(status?: ModerationCaseStatus): Promise<ModerationQueueItem[]> {

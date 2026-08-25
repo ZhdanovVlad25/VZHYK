@@ -51,6 +51,15 @@ export default defineRailway(() => {
       GOOGLE_OAUTH_CALLBACK_URL: "https://api-production-ee5b.up.railway.app/api/v1/auth/google/callback",
       // Той самий Sentry DSN, що й web — один невеликий проєкт на обидва сервіси поки що.
       SENTRY_DSN: preserve(),
+      // "Модерація поштою" (moderation-email.service.ts) — лист з фото/описом і кнопками
+      // Схвалити/Відхилити на кожне нове оголошення. EMAIL_PROVIDER=console, поки не додані
+      // GMAIL_USER/GMAIL_APP_PASSWORD — інакше GmailSmtpProvider впав би на старті (requireEnv).
+      EMAIL_PROVIDER: "console",
+      GMAIL_USER: preserve(),
+      GMAIL_APP_PASSWORD: preserve(),
+      MODERATION_NOTIFY_EMAIL: "zhdanov.vlad.work@gmail.com",
+      MODERATION_EMAIL_SECRET: preserve(),
+      API_PUBLIC_URL: "https://api-production-ee5b.up.railway.app",
     },
   });
 
