@@ -5,6 +5,7 @@ import { AuthProvider } from '@/lib/auth-context';
 import { ThemeProvider } from '@/lib/theme-context';
 import { LanguageProvider } from '@/lib/language-context';
 import { Header } from '@/components/layout/Header';
+import { Footer } from '@/components/layout/Footer';
 import { SITE_URL } from '@/lib/site';
 
 /**
@@ -62,6 +63,11 @@ export const metadata: Metadata = {
     title: 'Вжик — оголошення',
     description: DESCRIPTION,
   },
+  // Google Search Console: підтвердження власності через meta-тег (property type "URL prefix").
+  // Без GOOGLE_SITE_VERIFICATION у env — поле просто відсутнє в <head>, нічого не ламається.
+  verification: process.env.GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+    : undefined,
 };
 
 export default function RootLayout({
@@ -100,6 +106,7 @@ export default function RootLayout({
               <main id="main-content" className="flex min-h-0 flex-1 flex-col">
                 {children}
               </main>
+              <Footer />
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>
