@@ -20,6 +20,7 @@ import { SellerCard } from '@/components/listings/SellerCard';
 import { ListingGallery } from '@/components/listings/ListingGallery';
 import { ListingCarousel } from '@/components/listings/ListingCarousel';
 import { ReportButton } from '@/components/shared/ReportButton';
+import { ShareButton } from '@/components/listings/ShareButton';
 import { buildListingHref, parseListingIdParam } from '@/lib/slugify';
 import { SITE_URL } from '@/lib/site';
 import { formatPrice } from '@/lib/format';
@@ -102,7 +103,7 @@ export default async function ListingDetailPage({
     throw err;
   }
 
-  const [media, categoryAttributes, sellerListings, otherListings, cities, categoryTree] = await Promise.all([
+  const [media, categoryAttributes, sellerListings, otherListingsRaw, cities, categoryTree] = await Promise.all([
     getListingMedia(id).catch(() => []),
     getCategoryAttributes(listing.categoryId).catch(() => []),
     search({ seller: listing.userId, sort: 'newest', limit: 9 }, 60)
@@ -110,19 +111,34 @@ export default async function ListingDetailPage({
       .catch(() => []),
     // Свідомо не фільтруємо за тією самою категорією — ширший показ "інших оголошень"
     // по всьому маркетплейсу, не лише в межах поточної категорії.
-    search({ sort: 'newest', limit: 9 }, 60)
-      .then((r) => r.items.filter((item) => item.id !== id).slice(0, 8))
+    search({ sort: 'newest', limit: 17 }, 60)
+      .then((r) => r.items.filter((item) => item.id !== id))
       .catch(() => []),
     getCities(3600).catch(() => []),
     getCategoryTree(3600).catch(() => []),
   ]);
+  // "Інші оголошення" не мають дублювати "Усі оголошення автора" — з малою кількістю
+  // реальних продавців на платформі обидва блоки тягнули майже той самий набір карток
+  // (аудит 27.08: "показують однаковий набір карток").
+  const sellerListingIds = new Set(sellerListings.map((item) => item.id));
+  const otherListings = otherListingsRaw.filter((item) => !sellerListingIds.has(item.id)).slice(0, 8);
+
   const cityName = listing.locationId ? cities.find((c) => c.id === listing.locationId)?.nameUk ?? null : null;
-  // Топ-категорія оголошення (навіть якщо categoryId — підкатегорія) — потрібна лише для
-  // звуження діапазону слайдера "Хочу дешевше" на авто/нерухомості (PriceOfferButton).
-  const topCategoryName =
-    categoryTree.find((c) => c.id === listing.categoryId)?.nameUk ??
-    categoryTree.find((c) => c.children.some((child) => child.id === listing.categoryId))?.nameUk ??
-    null;
+  // Топ-категорія оголошення (навіть якщо categoryId — підкатегорія) — потрібна і для
+  // звуження діапазону слайдера "Хочу дешевше" (PriceOfferButton), і для хлібних крихт.
+  const matchedTop = categoryTree.find((c) => c.id === listing.categoryId);
+  const matchedParent = categoryTree.find((c) => c.children.some((child) => child.id === listing.categoryId));
+  const topCategoryName = matchedTop?.nameUk ?? matchedParent?.nameUk ?? null;
+  const topCategoryId = matchedTop?.id ?? matchedParent?.id ?? null;
+  // Хлібні крихти показують підкатегорію лише коли categoryId сам є підкатегорією
+  // (matchedTop===undefined означає, що знайдений збіг — саме дитина, не сам верхній рівень).
+  const subCategory = !matchedTop ? matchedParent?.children.find((child) => child.id === listing.categoryId) : null;
+
+  const publishedDate = listing.publishedAt
+    ? new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(listing.publishedAt))
+    : null;
+  const listingRef = listing.id.slice(0, 8).toUpperCase();
+  const canonicalUrl = `${SITE_URL}${buildListingHref(listing.id, listing.title)}`;
 
   const attributeLabelById = new Map(
     categoryAttributes.map((attr) => [attr.id, attr.labelUk]),
@@ -150,6 +166,25 @@ export default async function ListingDetailPage({
     },
   };
 
+  const breadcrumbItems = [
+    { name: 'Головна', path: '/' },
+    ...(topCategoryName && topCategoryId
+      ? [{ name: topCategoryName, path: `/search?category=${topCategoryId}` }]
+      : []),
+    ...(subCategory ? [{ name: subCategory.nameUk, path: `/search?category=${subCategory.id}` }] : []),
+    { name: listing.title, path: buildListingHref(listing.id, listing.title) },
+  ].map((item) => ({ ...item, url: `${SITE_URL}${item.path}` }));
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: breadcrumbItems.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      item: item.url,
+    })),
+  };
+
   return (
     <>
       {/* eslint-disable-next-line react/no-danger -- статичний JSON-LD, без user-controlled HTML */}
@@ -157,7 +192,26 @@ export default async function ListingDetailPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {/* eslint-disable-next-line react/no-danger -- статичний JSON-LD, без user-controlled HTML */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <div className="mx-auto max-w-4xl px-4 py-8">
+        <nav aria-label="Хлібні крихти" className="mb-4 flex flex-wrap items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+          {breadcrumbItems.map((item, index) => (
+            <span key={item.url} className="flex items-center gap-1">
+              {index > 0 && <span aria-hidden="true">/</span>}
+              {index === breadcrumbItems.length - 1 ? (
+                <span className="max-w-[16rem] truncate text-gray-700 dark:text-gray-300">{item.name}</span>
+              ) : (
+                <Link href={item.path} className="hover:text-brand-600 hover:underline dark:hover:text-brand-400">
+                  {item.name}
+                </Link>
+              )}
+            </span>
+          ))}
+        </nav>
         <div className="grid gap-8 md:grid-cols-2 md:items-start">
           {/* sticky — права колонка (характеристики + опис) зазвичай значно довша за галерею,
               інакше під фото лишається порожній простір на всю різницю висот при скролі. */}
@@ -198,6 +252,11 @@ export default async function ListingDetailPage({
             {cityName && (
               <p className="mt-1 flex items-center gap-1 text-sm font-medium text-gray-700 dark:text-gray-300">{cityName}</p>
             )}
+            {/* Аудит 27.08: "немає дати публікації — базовий сигнал актуальності" і "немає
+                номера оголошення (на нього посилаються в переписці)". */}
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              {publishedDate && <>Опубліковано {publishedDate} · </>}№ {listingRef}
+            </p>
 
             <div className="mt-4 flex flex-wrap items-start gap-2">
               <StartChatButton
@@ -215,6 +274,7 @@ export default async function ListingDetailPage({
                 />
               )}
               <OwnerEditLink listingId={listing.id} ownerId={listing.userId} />
+              <ShareButton url={canonicalUrl} title={listing.title} />
               <ReportButton targetType="LISTING" targetId={listing.id} />
             </div>
 
