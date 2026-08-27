@@ -7,6 +7,7 @@ import {
   search,
   createSavedSearch,
   getCities,
+  getCategoryTree,
   ApiError,
   type City,
   type SearchResultItem,
@@ -79,6 +80,47 @@ function SearchPageContent() {
   useEffect(() => {
     getCities().then(setCities).catch(() => setCities([]));
   }, []);
+
+  // Аудит 27.08: перехід на "Авто" показував <title>/<h1> "Усі оголошення"/"Пошук
+  // оголошень" незалежно від категорії — сторінка "не знала, яка вона категорія".
+  // Клієнтський компонент не може генерувати повний ЧПУ-маршрут (/avto/dnipro) без
+  // окремого дерева server-роутів — тут мінімально виправлено title/h1/meta description
+  // під конкретну категорію, лишаючись на тому самому ?category=UUID URL.
+  const [categoryName, setCategoryName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!category) {
+      setCategoryName(null);
+      return;
+    }
+    let cancelled = false;
+    getCategoryTree(300)
+      .then((tree) => {
+        if (cancelled) return;
+        for (const top of tree) {
+          if (top.id === category) return setCategoryName(top.nameUk);
+          const child = top.children.find((c) => c.id === category);
+          if (child) return setCategoryName(child.nameUk);
+        }
+        setCategoryName(null);
+      })
+      .catch(() => !cancelled && setCategoryName(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [category]);
+
+  const pageTitle = seller
+    ? 'Оголошення продавця'
+    : q
+      ? `«${q}»`
+      : categoryName ?? 'Усі оголошення';
+
+  useEffect(() => {
+    document.title = `${pageTitle} — Вжик`;
+    return () => {
+      document.title = 'Вжик — оголошення';
+    };
+  }, [pageTitle]);
 
   const priceMinNum = urlPriceMin ? Number(urlPriceMin) : undefined;
   const priceMaxNum = urlPriceMax ? Number(urlPriceMax) : undefined;
@@ -206,7 +248,7 @@ function SearchPageContent() {
                   Результати пошуку: <span className="text-brand-600 dark:text-brand-400">«{q}»</span>
                 </>
               ) : (
-                'Усі оголошення'
+                categoryName ?? 'Усі оголошення'
               )}
             </h1>
             {!isLoading && !error && (
