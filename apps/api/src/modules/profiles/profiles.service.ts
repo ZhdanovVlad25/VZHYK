@@ -27,6 +27,13 @@ export interface PublicProfile {
    */
   phone: string | null;
   acceptsCalls: boolean;
+  /**
+   * Безпечний публічний сигнал довіри (аудит 27.08 "шар довіри" — картка оголошення не мала
+   * жодного сигналу надійності продавця): сам номер прихований від анонімів/acceptsCalls=false,
+   * але БУЛЬ факт "телефон підтверджено" — ні. Кожен номер на платформі верифікований через OTP
+   * (auth.service.ts verifyOtp/linkPhone), тож просто "phone існує" вже означає "підтверджено".
+   */
+  phoneVerified: boolean;
 }
 
 export interface MyProfileView extends Profile {
@@ -137,6 +144,7 @@ export class ProfilesService {
       lastActiveAt: user.lastActiveAt ?? null,
       phone: requesterUserId && acceptsCalls ? user.phone : null,
       acceptsCalls,
+      phoneVerified: Boolean(user.phone),
     };
   }
 

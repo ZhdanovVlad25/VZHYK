@@ -291,6 +291,8 @@ export interface PublicProfile {
   /** null для анонімного запиту або якщо продавець вимкнув acceptsCalls — тоді лишається лише чат. */
   phone: string | null;
   acceptsCalls: boolean;
+  /** Безпечний сигнал довіри — сам номер може бути прихований, але цей булевий прапорець видно завжди. */
+  phoneVerified: boolean;
 }
 
 export function getPublicProfile(userId: string, token?: string): Promise<PublicProfile> {
