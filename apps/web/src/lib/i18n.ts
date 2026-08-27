@@ -52,6 +52,11 @@ export const translations = {
     loginNamePlaceholder: 'Наприклад, Олена',
     loginContinue: 'Продовжити',
     loginSkip: 'Пропустити',
+    loginAgreePrefix: 'Я погоджуюсь з',
+    loginAgreeOferta: 'Публічною офертою',
+    loginAgreeAnd: 'та',
+    loginAgreePrivacy: 'Політикою конфіденційності',
+    loginAgreeRequired: 'Щоб продовжити, підтвердьте згоду з умовами вище',
   },
   en: {
     searchPlaceholder: 'What are you looking for?',
@@ -98,6 +103,11 @@ export const translations = {
     loginNamePlaceholder: 'e.g. Olena',
     loginContinue: 'Continue',
     loginSkip: 'Skip',
+    loginAgreePrefix: 'I agree to the',
+    loginAgreeOferta: 'Public Offer',
+    loginAgreeAnd: 'and',
+    loginAgreePrivacy: 'Privacy Policy',
+    loginAgreeRequired: 'Please confirm you agree to the terms above to continue',
   },
 } satisfies Record<Language, Record<string, string>>;
 

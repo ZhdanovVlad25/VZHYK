@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, Card, Dropdown, Form, Input, Alert } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
@@ -49,6 +50,10 @@ function LoginPageContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+  // Згода фіксується один раз на початку флоу (крок 'phone' — і Google, і телефон
+  // стартують звідси), а не заново на кожному наступному кроці того ж флоу (code/name) —
+  // це вже продовження вже розпочатого входу, не новий вхід.
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
     getCities().then(setCities).catch(() => setCities([]));
@@ -61,6 +66,9 @@ function LoginPageContent() {
   }, [resendCooldown]);
 
   async function sendCode() {
+    // Дублює disabled на кнопці — деякі браузери все одно сабмітять форму по Enter,
+    // навіть коли єдина submit-кнопка вимкнена.
+    if (!agreedToTerms) return;
     setError(null);
     setIsSubmitting(true);
     try {
@@ -129,7 +137,26 @@ function LoginPageContent() {
 
         {step === 'phone' && (
           <>
-            <Button type="button" size="lg" onClick={handleGoogleLogin} className="w-full">
+            <label className="mb-4 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+              />
+              <span>
+                {t('loginAgreePrefix')}{' '}
+                <Link href="/oferta" target="_blank" className="text-brand-600 hover:underline dark:text-brand-400">
+                  {t('loginAgreeOferta')}
+                </Link>{' '}
+                {t('loginAgreeAnd')}{' '}
+                <Link href="/privacy" target="_blank" className="text-brand-600 hover:underline dark:text-brand-400">
+                  {t('loginAgreePrivacy')}
+                </Link>
+              </span>
+            </label>
+
+            <Button type="button" size="lg" onClick={handleGoogleLogin} disabled={!agreedToTerms} className="w-full">
               {t('loginWithGoogle')}
             </Button>
             <div className="my-4 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
@@ -169,9 +196,12 @@ function LoginPageContent() {
               </div>
               <span className="text-xs text-gray-500 dark:text-gray-400">{t('loginPhoneHint')}</span>
             </div>
-            <Button type="submit" variant="secondary" isLoading={isSubmitting}>
+            <Button type="submit" variant="secondary" isLoading={isSubmitting} disabled={!agreedToTerms}>
               {t('loginSendCode')}
             </Button>
+            {!agreedToTerms && (
+              <span className="text-xs text-gray-500 dark:text-gray-400">{t('loginAgreeRequired')}</span>
+            )}
           </Form>
         ) : null}
 
