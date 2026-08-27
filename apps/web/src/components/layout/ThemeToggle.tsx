@@ -13,7 +13,10 @@ export function ThemeToggle() {
       onClick={toggleTheme}
       aria-label={isDark ? 'Увімкнути світлу тему' : 'Увімкнути темну тему'}
       title={isDark ? 'Світла тема' : 'Темна тема'}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+      // 44px — мінімальна рекомендована зона дотику для пальця (аудит 27.08: h-8/w-8=32px
+      // серед 27 елементів керування менших за 44px, theme/language toggle — найгірші).
+      // Іконка лишається 18px — росте лише клікабельна зона довкола, не сам вигляд.
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
     >
       {isDark ? (
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

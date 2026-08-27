@@ -56,6 +56,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: { default: 'Вжик — оголошення', template: '%s — Вжик' },
   description: DESCRIPTION,
+  // Аудит 27.08: "Немає og:image і canonical на головній... посилання на сайт у
+  // месенджері виглядає порожнім прямокутником". opengraph-image.tsx (next/og) генерує
+  // саму картинку 1200×630; тут лише canonical (сторінки з generateMetadata, напр.
+  // listings/[id], самі перевизначають і те, й інше — цей запис лише дефолт).
+  alternates: { canonical: '/' },
   openGraph: {
     siteName: 'Вжик',
     type: 'website',

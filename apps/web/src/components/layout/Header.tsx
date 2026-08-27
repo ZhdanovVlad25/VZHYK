@@ -28,6 +28,24 @@ export function Header() {
     getCities().then(setCities).catch(() => setCities([]));
   }, []);
 
+  // Аудит 27.08: "На /search?q=kia поле в шапці порожнє" — поле пошуку не знало про
+  // поточний URL. useSearchParams() тут навмисно НЕ використовуємо (Header у кореневому
+  // layout.tsx на кожній сторінці — Suspense-межа довкола нього вплинула б на статичну
+  // оптимізацію решти дерева); window.location.search читається лише на клієнті, синхронно
+  // з навігацією Next.js (pathname) і з back/forward (popstate), яких вистачає для цього
+  // випадку. Власний submit хедера (handleSearch) і так лишає q як є — синхронізація
+  // потрібна лише коли URL змінюється ЗВІДКИСЬ ІНШЕ (прямий заход, чужий лінк, back/forward).
+  useEffect(() => {
+    function syncFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      setQ(params.get('q') ?? '');
+      setLocation(params.get('location'));
+    }
+    syncFromUrl();
+    window.addEventListener('popstate', syncFromUrl);
+    return () => window.removeEventListener('popstate', syncFromUrl);
+  }, [pathname]);
+
   // Перехід між сторінками (клік лінка в мобільному меню) — закриваємо drawer, інакше
   // лишається розкритим поверх нової сторінки.
   useEffect(() => {

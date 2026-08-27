@@ -26,6 +26,11 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
+      {/* Аудит 27.08: "Головна без H1" — сторінка мала лише два h2, жодного h1 у DOM. */}
+      <h1 className="mb-8 text-2xl font-semibold text-gray-900 dark:text-gray-100 sm:text-3xl">
+        Купуйте й продавайте на Вжику — оголошення по всій Україні
+      </h1>
+
       <section aria-labelledby="categories-heading" className="mb-10">
         <h2
           id="categories-heading"

@@ -23,7 +23,9 @@ export function LanguageToggle() {
           aria-checked={language === option.value}
           onClick={() => setLanguage(option.value)}
           className={cn(
-            'rounded-full px-2 py-1 transition-colors',
+            // min-h — той самий 44px мінімум, що ThemeToggle; px/py трохи щедріші, ніж
+            // раніше (px-2 py-1 ≈ 24px висоти), текст лишається text-xs (не росте).
+            'min-h-[44px] rounded-full px-3 py-2.5 transition-colors',
             language === option.value
               ? 'bg-brand-600 text-white'
               : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100',
