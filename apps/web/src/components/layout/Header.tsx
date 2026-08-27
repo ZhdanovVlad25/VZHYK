@@ -180,7 +180,8 @@ export function Header() {
             onClick={() => setIsMenuOpen((v) => !v)}
             aria-expanded={isMenuOpen}
             aria-label={isMenuOpen ? 'Закрити меню' : 'Відкрити меню'}
-            className="ml-auto flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-700 md:hidden dark:border-gray-700 dark:text-gray-300"
+            // 44px — мінімальна рекомендована зона дотику для пальця (аудит 27.08: h-9/w-9=36px).
+            className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-gray-300 text-gray-700 md:hidden dark:border-gray-700 dark:text-gray-300"
           >
             {isMenuOpen ? (
               <span className="text-xl leading-none">×</span>

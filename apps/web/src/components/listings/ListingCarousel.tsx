@@ -59,7 +59,8 @@ export function ListingCarousel({ items }: { items: SearchResultItem[] }) {
             type="button"
             onClick={() => scrollToPage(Math.max(0, activePage - 1))}
             aria-label="Прокрутити ліворуч"
-            className="absolute -left-4 top-1/3 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-lg font-bold text-gray-700 shadow hover:bg-gray-50 md:flex"
+            // 44px — мінімальна рекомендована зона дотику для пальця (аудит 27.08: h-9/w-9=36px).
+            className="absolute -left-4 top-1/3 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-lg font-bold text-gray-700 shadow hover:bg-gray-50 md:flex"
           >
             ‹
           </button>
@@ -67,7 +68,7 @@ export function ListingCarousel({ items }: { items: SearchResultItem[] }) {
             type="button"
             onClick={() => scrollToPage(Math.min(pageCount - 1, activePage + 1))}
             aria-label="Прокрутити праворуч"
-            className="absolute -right-4 top-1/3 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-lg font-bold text-gray-700 shadow hover:bg-gray-50 md:flex"
+            className="absolute -right-4 top-1/3 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white text-lg font-bold text-gray-700 shadow hover:bg-gray-50 md:flex"
           >
             ›
           </button>
@@ -80,11 +81,19 @@ export function ListingCarousel({ items }: { items: SearchResultItem[] }) {
                 onClick={() => scrollToPage(page)}
                 aria-label={`Сторінка ${page + 1}`}
                 aria-current={page === activePage}
-                className={cn(
-                  'h-2 rounded-full transition-all',
-                  page === activePage ? 'w-6 bg-brand-600' : 'w-2 bg-gray-300 hover:bg-gray-400',
-                )}
-              />
+                // 44px — мінімальна рекомендована зона дотику для пальця (аудит 27.08: крапки
+                // пагінації були h-2, 8×8px). Видимий вигляд крапки лишається малим — росте
+                // лише клікабельна зона довкола (span всередині), як ThemeToggle/LanguageToggle.
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center"
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    'h-2 rounded-full transition-all',
+                    page === activePage ? 'w-6 bg-brand-600' : 'w-2 bg-gray-300 hover:bg-gray-400',
+                  )}
+                />
+              </button>
             ))}
           </div>
         </>

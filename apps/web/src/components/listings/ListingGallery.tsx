@@ -58,7 +58,8 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
               type="button"
               onClick={goPrev}
               aria-label="Попереднє фото"
-              className="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-lg font-bold text-gray-700 shadow hover:bg-white"
+              // 44px — мінімальна рекомендована зона дотику для пальця (аудит 27.08: h-9/w-9=36px).
+              className="absolute left-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-lg font-bold text-gray-700 shadow hover:bg-white"
             >
               ‹
             </button>
@@ -66,7 +67,7 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
               type="button"
               onClick={goNext}
               aria-label="Наступне фото"
-              className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-lg font-bold text-gray-700 shadow hover:bg-white"
+              className="absolute right-2 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-lg font-bold text-gray-700 shadow hover:bg-white"
             >
               ›
             </button>
@@ -78,7 +79,8 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
         <button
           type="button"
           onClick={() => setIsZoomed(true)}
-          className="absolute bottom-2 right-2 rounded-lg bg-white/90 px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow hover:bg-white"
+          // 44px — мінімальна рекомендована зона дотику для пальця (аудит 27.08: py-1.5 ≈ 28px висоти).
+          className="absolute bottom-2 right-2 flex min-h-[44px] items-center justify-center rounded-lg bg-white/90 px-3 text-xs font-medium text-gray-700 shadow hover:bg-white"
         >
           Збільшити
         </button>
@@ -118,7 +120,8 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
               type="button"
               onClick={() => setIsZoomed(false)}
               aria-label="Закрити"
-              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl text-white hover:bg-white/20"
+              // 44px — мінімальна рекомендована зона дотику для пальця (аудит 27.08: h-10/w-10=40px).
+              className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-2xl text-white hover:bg-white/20"
             >
               ✕
             </button>

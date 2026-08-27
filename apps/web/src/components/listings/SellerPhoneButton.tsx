@@ -45,7 +45,8 @@ export function SellerPhoneButton({ sellerId }: { sellerId: string }) {
     return (
       <a
         href={`tel:${phone}`}
-        className="inline-flex h-8 items-center rounded-xl border border-brand-200 bg-brand-50 px-3 text-sm font-semibold text-brand-700 hover:bg-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-brand-400 dark:hover:bg-gray-700"
+        // 44px — мінімальна рекомендована зона дотику для пальця (аудит 27.08: h-8=32px).
+        className="inline-flex min-h-[44px] items-center rounded-xl border border-brand-200 bg-brand-50 px-3 text-sm font-semibold text-brand-700 hover:bg-brand-100 dark:border-gray-700 dark:bg-gray-800 dark:text-brand-400 dark:hover:bg-gray-700"
       >
         {phone}
       </a>

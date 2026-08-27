@@ -451,8 +451,12 @@ export default function NewListingPage() {
                     <button
                       type="button"
                       onClick={() => removePendingPhoto(index)}
-                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-600 text-xs font-bold leading-none text-white"
                       aria-label="Прибрати фото"
+                      // 44px — мінімальна рекомендована зона дотику для пальця (аудит 27.08).
+                      // Видимий гурток лишається h-5/w-5 (зростання перекривало б сусідні
+                      // мініатюри у щільній сітці grid-cols-4/6) — зона дотику розширена
+                      // невидимим ::before до 44×44 навколо того самого центру.
+                      className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-600 text-xs font-bold leading-none text-white before:absolute before:left-1/2 before:top-1/2 before:h-11 before:w-11 before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']"
                     >
                       ×
                     </button>

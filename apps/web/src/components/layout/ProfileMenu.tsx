@@ -53,7 +53,9 @@ export function ProfileMenu() {
         onClick={() => setIsOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={isOpen}
-        className="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+        // 44px — мінімальна рекомендована зона дотику для пальця (аудит 27.08: py-1 навколо
+        // Avatar size="sm" (32px) ≈ 40px висоти).
+        className="flex min-h-[44px] items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
       >
         <Avatar name={displayName} url={avatarUrl} size="sm" />
         {/* На <400px ім'я + CTA-кнопка + гамбургер разом ширші за екран (аудит 27.08:
