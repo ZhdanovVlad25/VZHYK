@@ -1,12 +1,20 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { search, createSavedSearch, ApiError, type SearchResultItem, type SearchParams } from '@/lib/api';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  search,
+  createSavedSearch,
+  getCities,
+  ApiError,
+  type City,
+  type SearchResultItem,
+  type SearchParams,
+} from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { ListingCard } from '@/components/listings/ListingCard';
-import { Button, Dropdown, EmptyState, ErrorState, LoadingState } from '@/components/ui';
+import { Button, Dropdown, EmptyState, ErrorState, Input, LoadingState } from '@/components/ui';
 
 const SORT_OPTIONS = [
   { value: 'newest', label: 'Спочатку нові' },
@@ -14,6 +22,16 @@ const SORT_OPTIONS = [
   { value: 'price_asc', label: 'Дешевші спочатку' },
   { value: 'price_desc', label: 'Дорожчі спочатку' },
 ];
+
+const CONDITION_OPTIONS = [
+  { value: 'new', label: 'Новий' },
+  { value: 'used', label: 'Вживаний' },
+  { value: 'for_parts', label: 'На запчастини' },
+];
+
+function sanitizeNonNegative(raw: string): string {
+  return raw.replace(/-/g, '');
+}
 
 /** useSearchParams() вимагає Suspense-межу в App Router, інакше build падає на prerender. */
 export default function SearchPage() {
@@ -25,35 +43,98 @@ export default function SearchPage() {
 }
 
 function SearchPageContent() {
+  const router = useRouter();
   const urlParams = useSearchParams();
   const q = urlParams.get('q') ?? '';
   const category = urlParams.get('category') ?? undefined;
   const seller = urlParams.get('seller') ?? undefined;
   const location = urlParams.get('location') ?? undefined;
+  const urlPriceMin = urlParams.get('priceMin') ?? '';
+  const urlPriceMax = urlParams.get('priceMax') ?? '';
+  const urlCondition = urlParams.get('condition') ?? '';
   const { user, accessToken } = useAuth();
 
   const [sort, setSort] = useState<SearchParams['sort']>(q ? 'relevance' : 'newest');
   const [items, setItems] = useState<SearchResultItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSavingSearch, setIsSavingSearch] = useState(false);
   const [saveSearchMessage, setSaveSearchMessage] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Локальний стан полів фільтрів — окремо від URL, бо ціна набирається посимвольно
+  // (URL оновлюємо лише при сабміті/зміні дропдауна, не на кожне натискання клавіші).
+  const [priceMin, setPriceMin] = useState(urlPriceMin);
+  const [priceMax, setPriceMax] = useState(urlPriceMax);
+  const [cities, setCities] = useState<City[]>([]);
+
+  useEffect(() => {
+    setPriceMin(urlPriceMin);
+    setPriceMax(urlPriceMax);
+  }, [urlPriceMin, urlPriceMax]);
+
+  useEffect(() => {
+    getCities().then(setCities).catch(() => setCities([]));
+  }, []);
+
+  const priceMinNum = urlPriceMin ? Number(urlPriceMin) : undefined;
+  const priceMaxNum = urlPriceMax ? Number(urlPriceMax) : undefined;
+  const condition = urlCondition || undefined;
+
+  const activeFilterCount = [location, priceMinNum, priceMaxNum, condition].filter((v) => v !== undefined).length;
+
+  function buildUrl(overrides: Record<string, string | undefined>) {
+    const params = new URLSearchParams(urlParams.toString());
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value) params.set(key, value);
+      else params.delete(key);
+    }
+    return `/search${params.toString() ? `?${params.toString()}` : ''}`;
+  }
+
+  function applyPriceFilter() {
+    router.push(buildUrl({ priceMin: priceMin || undefined, priceMax: priceMax || undefined }));
+  }
+
+  function applyConditionFilter(value: string | null) {
+    router.push(buildUrl({ condition: value ?? undefined }));
+  }
+
+  function applyLocationFilter(value: string | null) {
+    router.push(buildUrl({ location: value ?? undefined }));
+  }
+
+  function resetFilters() {
+    router.push(buildUrl({ location: undefined, priceMin: undefined, priceMax: undefined, condition: undefined }));
+  }
 
   const runSearch = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await search({ q: q || undefined, category, seller, location, sort });
+      const result = await search({
+        q: q || undefined,
+        category,
+        seller,
+        location,
+        priceMin: priceMinNum,
+        priceMax: priceMaxNum,
+        condition,
+        sort,
+      });
       setItems(result.items);
+      setTotal(result.total);
       setNextCursor(result.nextCursor);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не вдалося завантажити результати пошуку.');
     } finally {
       setIsLoading(false);
     }
-  }, [q, category, seller, location, sort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- priceMinNum/priceMaxNum/condition похідні від urlParams, вже покриті нижче
+  }, [q, category, seller, location, priceMinNum, priceMaxNum, condition, sort]);
 
   useEffect(() => {
     runSearch();
@@ -63,7 +144,17 @@ function SearchPageContent() {
     if (!nextCursor) return;
     setIsLoadingMore(true);
     try {
-      const result = await search({ q: q || undefined, category, seller, location: location ?? undefined, sort, cursor: nextCursor });
+      const result = await search({
+        q: q || undefined,
+        category,
+        seller,
+        location: location ?? undefined,
+        priceMin: priceMinNum,
+        priceMax: priceMaxNum,
+        condition,
+        sort,
+        cursor: nextCursor,
+      });
       setItems((prev) => [...prev, ...result.items]);
       setNextCursor(result.nextCursor);
     } catch (err) {
@@ -88,6 +179,7 @@ function SearchPageContent() {
   }
 
   const hasFilters = Boolean(q || category || seller || location);
+  const cityOptions = useMemo(() => cities.map((c) => ({ value: c.id, label: c.nameUk })), [cities]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -105,17 +197,24 @@ function SearchPageContent() {
               </svg>
             </Link>
           )}
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            {seller ? (
-              'Оголошення продавця'
-            ) : q ? (
-              <>
-                Результати пошуку: <span className="text-brand-600 dark:text-brand-400">«{q}»</span>
-              </>
-            ) : (
-              'Усі оголошення'
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              {seller ? (
+                'Оголошення продавця'
+              ) : q ? (
+                <>
+                  Результати пошуку: <span className="text-brand-600 dark:text-brand-400">«{q}»</span>
+                </>
+              ) : (
+                'Усі оголошення'
+              )}
+            </h1>
+            {!isLoading && !error && (
+              <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                Знайдено {total} {total % 10 === 1 && total % 100 !== 11 ? 'оголошення' : 'оголошень'}
+              </p>
             )}
-          </h1>
+          </div>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           {user && (q || category) && (
@@ -126,6 +225,14 @@ function SearchPageContent() {
               {saveSearchMessage && <span className="text-xs text-gray-500 dark:text-gray-400">{saveSearchMessage}</span>}
             </div>
           )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowFilters((v) => !v)}
+            aria-expanded={showFilters}
+          >
+            Фільтри{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </Button>
           <div className="w-56">
             <Dropdown
               label="Сортування"
@@ -136,6 +243,48 @@ function SearchPageContent() {
           </div>
         </div>
       </div>
+
+      {showFilters && (
+        <div className="mb-6 grid grid-cols-1 gap-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 sm:grid-cols-2 lg:grid-cols-4">
+          <Dropdown
+            label="Місто"
+            options={cityOptions}
+            value={location ?? null}
+            onChange={applyLocationFilter}
+            placeholder="Будь-яке"
+          />
+          <Dropdown
+            label="Стан"
+            options={CONDITION_OPTIONS}
+            value={condition ?? null}
+            onChange={applyConditionFilter}
+            placeholder="Будь-який"
+          />
+          <div className="flex items-end gap-2">
+            <Input
+              label="Ціна від"
+              type="number"
+              min={0}
+              value={priceMin}
+              onChange={(e) => setPriceMin(sanitizeNonNegative(e.target.value))}
+              onBlur={applyPriceFilter}
+            />
+            <Input
+              label="Ціна до"
+              type="number"
+              min={0}
+              value={priceMax}
+              onChange={(e) => setPriceMax(sanitizeNonNegative(e.target.value))}
+              onBlur={applyPriceFilter}
+            />
+          </div>
+          <div className="flex items-end">
+            <Button variant="ghost" size="sm" onClick={resetFilters} disabled={activeFilterCount === 0}>
+              Скинути фільтри
+            </Button>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <LoadingState label="Шукаємо оголошення…" />

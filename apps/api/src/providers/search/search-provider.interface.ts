@@ -36,6 +36,8 @@ export interface SearchResultItem {
 export interface SearchResult {
   items: SearchResultItem[];
   nextCursor: string | null;
+  /** Повна кількість (без урахування limit/cursor) — для "Знайдено N оголошень" у видачі. */
+  total: number;
 }
 
 export interface SearchProvider {

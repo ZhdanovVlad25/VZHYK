@@ -105,6 +105,11 @@ export class PostgresFtsSearchProvider implements SearchProvider {
       conditions.push(`l."price" IS NOT NULL`); // keyset-порівняння з NULL непередбачуване — сортовані-за-ціною списки виключають безцінові
     }
 
+    // Знімок WHERE-умов ДО cursor-умови (пагінація) — total має бути "скільки всього
+    // підходить під фільтри", а не "скільки лишилось після цієї сторінки".
+    const countConditions = conditions.slice();
+    const countParams = params.slice();
+
     if (filters.cursor) {
       const cursor = this.parseCursor(filters.cursor);
       params.push(cursor.v, cursor.id);
@@ -124,8 +129,12 @@ export class PostgresFtsSearchProvider implements SearchProvider {
       ORDER BY ${sortConfig.expr} ${sortConfig.direction}, l."id" ${sortConfig.direction}
       LIMIT $${params.length}
     `;
+    const countSql = `SELECT COUNT(*)::int AS "total" FROM "listings" l WHERE ${countConditions.join(' AND ')}`;
 
-    const rows = await this.dataSource.query<Array<Record<string, unknown>>>(sql, params);
+    const [rows, countRows] = await Promise.all([
+      this.dataSource.query<Array<Record<string, unknown>>>(sql, params),
+      this.dataSource.query<Array<{ total: number }>>(countSql, countParams),
+    ]);
 
     const hasMore = rows.length > limit;
     const page = hasMore ? rows.slice(0, limit) : rows;
@@ -137,7 +146,7 @@ export class PostgresFtsSearchProvider implements SearchProvider {
       nextCursor = encodeCursor({ v: this.cursorValue(last, sort), id: last.id as string });
     }
 
-    return { items, nextCursor };
+    return { items, nextCursor, total: countRows[0]?.total ?? 0 };
   }
 
   async suggest(prefix: string, limit = 10): Promise<string[]> {

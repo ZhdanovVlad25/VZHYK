@@ -186,6 +186,7 @@ export interface SearchResultItem {
 export interface SearchResult {
   items: SearchResultItem[];
   nextCursor: string | null;
+  total: number;
 }
 
 export interface City {
