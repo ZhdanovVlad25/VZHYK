@@ -52,8 +52,15 @@ export class PostgresFtsSearchProvider implements SearchProvider {
     if (filters.q) {
       params.push(filters.q);
       const qIdx = params.length;
-      rankExpr = `ts_rank(l."searchVector", websearch_to_tsquery('simple', $${qIdx}))`;
-      conditions.push(`l."searchVector" @@ websearch_to_tsquery('simple', $${qIdx})`);
+      // 'simple' tsvector-конфіг не має українського стемінгу — websearch_to_tsquery сам
+      // по собі не знаходить "квартиру" за запитом "квартира" чи "кросівки" за префіксом
+      // "кросівк". similarity() (pg_trgm, 1754802200000) рахує схожість підрядків і ловить
+      // обидва випадки без словника — OR з tsvector-умовою, яка й далі покриває description
+      // (searchVector включає title+description, similarity лише title).
+      rankExpr = `similarity(l."title", $${qIdx})`;
+      conditions.push(
+        `(l."searchVector" @@ websearch_to_tsquery('simple', $${qIdx}) OR similarity(l."title", $${qIdx}) > 0.25)`,
+      );
     }
     if (filters.categoryId) {
       params.push(filters.categoryId);

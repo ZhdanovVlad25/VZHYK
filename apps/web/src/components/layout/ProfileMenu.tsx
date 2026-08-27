@@ -56,7 +56,10 @@ export function ProfileMenu() {
         className="flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
       >
         <Avatar name={displayName} url={avatarUrl} size="sm" />
-        <span className="max-w-[10rem] truncate">{displayName ?? user.phone}</span>
+        {/* На <400px ім'я + CTA-кнопка + гамбургер разом ширші за екран (аудит 27.08:
+            document.scrollWidth 455px при viewport 342px, обрізало гамбургер) — на
+            мобільному лишається тільки аватар, повне ім'я видно у відкритому меню нижче. */}
+        <span className="hidden max-w-[10rem] truncate md:inline">{displayName ?? user.phone}</span>
       </button>
 
       {isOpen && (
