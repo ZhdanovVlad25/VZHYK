@@ -12,6 +12,7 @@ import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { AttributeValueInputDto } from './dto/attribute-value-input.dto';
 import {
+  LISTING_EXPIRY_DAYS,
   LISTING_STATUSES,
   LISTING_TYPES_WITHOUT_REQUIRED_PRICE,
   ListingStatus,
@@ -107,6 +108,7 @@ export class ListingsService {
       isNegotiable: dto.isNegotiable ?? listing.isNegotiable,
       condition: dto.condition ?? listing.condition,
       locationId: dto.locationId ?? listing.locationId,
+      autoRenew: dto.autoRenew ?? listing.autoRenew,
     });
 
     const saved = await this.saveWithConflictHandling(listing);
@@ -193,6 +195,23 @@ export class ListingsService {
     listing.status = 'SOLD';
     const saved = await this.saveWithConflictHandling(listing);
     await this.search.remove(saved.id);
+    return saved;
+  }
+
+  /**
+   * "Оновити" — ручне продовження на LISTING_EXPIRY_DAYS. Дозволено і для вже ACTIVE
+   * (звичайний "bump" терміну заздалегідь), і для EXPIRED (повертає в публічний видача).
+   */
+  async renew(userId: string, id: string): Promise<Listing> {
+    const listing = await this.findOwnedListing(userId, id);
+    this.assertTransition(listing.status, ['ACTIVE', 'EXPIRED'], 'ACTIVE');
+    const wasExpired = listing.status === 'EXPIRED';
+    listing.status = 'ACTIVE';
+    listing.expiresAt = new Date(Date.now() + LISTING_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+    const saved = await this.saveWithConflictHandling(listing);
+    if (wasExpired) {
+      await this.search.index(saved.id);
+    }
     return saved;
   }
 

@@ -225,7 +225,7 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
               {messages.map((m) => {
                 const isMine = m.senderId === user?.id;
                 return (
-                  <li key={m.id} className={cn('flex', isMine ? 'justify-end' : 'justify-start')}>
+                  <li key={m.id} className={cn('flex flex-col', isMine ? 'items-end' : 'items-start')}>
                     <div
                       className={cn(
                         'max-w-[75%] rounded-2xl px-3 py-2 text-sm',
@@ -237,6 +237,14 @@ export default function ChatThreadPage({ params }: { params: { id: string } }) {
                         {formatTime(m.createdAt)}
                       </p>
                     </div>
+                    {/* Антифрод: шахраї часто виводять розмову з платформи в Telegram/Viber, де
+                        немає ні модерації, ні історії листування — попереджаємо обидві сторони,
+                        не блокуючи повідомлення (легітимні причини теж трапляються). */}
+                    {m.containsExternalContact && (
+                      <p className="mt-1 max-w-[75%] text-[11px] text-amber-600 dark:text-amber-500">
+                        ⚠️ Згадка іншого месенджера — спілкування поза платформою підвищує ризик шахрайства.
+                      </p>
+                    )}
                   </li>
                 );
               })}

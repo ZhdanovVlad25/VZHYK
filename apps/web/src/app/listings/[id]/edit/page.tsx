@@ -13,6 +13,7 @@ import {
   getListingMedia,
   getRegions,
   publishListing,
+  renewListing,
   updateListing,
   uploadListingMedia,
   type Category,
@@ -98,6 +99,8 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isRenewing, setIsRenewing] = useState(false);
+  const [isSavingAutoRenew, setIsSavingAutoRenew] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [listingType, setListingType] = useState<ListingType>('sell');
@@ -243,6 +246,33 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
     }
   }
 
+  async function handleRenew() {
+    if (!accessToken) return;
+    setActionError(null);
+    setIsRenewing(true);
+    try {
+      const updated = await renewListing(params.id, accessToken);
+      setListing(updated);
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Не вдалося оновити термін дії.');
+    } finally {
+      setIsRenewing(false);
+    }
+  }
+
+  async function handleToggleAutoRenew(next: boolean) {
+    if (!accessToken || !listing) return;
+    setIsSavingAutoRenew(true);
+    try {
+      const updated = await updateListing(params.id, { autoRenew: next }, accessToken);
+      setListing(updated);
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Не вдалося зберегти автопродовження.');
+    } finally {
+      setIsSavingAutoRenew(false);
+    }
+  }
+
   const isTitleValid = title.trim().length >= TITLE_MIN_LENGTH;
   const isDescriptionValid = description.trim().length >= DESCRIPTION_MIN_LENGTH;
   const canSave = isTitleValid && isDescriptionValid && Boolean(locationId);
@@ -384,7 +414,34 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         </Badge>
         <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{listing.title}</h1>
       </div>
-      <p className="mb-6 text-xl font-extrabold text-brand-700 dark:text-brand-400">{formatPrice(listing.price, listing.currency)}</p>
+      <p className="mb-2 text-xl font-extrabold text-brand-700 dark:text-brand-400">{formatPrice(listing.price, listing.currency)}</p>
+
+      {/* Термін дії — лише для ACTIVE/EXPIRED, для інших статусів expiresAt ще не заданий
+          (виставляється при схваленні модерацією, moderation.service.ts). */}
+      {(listing.status === 'ACTIVE' || listing.status === 'EXPIRED') && (
+        <div className="mb-6 flex flex-wrap items-center gap-3 text-sm">
+          {listing.expiresAt && (
+            <span className="text-gray-600 dark:text-gray-400">
+              {listing.status === 'EXPIRED'
+                ? 'Термін дії закінчився'
+                : `Активне до ${new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(listing.expiresAt))}`}
+            </span>
+          )}
+          <Button size="sm" variant="secondary" isLoading={isRenewing} onClick={handleRenew}>
+            Оновити
+          </Button>
+          <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+            <input
+              type="checkbox"
+              checked={listing.autoRenew}
+              disabled={isSavingAutoRenew}
+              onChange={(e) => handleToggleAutoRenew(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+            />
+            Автопродовження
+          </label>
+        </div>
+      )}
 
       {listing.status === 'PENDING_MODERATION' && (
         <Alert tone="info" title="На модерації" className="mb-4">

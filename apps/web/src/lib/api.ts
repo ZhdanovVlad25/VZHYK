@@ -156,6 +156,8 @@ export interface Listing {
   status: ListingStatus;
   viewsCount: number;
   publishedAt: string | null;
+  expiresAt: string | null;
+  autoRenew: boolean;
   createdAt: string;
   attributes: ListingAttributeValue[];
 }
@@ -414,6 +416,7 @@ export interface CreateListingDto {
   condition?: 'new' | 'used' | 'for_parts';
   locationId?: string;
   attributes?: AttributeValueInput[];
+  autoRenew?: boolean;
 }
 
 export type UpdateListingDto = Partial<Omit<CreateListingDto, 'categoryId'>>;
@@ -435,6 +438,11 @@ export function updateListing(
 
 export function publishListing(id: string, token: string): Promise<Listing> {
   return apiFetch(`/listings/${id}/publish`, { method: 'POST', token });
+}
+
+/** "Оновити" — продовжує термін дії оголошення ще на 30 днів (і повертає з EXPIRED в ACTIVE). */
+export function renewListing(id: string, token: string): Promise<Listing> {
+  return apiFetch(`/listings/${id}/renew`, { method: 'POST', token });
 }
 
 export function getMyListings(
@@ -542,6 +550,8 @@ export interface Message {
   mediaIds: string[];
   createdAt: string;
   readAt: string | null;
+  /** Антифрод: текст згадує Telegram/Viber/WhatsApp — показати попередження в UI. */
+  containsExternalContact: boolean;
 }
 
 export interface MessagesPage {

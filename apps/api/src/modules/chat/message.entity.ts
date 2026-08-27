@@ -38,4 +38,8 @@ export class Message {
 
   @Column({ type: 'timestamptz', nullable: true })
   readAt: Date | null;
+
+  /** Антифрод-сигнал (external-contact-detector.ts) — текст згадує Telegram/Viber/WhatsApp тощо. */
+  @Column({ type: 'boolean', default: false })
+  containsExternalContact: boolean;
 }

@@ -45,6 +45,12 @@ export class ListingsController {
     return this.listings.markSold(user.id, id);
   }
 
+  @Post(':id/renew')
+  @UseGuards(JwtAuthGuard)
+  renew(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.listings.renew(user.id, id);
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)

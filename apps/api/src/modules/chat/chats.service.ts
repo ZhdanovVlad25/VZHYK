@@ -9,6 +9,7 @@ import { User } from '../users/user.entity';
 import { Listing } from '../listings/listing.entity';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { CHAT_MESSAGE_CREATED } from './chat.events';
+import { containsExternalContactMention } from './external-contact-detector';
 import { decodeCursor, encodeCursor } from '../../shared/pagination/cursor';
 import { RateLimitService } from '../../shared/rate-limit.service';
 
@@ -155,7 +156,9 @@ export class ChatsService {
       throw new ForbiddenException({ code: 'CHAT_BLOCKED', message: 'Вас заблоковано в цьому чаті' });
     }
 
-    const message = await this.messages.save(this.messages.create({ chatId, senderId: userId, text }));
+    const message = await this.messages.save(
+      this.messages.create({ chatId, senderId: userId, text, containsExternalContact: containsExternalContactMention(text) }),
+    );
     await this.chats.update({ id: chatId }, { lastMessageAt: message.createdAt, lastMessageText: message.text });
 
     const others = await this.participants.find({ where: { chatId } });

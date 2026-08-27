@@ -26,3 +26,6 @@ export const LISTING_TYPES_WITHOUT_REQUIRED_PRICE: ListingType[] = ['buy', 'give
 
 /** Статуси, видимі анонімному відвідувачу/іншим користувачам (docs/api.md §5, §8). */
 export const PUBLICLY_VISIBLE_LISTING_STATUSES: ListingStatus[] = ['ACTIVE', 'RESERVED', 'SOLD'];
+
+/** Скільки днів оголошення лишається ACTIVE після схвалення модерацією, перш ніж EXPIRED. */
+export const LISTING_EXPIRY_DAYS = 30;

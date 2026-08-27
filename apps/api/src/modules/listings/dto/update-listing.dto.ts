@@ -67,4 +67,9 @@ export class UpdateListingDto {
   @ValidateNested({ each: true })
   @Type(() => AttributeValueInputDto)
   attributes?: AttributeValueInputDto[];
+
+  /** "Автопродовження" — cron (listing-expiration.cron.ts) продовжує термін замість переводу в EXPIRED. */
+  @IsOptional()
+  @IsBoolean()
+  autoRenew?: boolean;
 }

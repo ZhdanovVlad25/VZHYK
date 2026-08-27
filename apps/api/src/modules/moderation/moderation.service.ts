@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { ModerationCase } from './moderation-case.entity';
 import { Listing } from '../listings/listing.entity';
 import { BANNED_WORDS, ModerationCaseStatus, ModerationDecision } from './moderation.constants';
+import { LISTING_EXPIRY_DAYS } from '../listings/listing.constants';
 import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-provider.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { RiskService } from '../risk/risk.service';
@@ -150,6 +151,9 @@ export class ModerationService {
     if (decision === 'APPROVED') {
       listing.status = 'ACTIVE';
       listing.publishedAt = new Date();
+      // Лічильник 30 днів стартує від фактичного схвалення, не від publish() — час у черзі
+      // модерації не має "з'їдати" термін життя оголошення.
+      listing.expiresAt = new Date(Date.now() + LISTING_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
       await this.listings.save(listing);
       await this.search.index(listing.id);
     } else {

@@ -91,6 +91,10 @@ export class Listing {
   @Column({ type: 'timestamptz', nullable: true })
   expiresAt: Date | null;
 
+  /** Якщо true — cron (listing-expiration.cron.ts) продовжує expiresAt ще на LISTING_EXPIRY_DAYS замість переводу в EXPIRED. */
+  @Column({ type: 'boolean', default: false })
+  autoRenew: boolean;
+
   @Column({ type: 'timestamptz', nullable: true })
   deletedAt: Date | null;
 
