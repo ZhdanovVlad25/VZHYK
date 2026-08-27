@@ -11,7 +11,6 @@ import { Logo } from './Logo';
 import { ProfileMenu } from './ProfileMenu';
 import { AdminMenu } from './AdminMenu';
 import { ThemeToggle } from './ThemeToggle';
-import { LanguageToggle } from './LanguageToggle';
 
 export function Header() {
   const router = useRouter();
@@ -112,8 +111,11 @@ export function Header() {
   function renderNavItems(): ReactNode {
     return (
       <>
+        {/* Аудит 27.08: EN-версія перекладена лише в хедері (категорії/футер/сторінки —
+            ні), <html lang> не міняється, hreflang немає — напівпереклад шкодить більше,
+            ніж його відсутність. Перемикач прибрано, поки немає повного перекладу
+            (i18n-інфраструктура/language-context лишається — просто нікуди не змінити мову). */}
         <div className="flex items-center gap-3">
-          <LanguageToggle />
           <ThemeToggle />
         </div>
 
