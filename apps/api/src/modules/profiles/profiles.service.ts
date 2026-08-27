@@ -6,6 +6,7 @@ import { User } from '../users/user.entity';
 import { Location } from '../location/location.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { MediaService } from '../media/media.service';
+import { ListingsService } from '../listings/listings.service';
 
 export interface PublicProfile {
   userId: string;
@@ -48,6 +49,7 @@ export class ProfilesService {
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(Location) private readonly locations: Repository<Location>,
     private readonly media: MediaService,
+    private readonly listings: ListingsService,
   ) {}
 
   /** Профіль не створюється при реєстрації (Profiles module ще не існував у Phase 1) — lazy-create при першому зверненні. */
@@ -129,6 +131,9 @@ export class ProfilesService {
 
     const profile = await this.profiles.findOne({ where: { userId } });
     const acceptsCalls = profile?.acceptsCalls ?? true;
+    // Profile.activeListingsCount ніколи не синхронізується (жоден код у кодовій базі
+    // його не оновлює) — рахуємо наживо тим самим агрегатом, що й "власний" профіль.
+    const stats = await this.listings.getOwnStats(userId);
     return {
       userId,
       displayName: profile?.displayName ?? null,
@@ -139,7 +144,7 @@ export class ProfilesService {
       bio: profile?.bio ?? null,
       rating: profile?.rating ?? null,
       reviewsCount: profile?.reviewsCount ?? null,
-      activeListingsCount: profile?.activeListingsCount ?? 0,
+      activeListingsCount: stats.activeListingsCount,
       memberSince: user.createdAt,
       lastActiveAt: user.lastActiveAt ?? null,
       phone: requesterUserId && acceptsCalls ? user.phone : null,
