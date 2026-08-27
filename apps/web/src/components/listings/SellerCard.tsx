@@ -9,8 +9,18 @@ import { Avatar } from '@/components/ui';
 /** Той самий поріг, що ONLINE_STALE_MS у jwt.strategy.ts — свіжіше за нього вважається "онлайн зараз". */
 const ONLINE_THRESHOLD_MS = 2 * 60 * 1000;
 
+// Intl.DateTimeFormat('uk-UA', {month:'long'}) віддає називний відмінок ("серпень"),
+// а "На Вжику З ..." вимагає родового ("з серпня") — перевірено наживо на проді
+// ("На Вжику з серпень 2026" — граматично невірно). Стандартного способу форсувати
+// родовий БЕЗ дня в ICU/uk-UA нема, тож проста статична мапа на 12 місяців.
+const MONTHS_GENITIVE = [
+  'січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
+  'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня',
+];
+
 function formatMemberSince(iso: string): string {
-  return new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' }).format(new Date(iso));
+  const date = new Date(iso);
+  return `${MONTHS_GENITIVE[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 function formatLastSeen(iso: string): string {
