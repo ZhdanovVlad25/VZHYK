@@ -14,6 +14,7 @@ import {
   type SearchParams,
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
+import { pluralizeListings } from '@/lib/format';
 import { ListingCard } from '@/components/listings/ListingCard';
 import { Button, Dropdown, EmptyState, ErrorState, Input, LoadingState } from '@/components/ui';
 
@@ -254,7 +255,7 @@ function SearchPageContent() {
             </h1>
             {!isLoading && !error && (
               <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-                Знайдено {total} {total % 10 === 1 && total % 100 !== 11 ? 'оголошення' : 'оголошень'}
+                Знайдено {total} {pluralizeListings(total)}
               </p>
             )}
           </div>

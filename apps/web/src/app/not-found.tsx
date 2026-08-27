@@ -42,7 +42,7 @@ export default async function NotFound() {
             {categories.map((c) => (
               <Link
                 key={c.id}
-                href={`/search?category=${c.id}`}
+                href={`/${c.slug}`}
                 className="rounded-full bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 transition-opacity hover:opacity-80 dark:bg-gray-800 dark:text-brand-400"
               >
                 {c.nameUk}

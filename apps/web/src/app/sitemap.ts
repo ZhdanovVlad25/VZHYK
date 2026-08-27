@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { search } from '@/lib/api';
+import { getCategoryTree, search } from '@/lib/api';
 import { buildListingHref } from '@/lib/slugify';
 import { SITE_URL } from '@/lib/site';
 
@@ -34,7 +34,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/search`, changeFrequency: 'hourly', priority: 0.8 },
   ];
 
+  // Чисті URL категорій (аудит 27.08) — лише кореневий рівень, без комбінацій з містом
+  // (15 категорій × 49 міст дали б >700 переважно порожніх сторінок для 3 реальних оголошень).
+  const categories = await getCategoryTree(300).catch(() => []);
+  const categoryEntries: MetadataRoute.Sitemap = categories.map((category) => ({
+    url: `${SITE_URL}/${category.slug}`,
+    changeFrequency: 'daily',
+    priority: 0.7,
+  }));
+
   const listings = await listingEntries();
 
-  return [...staticEntries, ...listings];
+  return [...staticEntries, ...categoryEntries, ...listings];
 }

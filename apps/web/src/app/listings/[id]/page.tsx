@@ -130,6 +130,7 @@ export default async function ListingDetailPage({
   const matchedParent = categoryTree.find((c) => c.children.some((child) => child.id === listing.categoryId));
   const topCategoryName = matchedTop?.nameUk ?? matchedParent?.nameUk ?? null;
   const topCategoryId = matchedTop?.id ?? matchedParent?.id ?? null;
+  const topCategorySlug = matchedTop?.slug ?? matchedParent?.slug ?? null;
   // Хлібні крихти показують підкатегорію лише коли categoryId сам є підкатегорією
   // (matchedTop===undefined означає, що знайдений збіг — саме дитина, не сам верхній рівень).
   const subCategory = !matchedTop ? matchedParent?.children.find((child) => child.id === listing.categoryId) : null;
@@ -168,8 +169,10 @@ export default async function ListingDetailPage({
 
   const breadcrumbItems = [
     { name: 'Головна', path: '/' },
-    ...(topCategoryName && topCategoryId
-      ? [{ name: topCategoryName, path: `/search?category=${topCategoryId}` }]
+    // Чисті URL (аудит 27.08) є лише для кореневих категорій — підкатегорія власного
+    // ЧПУ-маршруту не має, лишається на /search?category=uuid.
+    ...(topCategoryName && topCategorySlug
+      ? [{ name: topCategoryName, path: `/${topCategorySlug}` }]
       : []),
     ...(subCategory ? [{ name: subCategory.nameUk, path: `/search?category=${subCategory.id}` }] : []),
     { name: listing.title, path: buildListingHref(listing.id, listing.title) },

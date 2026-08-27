@@ -42,7 +42,7 @@ export default async function HomePage() {
           {categories.map((category, index) => (
             <Link
               key={category.id}
-              href={`/search?category=${category.id}`}
+              href={`/${category.slug}`}
               className={`rounded-full px-4 py-2 text-sm font-medium transition-opacity hover:opacity-80 focus-visible:outline-none ${CATEGORY_TINTS[index % CATEGORY_TINTS.length]}`}
             >
               {category.nameUk}
