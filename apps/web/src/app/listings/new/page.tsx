@@ -82,6 +82,22 @@ export default function NewListingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Раніше "Опублікувати" на порожній Категорії/Області/Місті просто нічого не робила
+  // (disabled-кнопка без пояснення) — аудит 27.08 знайшов це як критичну знахідку.
+  // Тепер кнопка завжди клікабельна, а перша спроба сабміту вмикає видимі помилки
+  // під конкретними полями замість мовчазного ігнорування кліку.
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false);
+  const formTopRef = useRef<HTMLDivElement>(null);
+
+  // Клієнтський компонент не може експортувати metadata (App Router) — /listings/new і так
+  // поза індексацією (robots.txt), це суто для вкладки браузера (аудит 27.08: <title> лишався
+  // загальним "Вжик — оголошення" на формі створення).
+  useEffect(() => {
+    document.title = 'Нове оголошення — Вжик';
+    return () => {
+      document.title = 'Вжик — оголошення';
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -194,7 +210,13 @@ export default function NewListingPage() {
   }
 
   async function submit(publishNow: boolean) {
-    if (!accessToken || !canSubmit || !categoryId) return;
+    if (!accessToken) return;
+    setAttemptedSubmit(true);
+    if (!canSubmit || !categoryId) {
+      setError('Заповніть усі обов’язкові поля, позначені зірочкою.');
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
 
     setError(null);
     if (publishNow) setIsPublishing(true);
@@ -224,8 +246,13 @@ export default function NewListingPage() {
         });
       }
 
+      // Якщо ВСІ фото не завантажились — не публікуємо мовчки без жодного фото (аудит 27.08:
+      // "якщо вивантаження впаде, оголошення вже опубліковане без фото"). Чернетка лишається
+      // збереженою, юзер повертається на редагування, де може додати фото ще раз і опублікувати сам.
+      const allPhotosFailed = pendingPhotos.length > 0 && failedPhotoCount === pendingPhotos.length;
+
       let publishError: string | null = null;
-      if (publishNow) {
+      if (publishNow && !allPhotosFailed) {
         try {
           await publishListing(listing.id, accessToken);
         } catch (err) {
@@ -242,8 +269,8 @@ export default function NewListingPage() {
       // "опубліковано без фото" виглядає як робочий результат, доки не глянеш на оголошення.
       if (failedPhotoCount > 0) {
         window.alert(
-          failedPhotoCount === pendingPhotos.length
-            ? 'Оголошення створено, але жодне фото не вдалося завантажити. Спробуйте додати їх ще раз на сторінці редагування.'
+          allPhotosFailed
+            ? 'Жодне фото не вдалося завантажити, тож оголошення збережено як чернетку (не опубліковано). Додайте фото ще раз на сторінці редагування і опублікуйте.'
             : `Оголошення створено, але ${failedPhotoCount} з ${pendingPhotos.length} фото не вдалося завантажити. Спробуйте додати їх ще раз на сторінці редагування.`,
         );
       }
@@ -267,7 +294,7 @@ export default function NewListingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8">
+    <div className="mx-auto max-w-3xl px-4 py-8" ref={formTopRef}>
       <h1 className="mb-6 text-2xl font-semibold text-gray-900 dark:text-gray-100">Нове оголошення</h1>
       <Card>
         {error && (
@@ -307,6 +334,7 @@ export default function NewListingPage() {
               onChange={(e) => setTitle(e.target.value)}
               minLength={TITLE_MIN_LENGTH}
               hint={`Мінімум ${TITLE_MIN_LENGTH} символів`}
+              error={attemptedSubmit && !isTitleValid ? `Мінімум ${TITLE_MIN_LENGTH} символів` : undefined}
               required
             />
 
@@ -320,6 +348,7 @@ export default function NewListingPage() {
               }}
               placeholder="Оберіть категорію"
               isLoading={categoryTree === null}
+              error={attemptedSubmit && !topCategoryId ? 'Оберіть категорію' : undefined}
               required
             />
 
@@ -330,6 +359,8 @@ export default function NewListingPage() {
                 value={subCategoryId}
                 onChange={setSubCategoryId}
                 placeholder="Оберіть підкатегорію"
+                error={attemptedSubmit && !subCategoryId ? 'Оберіть підкатегорію' : undefined}
+                required
               />
             )}
 
@@ -350,6 +381,7 @@ export default function NewListingPage() {
                 onChange={(e) => setDescription(e.target.value)}
                 minLength={DESCRIPTION_MIN_LENGTH}
                 hint={`Мінімум ${DESCRIPTION_MIN_LENGTH} символів`}
+                error={attemptedSubmit && !isDescriptionValid ? `Мінімум ${DESCRIPTION_MIN_LENGTH} символів` : undefined}
                 rows={6}
                 required
               />
@@ -381,6 +413,7 @@ export default function NewListingPage() {
               }}
               placeholder="Оберіть область"
               isLoading={isLoadingRegions}
+              error={attemptedSubmit && !regionId ? 'Оберіть область' : undefined}
               required
             />
 
@@ -390,6 +423,7 @@ export default function NewListingPage() {
               value={locationId}
               onChange={setLocationId}
               placeholder={regionId ? 'Оберіть місто' : 'Спочатку оберіть область'}
+              error={attemptedSubmit && !locationId ? 'Оберіть місто' : undefined}
               required
             />
 
@@ -462,14 +496,17 @@ export default function NewListingPage() {
           )}
 
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" isLoading={isPublishing} disabled={!canSubmit}>
+            {/* Кнопки НЕ disabled на невалідній формі (аудит 27.08: раніше клік по disabled
+                кнопці нічого не робив і не пояснював чому) — клік завжди запускає submit(),
+                а той сам вирішує: показати помилки під полями чи продовжити. isLoading і
+                далі блокує повторний клік під час реального запиту. */}
+            <Button type="submit" isLoading={isPublishing}>
               Опублікувати
             </Button>
             <Button
               type="button"
               variant="secondary"
               isLoading={isSubmitting}
-              disabled={!canSubmit}
               onClick={() => submit(false)}
             >
               Зберегти як чернетку

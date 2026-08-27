@@ -24,6 +24,8 @@ export interface DropdownProps {
       лише коли options.length > 8 — короткі списки (стан, коробка передач) в пошуку
       не потребують, зайве поле лише займало б місце. */
   searchable?: boolean;
+  /** Дзеркалить Input.error — показує червону рамку й повідомлення під полем (форма новий/edit оголошення, "натиснути Опублікувати з порожньою Категорією" не мала жодного видимого сигналу). */
+  error?: string;
 }
 
 const SEARCH_THRESHOLD = 8;
@@ -42,6 +44,7 @@ export function Dropdown({
   required,
   isLoading,
   searchable,
+  error,
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -137,10 +140,14 @@ export function Dropdown({
           disabled={isLoading}
           aria-haspopup="listbox"
           aria-expanded={isOpen}
+          aria-describedby={error ? `${buttonId}-error` : undefined}
           aria-labelledby={`${buttonId}-label ${buttonId}`}
           onClick={() => setIsOpen((v) => !v)}
           onKeyDown={onKeyDown}
-          className="flex h-10 w-full items-center justify-between rounded-xl border border-gray-300 bg-white px-3 text-sm text-gray-900 disabled:cursor-wait disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          className={cn(
+            'flex h-10 w-full items-center justify-between rounded-xl border bg-white px-3 text-sm text-gray-900 disabled:cursor-wait disabled:opacity-60 dark:bg-gray-800 dark:text-gray-100',
+            error ? 'border-red-500' : 'border-gray-300 dark:border-gray-700',
+          )}
         >
           <span className={cn(!selected && 'text-gray-400 dark:text-gray-500')}>
             {isLoading ? 'Завантаження…' : (selected?.label ?? placeholder ?? 'Оберіть значення')}
@@ -163,7 +170,7 @@ export function Dropdown({
             )}
             <ul id={listId} role="listbox" aria-labelledby={`${buttonId}-label`} className="max-h-60 overflow-auto">
               {filteredOptions.length === 0 && (
-                <li className="px-3 py-2 text-sm text-gray-400 dark:text-gray-500" aria-disabled="true">
+                <li className="px-3 py-2 text-sm text-gray-400 dark:text-gray-500" role="option" aria-selected="false" aria-disabled="true">
                   {options.length === 0 ? 'Немає варіантів' : 'Нічого не знайдено'}
                 </li>
               )}
@@ -189,6 +196,11 @@ export function Dropdown({
           </div>
         )}
       </div>
+      {error && (
+        <span id={`${buttonId}-error`} role="alert" className="text-xs text-red-600">
+          {error}
+        </span>
+      )}
     </div>
   );
 }
