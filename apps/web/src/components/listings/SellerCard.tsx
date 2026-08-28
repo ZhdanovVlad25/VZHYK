@@ -112,7 +112,18 @@ export function SellerCard({ sellerId }: { sellerId: string }) {
       </Link>
 
       <p className="flex items-start gap-1.5 border-t border-brand-100 pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-        <span aria-hidden="true">🛡️</span>
+        {/* Векторний щит замість emoji 🛡️ — той самий силует/помаранчевий градієнт, що на
+            референсі користувача, без білого підкладу під ним (працює на будь-якому фоні картки). */}
+        <svg viewBox="0 0 24 24" width="16" height="16" className="mt-0.5 shrink-0" aria-hidden="true">
+          <defs>
+            <linearGradient id="sellerCardShieldGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#FB923C" />
+              <stop offset="100%" stopColor="#C2410C" />
+            </linearGradient>
+          </defs>
+          <path d="M12 1.5l8.5 3.2v5.7c0 5.4-3.6 10.2-8.5 11.6C7.1 20.6 3.5 15.8 3.5 10.4V4.7L12 1.5z" fill="url(#sellerCardShieldGrad)" />
+          <path d="M12 1.5v20c4.9-1.4 8.5-6.2 8.5-11.6V4.7L12 1.5z" fill="#000" opacity="0.12" />
+        </svg>
         <span>
           Спілкуйтесь у чаті платформи й не переказуйте передоплату наперед — це найчастіша
           причина шахрайства на дошках оголошень.
