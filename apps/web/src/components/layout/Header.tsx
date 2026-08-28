@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '@/components/ui';
 import { useAuth } from '@/lib/auth-context';
 import { useLanguage } from '@/lib/language-context';
-import { getCities, type City } from '@/lib/api';
+import { getCategoryTree, getCities, type Category, type City } from '@/lib/api';
 import { Logo } from './Logo';
 import { ProfileMenu } from './ProfileMenu';
 import { AdminMenu } from './AdminMenu';
@@ -22,9 +22,17 @@ export function Header() {
   const [location, setLocation] = useState<string | null>(null);
   // md+ рендерить свою власну (не-мобільну) навігацію інлайн — цей стан лише для <md drawer.
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
     getCities().then(setCities).catch(() => setCities([]));
+  }, []);
+
+  // MUST-аудит: "бургер-меню порожнє" — там був лише ThemeToggle. Категорії на мобільному
+  // ніде більше не доступні (на десктопі теж немає інлайн-лінка категорій у хедері — лише
+  // через плитки на головній), а на <md прогорнути до головної й назад — зайвий крок.
+  useEffect(() => {
+    getCategoryTree(300).then(setCategories).catch(() => setCategories([]));
   }, []);
 
   // Аудит 27.08: "На /search?q=kia поле в шапці порожнє" — поле пошуку не знало про
@@ -129,9 +137,16 @@ export function Header() {
   function renderCallToAction(): ReactNode {
     return (
       <>
+        {/* MUST-аудит: логотип+CTA+бургер разом ширші за 320-369px viewport — горизонтальний
+            скрол, бургер виїжджає за екран. Найбільший внесок — повний текст "Додати
+            оголошення"; нижче 380px лишаємо лише "+", вище — повний напис (і завжди повний
+            на md+, де рендериться той самий renderCallToAction() інлайн у хедері). */}
         <Link href="/listings/new" className="md:w-auto">
           <Button variant="accent" size="sm" className="w-full md:w-auto">
-            {t('addListing')}
+            {/* sr-only (не hidden) нижче 380px — текст лишається доступним для скрін-рідерів,
+                візуально показуємо лише "+". */}
+            <span className="max-[380px]:sr-only">{t('addListing')}</span>
+            <span className="hidden max-[380px]:inline" aria-hidden="true">+</span>
           </Button>
         </Link>
         {!isLoading && !user && (
@@ -208,8 +223,39 @@ export function Header() {
         <div className="mt-3 md:hidden">{renderSearchForm('mobile')}</div>
 
         {isMenuOpen && (
-          <div className="mt-3 flex flex-col items-stretch gap-3 border-t border-gray-100 pt-3 md:hidden dark:border-gray-800">
-            {renderNavItems()}
+          <div className="mt-3 flex flex-col gap-4 border-t border-gray-100 pt-3 md:hidden dark:border-gray-800">
+            {/* Кабінет/обране/чат уже доступні через ProfileMenu (аватар поруч із бургером,
+                завжди видимий, коли є user) — тут навмисно не дублюємо. Тут те, чого більше
+                ніде нема на мобільному: категорії й правила. */}
+            {categories.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+                  Категорії
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {categories.map((category) => (
+                    <Link
+                      key={category.id}
+                      href={`/${category.slug}`}
+                      onClick={() => setIsMenuOpen(false)}
+                      className="rounded-full bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 dark:bg-gray-800 dark:text-brand-400"
+                    >
+                      {category.nameUk}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <Link
+              href="/rules"
+              onClick={() => setIsMenuOpen(false)}
+              className="flex min-h-[44px] items-center text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Правила користування
+            </Link>
+
+            <div className="flex flex-col items-stretch gap-3">{renderNavItems()}</div>
           </div>
         )}
       </div>
