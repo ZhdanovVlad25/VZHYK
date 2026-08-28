@@ -304,23 +304,34 @@ function SearchPageContent() {
             onChange={applyConditionFilter}
             placeholder="Будь-який"
           />
-          <div className="flex items-end gap-2">
-            <Input
-              label="Ціна від"
-              type="number"
-              min={0}
-              value={priceMin}
-              onChange={(e) => setPriceMin(sanitizeNonNegative(e.target.value))}
-              onBlur={applyPriceFilter}
-            />
-            <Input
-              label="Ціна до"
-              type="number"
-              min={0}
-              value={priceMax}
-              onChange={(e) => setPriceMax(sanitizeNonNegative(e.target.value))}
-              onBlur={applyPriceFilter}
-            />
+          {/* MUST-аудит: "Скинути фільтри" лежала поверх "Ціна до" — <input> безw-full
+              бере природну (~192px) ширину браузера, дві такі поруч ширші за grid-колонку
+              на sm:grid-cols-2 і вилазять у сусідню клітинку. min-w-0 на самому flex-контейнері
+              (grid-айтем за замовчуванням теж min-width:auto) + flex-1/w-full на кожному
+              полі дає їм справді стиснутись під колонку. */}
+          <div className="flex min-w-0 items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <Input
+                label="Ціна від"
+                type="number"
+                min={0}
+                value={priceMin}
+                onChange={(e) => setPriceMin(sanitizeNonNegative(e.target.value))}
+                onBlur={applyPriceFilter}
+                className="w-full"
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <Input
+                label="Ціна до"
+                type="number"
+                min={0}
+                value={priceMax}
+                onChange={(e) => setPriceMax(sanitizeNonNegative(e.target.value))}
+                onBlur={applyPriceFilter}
+                className="w-full"
+              />
+            </div>
           </div>
           <div className="flex items-end">
             <Button variant="ghost" size="sm" onClick={resetFilters} disabled={activeFilterCount === 0}>
