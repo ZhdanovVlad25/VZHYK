@@ -156,7 +156,10 @@ function LoginPageContent() {
               </span>
             </label>
 
-            <Button type="button" size="lg" onClick={handleGoogleLogin} disabled={!agreedToTerms} className="w-full">
+            {/* Галочка стосується лише входу за номером телефону нижче — Google Sign-In
+                сам показує власний екран згоди на OAuth-дозволи, тож дублювати її тут
+                не потрібно (за проханням користувача). */}
+            <Button type="button" size="lg" onClick={handleGoogleLogin} className="w-full">
               {t('loginWithGoogle')}
             </Button>
             <div className="my-4 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
