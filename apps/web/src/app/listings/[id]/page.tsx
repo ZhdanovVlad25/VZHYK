@@ -23,7 +23,7 @@ import { ReportButton } from '@/components/shared/ReportButton';
 import { ShareButton } from '@/components/listings/ShareButton';
 import { buildListingHref, parseListingIdParam } from '@/lib/slugify';
 import { SITE_URL } from '@/lib/site';
-import { formatPrice } from '@/lib/format';
+import { formatPrice, parseDescription } from '@/lib/format';
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Чернетка',
@@ -309,9 +309,21 @@ export default async function ListingDetailPage({
                 <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">
                   Опис
                 </h2>
-                <p className="whitespace-pre-wrap leading-relaxed text-gray-700 dark:text-gray-300">
-                  {listing.description}
-                </p>
+                <div className="leading-relaxed text-gray-700 dark:text-gray-300">
+                  {parseDescription(listing.description).map((block, index) =>
+                    block.type === 'list' ? (
+                      <ul key={index} className="my-2 list-disc space-y-1 pl-5 first:mt-0 last:mb-0">
+                        {block.lines.map((line, lineIndex) => (
+                          <li key={lineIndex}>{line}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p key={index} className="mb-2 whitespace-pre-wrap last:mb-0">
+                        {block.lines[0]}
+                      </p>
+                    ),
+                  )}
+                </div>
               </Card>
             )}
           </div>
