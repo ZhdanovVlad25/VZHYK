@@ -46,7 +46,7 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
       <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
         <Image
           src={active.url}
-          alt={title}
+          alt={`${title} — фото ${activeIndex + 1} з ${media.length}`}
           fill
           priority
           sizes="(min-width: 768px) 50vw, 100vw"
@@ -100,7 +100,10 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
                 i === activeIndex ? 'border-brand-600 ring-2 ring-brand-200' : 'border-gray-200 dark:border-gray-700',
               )}
             >
-              <Image src={m.url} alt="" fill sizes="25vw" className="object-cover" />
+              {/* MUST-аудит "9 з 12 зображень без alt": alt="" тут раніше — не декоративне,
+                  це справжнє фото товару (кнопка-обгортка вже має aria-label для скрін-рідерів,
+                  цей alt — для Google Images/SEO, який не бачить aria-label). */}
+              <Image src={m.url} alt={`${title} — фото ${i + 1} з ${media.length}`} fill sizes="25vw" className="object-cover" />
             </button>
           ))}
         </div>
@@ -126,7 +129,13 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
               ✕
             </button>
             <div className="relative h-full max-h-[85vh] w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
-              <Image src={active.url} alt={title} fill sizes="100vw" className="object-contain" />
+              <Image
+                src={active.url}
+                alt={`${title} — фото ${activeIndex + 1} з ${media.length}`}
+                fill
+                sizes="100vw"
+                className="object-contain"
+              />
             </div>
             {media.length > 1 && (
               <>
