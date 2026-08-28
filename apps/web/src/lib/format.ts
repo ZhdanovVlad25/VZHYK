@@ -12,9 +12,60 @@ export function formatPrice(price: number | null, currency: string): string {
   return `${new Intl.NumberFormat('uk-UA').format(price)} ${symbol}`;
 }
 
-/** "1 оголошення" / "2 оголошення" / "5 оголошень" — стандартні укр. правила відмінювання лічильників. */
+const UK_PLURAL_RULES = new Intl.PluralRules('uk');
+
+/**
+ * MUST-аудит: "Знайдено 3 оголошень" замість "3 оголошення". Стара версія перевіряла лише
+ * count % 10 === 1 (укр. категорія "one": 1, 21, 31…) і все інше валила в "оголошень" —
+ * забула категорію "few" (2-4, 22-24…), яка для слова "оголошення" звучить ТАК САМО, як
+ * "one" ("2 оголошення", не "2 оголошень"), тому й ловилась лише на count=1, не на 2-4.
+ * Intl.PluralRules('uk').select() дає саме КАТЕГОРІЮ (one/few/many/other) — не форматований
+ * рядок (як Intl.NumberFormat({style:'currency'}), formatPrice), тож крос-середовищна різниця
+ * версій ICU тут не загрожує SSR-гідратації: правила плюралізації мови в CLDR стабільні.
+ */
+function pluralizeUk(count: number, forms: { one: string; few: string; many: string }): string {
+  const category = UK_PLURAL_RULES.select(count);
+  if (category === 'one') return forms.one;
+  if (category === 'few') return forms.few;
+  return forms.many;
+}
+
+/** "1 оголошення" / "2 оголошення" / "5 оголошень". */
 export function pluralizeListings(count: number): string {
-  return count % 10 === 1 && count % 100 !== 11 ? 'оголошення' : 'оголошень';
+  return pluralizeUk(count, { one: 'оголошення', few: 'оголошення', many: 'оголошень' });
+}
+
+/** "1 перегляд" / "2 перегляди" / "5 переглядів". */
+export function pluralizeViews(count: number): string {
+  return pluralizeUk(count, { one: 'перегляд', few: 'перегляди', many: 'переглядів' });
+}
+
+/** "1 день" / "2 дні" / "5 днів". */
+export function pluralizeDays(count: number): string {
+  return pluralizeUk(count, { one: 'день', few: 'дні', many: 'днів' });
+}
+
+export interface RelativeDate {
+  /** Показується в UI: "Сьогодні"/"Учора"/"N днів тому" до 30 днів, далі — точна дата. */
+  label: string;
+  /** Завжди повна дата — для title (tooltip) і <time datetime>. */
+  exact: string;
+}
+
+/**
+ * MUST-аудит: "Опубліковано 24 серпня 2026 р." вимагає рахунку в голові — "3 дні тому" прямо
+ * сигналізує свіжість. Точну дату не губимо: викликач кладе `exact` в title і `iso` в
+ * <time dateTime>, так само доступно скрін-рідерам/пошуковикам, як і раніше.
+ */
+export function formatRelativeDate(iso: string): RelativeDate {
+  const date = new Date(iso);
+  const exact = new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }).format(date);
+  const diffDays = Math.floor((Date.now() - date.getTime()) / 86_400_000);
+
+  if (diffDays <= 0) return { label: 'Сьогодні', exact };
+  if (diffDays === 1) return { label: 'Учора', exact };
+  if (diffDays < 30) return { label: `${diffDays} ${pluralizeDays(diffDays)} тому`, exact };
+  return { label: exact, exact };
 }
 
 export interface DescriptionBlock {

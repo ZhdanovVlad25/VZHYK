@@ -23,7 +23,7 @@ import { ReportButton } from '@/components/shared/ReportButton';
 import { ShareButton } from '@/components/listings/ShareButton';
 import { buildListingHref, parseListingIdParam } from '@/lib/slugify';
 import { SITE_URL } from '@/lib/site';
-import { formatPrice, parseDescription } from '@/lib/format';
+import { formatPrice, formatRelativeDate, parseDescription, pluralizeViews } from '@/lib/format';
 
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Чернетка',
@@ -135,9 +135,7 @@ export default async function ListingDetailPage({
   // (matchedTop===undefined означає, що знайдений збіг — саме дитина, не сам верхній рівень).
   const subCategory = !matchedTop ? matchedParent?.children.find((child) => child.id === listing.categoryId) : null;
 
-  const publishedDate = listing.publishedAt
-    ? new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(listing.publishedAt))
-    : null;
+  const publishedDate = listing.publishedAt ? formatRelativeDate(listing.publishedAt) : null;
   const listingRef = listing.id.slice(0, 8).toUpperCase();
   const canonicalUrl = `${SITE_URL}${buildListingHref(listing.id, listing.title)}`;
 
@@ -237,7 +235,7 @@ export default async function ListingDetailPage({
                   {STATUS_LABELS[listing.status] ?? listing.status}
                 </Badge>
                 <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {listing.viewsCount} переглядів
+                  {listing.viewsCount} {pluralizeViews(listing.viewsCount)}
                 </span>
               </div>
               <FavoriteButton listingId={listing.id} />
@@ -258,7 +256,16 @@ export default async function ListingDetailPage({
             {/* Аудит 27.08: "немає дати публікації — базовий сигнал актуальності" і "немає
                 номера оголошення (на нього посилаються в переписці)". */}
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-              {publishedDate && <>Опубліковано {publishedDate} · </>}№ {listingRef}
+              {publishedDate && listing.publishedAt && (
+                <>
+                  Опубліковано{' '}
+                  <time dateTime={listing.publishedAt} title={publishedDate.exact}>
+                    {publishedDate.label}
+                  </time>{' '}
+                  ·{' '}
+                </>
+              )}
+              № {listingRef}
             </p>
 
             <div className="mt-4 flex flex-wrap items-start gap-2">

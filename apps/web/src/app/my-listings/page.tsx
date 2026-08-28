@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, deleteListing, getMyListings, listingDetailHref, type Listing, type ListingStatus } from '@/lib/api';
 import { Badge, Button, Dropdown, EmptyState, ErrorState, LoadingState, type BadgeTone } from '@/components/ui';
-import { formatPrice } from '@/lib/format';
+import { formatPrice, pluralizeViews } from '@/lib/format';
 
 const STATUS_LABELS: Record<ListingStatus, string> = {
   DRAFT: 'Чернетка',
@@ -129,7 +129,7 @@ export default function MyListingsPage() {
                       {listing.title}
                     </Link>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {formatPrice(listing.price, listing.currency)} · {listing.viewsCount} переглядів
+                      {formatPrice(listing.price, listing.currency)} · {listing.viewsCount} {pluralizeViews(listing.viewsCount)}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-2">
