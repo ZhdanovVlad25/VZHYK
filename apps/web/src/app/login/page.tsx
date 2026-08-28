@@ -137,28 +137,9 @@ function LoginPageContent() {
 
         {step === 'phone' && (
           <>
-            <label className="mb-4 flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-              <input
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800"
-              />
-              <span>
-                {t('loginAgreePrefix')}{' '}
-                <Link href="/oferta" target="_blank" className="text-brand-600 hover:underline dark:text-brand-400">
-                  {t('loginAgreeOferta')}
-                </Link>{' '}
-                {t('loginAgreeAnd')}{' '}
-                <Link href="/privacy" target="_blank" className="text-brand-600 hover:underline dark:text-brand-400">
-                  {t('loginAgreePrivacy')}
-                </Link>
-              </span>
-            </label>
-
             {/* Галочка стосується лише входу за номером телефону нижче — Google Sign-In
                 сам показує власний екран згоди на OAuth-дозволи, тож дублювати її тут
-                не потрібно (за проханням користувача). */}
+                не потрібно. */}
             <Button type="button" size="lg" onClick={handleGoogleLogin} className="w-full">
               {t('loginWithGoogle')}
             </Button>
@@ -199,6 +180,24 @@ function LoginPageContent() {
               </div>
               <span className="text-xs text-gray-500 dark:text-gray-400">{t('loginPhoneHint')}</span>
             </div>
+            <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800"
+              />
+              <span>
+                {t('loginAgreePrefix')}{' '}
+                <Link href="/oferta" target="_blank" className="text-brand-600 hover:underline dark:text-brand-400">
+                  {t('loginAgreeOferta')}
+                </Link>{' '}
+                {t('loginAgreeAnd')}{' '}
+                <Link href="/privacy" target="_blank" className="text-brand-600 hover:underline dark:text-brand-400">
+                  {t('loginAgreePrivacy')}
+                </Link>
+              </span>
+            </label>
             <Button type="submit" variant="secondary" isLoading={isSubmitting} disabled={!agreedToTerms}>
               {t('loginSendCode')}
             </Button>
