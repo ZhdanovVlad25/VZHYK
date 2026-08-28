@@ -54,12 +54,15 @@ export class PostgresFtsSearchProvider implements SearchProvider {
       const qIdx = params.length;
       // 'simple' tsvector-конфіг не має українського стемінгу — websearch_to_tsquery сам
       // по собі не знаходить "квартиру" за запитом "квартира" чи "кросівки" за префіксом
-      // "кросівк". similarity() (pg_trgm, 1754802200000) рахує схожість підрядків і ловить
-      // обидва випадки без словника — OR з tsvector-умовою, яка й далі покриває description
-      // (searchVector включає title+description, similarity лише title).
-      rankExpr = `similarity(l."title", $${qIdx})`;
+      // "кросівк". similarity() (pg_trgm) рахує схожість МІЖ ЦІЛИМИ рядками — короткий
+      // запит проти довгої багатослівної назви ("кросі" проти "Кросівки/кеди Golden goose")
+      // дає низький показник, бо частка спільних триграм від довжини всієї назви мала (живий
+      // баг: "кросі" повертав 0 результатів). word_similarity() шукає найкращий безперервний
+      // відрізок ВСЕРЕДИНІ title, що відповідає запиту — саме те, що потрібно для
+      // "користувач набирає префікс одного слова з багатослівної назви".
+      rankExpr = `word_similarity($${qIdx}, l."title")`;
       conditions.push(
-        `(l."searchVector" @@ websearch_to_tsquery('simple', $${qIdx}) OR similarity(l."title", $${qIdx}) > 0.25)`,
+        `(l."searchVector" @@ websearch_to_tsquery('simple', $${qIdx}) OR word_similarity($${qIdx}, l."title") > 0.4)`,
       );
     }
     if (filters.categoryId) {
