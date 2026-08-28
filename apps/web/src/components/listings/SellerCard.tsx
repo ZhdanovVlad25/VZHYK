@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { getPublicProfile, type PublicProfile } from '@/lib/api';
 import { Avatar } from '@/components/ui';
+import { cn } from '@/lib/cn';
 
 /** Той самий поріг, що ONLINE_STALE_MS у jwt.strategy.ts — свіжіше за нього вважається "онлайн зараз". */
 const ONLINE_THRESHOLD_MS = 2 * 60 * 1000;
@@ -60,12 +61,18 @@ export function SellerCard({ sellerId }: { sellerId: string }) {
 
   if (!profile) return null;
 
+  const lastSeenLabel = profile.lastActiveAt ? formatLastSeen(profile.lastActiveAt) : null;
+  const isOnline = lastSeenLabel === 'Онлайн';
+
   return (
-    <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-3 text-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="flex flex-wrap items-center gap-3">
+    <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-4 text-sm dark:border-gray-700 dark:bg-gray-800">
+      {/* Секції рознесені окремими блоками (не один суцільний flex-wrap рядок) — раніше
+          лінк "Інші оголошення автора" ділив рядок з іменем/бейджем і на вузьких екранах
+          переносився впритул до "Телефон підтверджено", зливаючись в одну купу тексту. */}
+      <div className="flex items-start gap-3">
         <Avatar name={profile.displayName} url={profile.avatarUrl} />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <p className="font-medium text-gray-900 dark:text-gray-100">{profile.displayName ?? 'Продавець'}</p>
             {/* Аудит 27.08 "шар довіри" — жодного сигналу надійності на картці оголошення.
                 Кожен телефон на платформі верифікований через OTP при прив'язці, тож сам факт
@@ -80,19 +87,36 @@ export function SellerCard({ sellerId }: { sellerId: string }) {
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             На Вжику з {formatMemberSince(profile.memberSince)}
             {profile.activeListingsCount > 0 && ` · ${profile.activeListingsCount} оголошень`}
           </p>
-          {profile.lastActiveAt && <p className="text-xs text-gray-500 dark:text-gray-400">{formatLastSeen(profile.lastActiveAt)}</p>}
+          {lastSeenLabel && (
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+              <span
+                aria-hidden="true"
+                className={cn('h-1.5 w-1.5 shrink-0 rounded-full', isOnline ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600')}
+              />
+              {lastSeenLabel}
+            </p>
+          )}
         </div>
-        <Link href={`/search?seller=${sellerId}`} className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-400">
-          Інші оголошення автора
-        </Link>
       </div>
-      <p className="border-t border-brand-100 pt-2 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
-        🛡️ Спілкуйтесь у чаті платформи й не переказуйте передоплату наперед — це найчастіша
-        причина шахрайства на дошках оголошень.
+
+      <Link
+        href={`/search?seller=${sellerId}`}
+        className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl border border-brand-100 bg-white px-3 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-100 dark:border-gray-700 dark:bg-gray-900 dark:text-brand-400 dark:hover:bg-gray-700"
+      >
+        Інші оголошення автора
+        <span aria-hidden="true">→</span>
+      </Link>
+
+      <p className="flex items-start gap-1.5 border-t border-brand-100 pt-3 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+        <span aria-hidden="true">🛡️</span>
+        <span>
+          Спілкуйтесь у чаті платформи й не переказуйте передоплату наперед — це найчастіша
+          причина шахрайства на дошках оголошень.
+        </span>
       </p>
     </div>
   );
