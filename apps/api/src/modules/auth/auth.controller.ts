@@ -6,6 +6,7 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { GoogleMobileLoginDto } from './dto/google-mobile-login.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 
@@ -57,6 +58,18 @@ export class AuthController {
     redirectUrl.searchParams.set('accessToken', tokens.accessToken);
     redirectUrl.searchParams.set('refreshToken', tokens.refreshToken);
     res.redirect(redirectUrl.toString());
+  }
+
+  /**
+   * Мобільний (RN AuthSession) Google-вхід — клієнт сам домовляється з Google і надсилає
+   * нам готовий ID-токен, ніякого server redirect тут нема (на відміну від /google →
+   * /google/callback вище, того самого патерну, що веб). Throttle за IP — токен уже
+   * підписаний Google, зайвого сенсу брутфорсити тут нема, ліміт лише проти зловживання.
+   */
+  @Post('google/mobile')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  googleMobileLogin(@Body() dto: GoogleMobileLoginDto) {
+    return this.auth.loginWithGoogleIdToken(dto.idToken);
   }
 
   @Get('me')

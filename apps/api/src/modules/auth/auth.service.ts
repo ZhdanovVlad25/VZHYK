@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 import * as argon2 from 'argon2';
 import { randomInt } from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
 import { User } from '../users/user.entity';
 import { Profile } from '../profiles/profile.entity';
 import { OtpCode } from './otp-code.entity';
@@ -171,6 +172,42 @@ export class AuthService {
     }
 
     return this.issueTokens(user);
+  }
+
+  /**
+   * Мобільний Google-вхід (RN AuthSession) — на відміну від веба, тут немає server redirect
+   * chain (GoogleStrategy/passport), клієнт сам отримує ID-токен від Google і надсилає його
+   * нам напряму. Перевіряємо підпис/термін дії/audience через google-auth-library, тоді ту
+   * саму бізнес-логіку loginWithGoogle() переиспользуємо — акаунт створюється/зв'язується
+   * ідентично вебу.
+   */
+  async loginWithGoogleIdToken(idToken: string) {
+    const audiences = [
+      this.config.get<string>('GOOGLE_OAUTH_CLIENT_ID'),
+      this.config.get<string>('GOOGLE_OAUTH_IOS_CLIENT_ID'),
+      this.config.get<string>('GOOGLE_OAUTH_ANDROID_CLIENT_ID'),
+    ].filter((v): v is string => Boolean(v));
+    if (audiences.length === 0) {
+      throw new BadRequestException({ code: 'GOOGLE_MOBILE_NOT_CONFIGURED', message: 'Google-вхід на мобільному ще не налаштовано.' });
+    }
+
+    const client = new OAuth2Client();
+    let payload;
+    try {
+      const ticket = await client.verifyIdToken({ idToken, audience: audiences });
+      payload = ticket.getPayload();
+    } catch {
+      throw new UnauthorizedException({ code: 'GOOGLE_TOKEN_INVALID', message: 'Недійсний токен Google.' });
+    }
+    if (!payload?.sub) {
+      throw new UnauthorizedException({ code: 'GOOGLE_TOKEN_INVALID', message: 'Недійсний токен Google.' });
+    }
+
+    return this.loginWithGoogle({
+      googleId: payload.sub,
+      email: payload.email ?? null,
+      displayName: payload.name ?? null,
+    });
   }
 
   /** Спільна точка для verifyOtp() і loginWithGoogle() — заблокований юзер не отримує нових токенів. */
