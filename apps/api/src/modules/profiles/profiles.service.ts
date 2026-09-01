@@ -122,8 +122,14 @@ export class ProfilesService {
     return user.createdAt;
   }
 
-  /** Публічний перегляд — жодних side-effects (не створює Profile-рядок для анонімно переглянутого користувача). */
-  async getPublicProfile(userId: string, requesterUserId?: string): Promise<PublicProfile> {
+  /**
+   * Публічний перегляд — жодних side-effects (не створює Profile-рядок для анонімно
+   * переглянутого користувача). MUST-аудит: "Показати телефон" вимагав повного логіну
+   * (реєстрація за номером + SMS) лише щоб побачити ЧУЖИЙ номер — на OLX телефон видно
+   * без входу. Телефон більше не гейтиться авторизацією викликача, лише власним вибором
+   * продавця (acceptsCalls); маршрут захищений per-IP throttle (users.controller.ts).
+   */
+  async getPublicProfile(userId: string): Promise<PublicProfile> {
     const user = await this.users.findOne({ where: { id: userId, deletedAt: IsNull() } });
     if (!user) {
       throw new NotFoundException({ code: 'USER_NOT_FOUND', message: 'Користувача не знайдено' });
@@ -147,7 +153,7 @@ export class ProfilesService {
       activeListingsCount: stats.activeListingsCount,
       memberSince: user.createdAt,
       lastActiveAt: user.lastActiveAt ?? null,
-      phone: requesterUserId && acceptsCalls ? user.phone : null,
+      phone: acceptsCalls ? user.phone : null,
       acceptsCalls,
       phoneVerified: Boolean(user.phone),
     };

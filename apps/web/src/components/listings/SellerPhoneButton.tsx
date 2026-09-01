@@ -1,14 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ApiError, getPublicProfile } from '@/lib/api';
 import { Button } from '@/components/ui';
 
-/** В одному рядку з "Написати продавцю" (StartChatButton) — окремий невеликий фетч, той самий патерн. */
+/**
+ * В одному рядку з "Написати продавцю" (StartChatButton) — окремий невеликий фетч, той самий
+ * патерн. MUST-аудит: раніше вимагав повного логіну (SMS-реєстрація) лише щоб показати
+ * ЧУЖИЙ номер — покупець, який щойно знайшов товар, мусив спершу зареєструватись деінде,
+ * хоча на OLX номер видно без входу. Бекенд (users.controller.ts) більше не гейтить телефон
+ * авторизацією викликача — лишається лише вибір продавця (acceptsCalls).
+ */
 export function SellerPhoneButton({ sellerId }: { sellerId: string }) {
-  const router = useRouter();
   const { user, accessToken } = useAuth();
   const [phone, setPhone] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -19,14 +23,10 @@ export function SellerPhoneButton({ sellerId }: { sellerId: string }) {
   }
 
   async function handleClick() {
-    if (!user || !accessToken) {
-      router.push('/login');
-      return;
-    }
     setIsLoading(true);
     setError(null);
     try {
-      const profile = await getPublicProfile(sellerId, accessToken);
+      const profile = await getPublicProfile(sellerId, accessToken ?? undefined);
       if (profile.phone) {
         setPhone(profile.phone);
       } else if (!profile.acceptsCalls) {
