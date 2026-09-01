@@ -1,8 +1,10 @@
 import * as SecureStore from 'expo-secure-store';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
+  AuthTokens,
   AuthUser,
   getMyProfile,
+  loginWithGoogleIdToken as apiLoginWithGoogleIdToken,
   requestOtp as apiRequestOtp,
   setUnauthorizedHandler,
   verifyOtp as apiVerifyOtp,
@@ -27,6 +29,8 @@ interface AuthContextValue {
   requestOtp: (phone: string) => Promise<void>;
   /** Повертає true, якщо профіль ще без імені — LoginScreen показує додатковий крок. */
   verifyOtp: (phone: string, code: string) => Promise<{ needsName: boolean }>;
+  /** Google-вхід (expo-auth-session) — той самий { needsName }, що verifyOtp. */
+  loginWithGoogle: (idToken: string) => Promise<{ needsName: boolean }>;
   setDisplayName: (name: string) => void;
   setAvatarUrl: (url: string | null) => void;
   logout: () => void;
@@ -65,8 +69,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await apiRequestOtp(phone);
   }, []);
 
-  const verifyOtp = useCallback(async (phone: string, code: string) => {
-    const tokens = await apiVerifyOtp(phone, code);
+  // Спільна точка для verifyOtp() і loginWithGoogle() — обидва завершуються тим самим
+  // "маємо AuthTokens, треба зберегти сесію й дізнатись needsName" кроком.
+  const persistSession = useCallback(async (tokens: AuthTokens) => {
     const profile = await getMyProfile(tokens.accessToken).catch(() => null);
     const stored: StoredAuth = {
       accessToken: tokens.accessToken,
@@ -75,13 +80,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       displayName: profile?.displayName ?? null,
       avatarUrl: profile?.avatarUrl ?? null,
     };
-    // Бекенд код уже прийняв (OTP consumedAt виставлено) — якщо запис у SecureStore впаде
-    // (сховище недоступне, диск повний), успішний логін не повинен перетворюватись на
-    // "невірний код": сесія лишається в пам'яті на поточний запуск, просто не переживе рестарт.
+    // Бекенд токен уже видав — якщо запис у SecureStore впаде (сховище недоступне, диск
+    // повний), успішний логін не повинен перетворюватись на помилку: сесія лишається в
+    // пам'яті на поточний запуск, просто не переживе рестарт.
     await SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(stored)).catch(() => {});
     setAuth(stored);
     return { needsName: !stored.displayName };
   }, []);
+
+  const verifyOtp = useCallback(
+    async (phone: string, code: string) => {
+      const tokens = await apiVerifyOtp(phone, code);
+      return persistSession(tokens);
+    },
+    [persistSession],
+  );
+
+  const loginWithGoogle = useCallback(
+    async (idToken: string) => {
+      const tokens = await apiLoginWithGoogleIdToken(idToken);
+      return persistSession(tokens);
+    },
+    [persistSession],
+  );
 
   const setDisplayName = useCallback((name: string) => {
     setAuth((prev) => {
@@ -120,11 +141,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       requestOtp,
       verifyOtp,
+      loginWithGoogle,
       setDisplayName,
       setAvatarUrl,
       logout,
     }),
-    [auth, isLoading, requestOtp, verifyOtp, setDisplayName, setAvatarUrl, logout],
+    [auth, isLoading, requestOtp, verifyOtp, loginWithGoogle, setDisplayName, setAvatarUrl, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

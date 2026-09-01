@@ -4,9 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { City, SearchResultItem, getCities, search, type SearchParams as ApiSearchParams } from '../lib/api';
+import { ApiError, City, SearchResultItem, createSavedSearch, getCities, search, type SearchParams as ApiSearchParams } from '../lib/api';
+import { useAuth } from '../lib/auth-context';
 import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
+import { pluralizeListings } from '../lib/format';
+import { CONDITION_OPTIONS } from '../lib/listingOptions';
 import { ListingCard } from '../components/ListingCard';
 import { LoadingScreen } from '../components/LoadingScreen';
 import type { AppNavigation, TabParamList } from '../navigation/types';
@@ -26,6 +29,7 @@ export function SearchScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
+  const { user, accessToken } = useAuth();
   const { q: initialQ, category: initialCategory, categoryName: initialCategoryName, seller } = route.params ?? {};
 
   const [query, setQuery] = useState(initialQ ?? '');
@@ -35,11 +39,16 @@ export function SearchScreen() {
   const [cities, setCities] = useState<City[]>([]);
   const [locationId, setLocationId] = useState<string | undefined>(undefined);
   const [citySearch, setCitySearch] = useState('');
+  const [priceMin, setPriceMin] = useState('');
+  const [priceMax, setPriceMax] = useState('');
+  const [condition, setCondition] = useState<string | undefined>(undefined);
 
   const [sortModalOpen, setSortModalOpen] = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
+  const [filtersModalOpen, setFiltersModalOpen] = useState(false);
 
   const [items, setItems] = useState<SearchResultItem[]>([]);
+  const [total, setTotal] = useState(0);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -50,19 +59,33 @@ export function SearchScreen() {
     getCities().then(setCities).catch(() => setCities([]));
   }, []);
 
+  const priceMinNum = priceMin ? Number(priceMin) : undefined;
+  const priceMaxNum = priceMax ? Number(priceMax) : undefined;
+  const activeFilterCount = [locationId, priceMinNum, priceMaxNum, condition].filter((v) => v !== undefined).length;
+
   const runSearch = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await search({ q: query || undefined, category: categoryId, seller, location: locationId, sort });
+      const result = await search({
+        q: query || undefined,
+        category: categoryId,
+        seller,
+        location: locationId,
+        priceMin: priceMinNum,
+        priceMax: priceMaxNum,
+        condition,
+        sort,
+      });
       setItems(result.items);
+      setTotal(result.total);
       setNextCursor(result.nextCursor);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не вдалося завантажити результати пошуку.');
     } finally {
       setIsLoading(false);
     }
-  }, [query, categoryId, seller, locationId, sort]);
+  }, [query, categoryId, seller, locationId, priceMinNum, priceMaxNum, condition, sort]);
 
   useEffect(() => {
     runSearch();
@@ -79,7 +102,17 @@ export function SearchScreen() {
     if (!nextCursor || isLoadingMore) return;
     setIsLoadingMore(true);
     try {
-      const result = await search({ q: query || undefined, category: categoryId, seller, location: locationId, sort, cursor: nextCursor });
+      const result = await search({
+        q: query || undefined,
+        category: categoryId,
+        seller,
+        location: locationId,
+        priceMin: priceMinNum,
+        priceMax: priceMaxNum,
+        condition,
+        sort,
+        cursor: nextCursor,
+      });
       setItems((prev) => [...prev, ...result.items]);
       setNextCursor(result.nextCursor);
     } catch (err) {
@@ -106,6 +139,30 @@ export function SearchScreen() {
   function clearCategory() {
     setCategoryId(undefined);
     setCategoryName(undefined);
+  }
+
+  function resetFilters() {
+    setLocationId(undefined);
+    setPriceMin('');
+    setPriceMax('');
+    setCondition(undefined);
+  }
+
+  const [isSavingSearch, setIsSavingSearch] = useState(false);
+  const [saveSearchMessage, setSaveSearchMessage] = useState<string | null>(null);
+
+  async function saveSearch() {
+    if (!accessToken) return;
+    setIsSavingSearch(true);
+    setSaveSearchMessage(null);
+    try {
+      await createSavedSearch({ queryText: query || undefined, categoryId, filters: sort ? { sort } : undefined }, accessToken);
+      setSaveSearchMessage('Пошук збережено');
+    } catch (err) {
+      setSaveSearchMessage(err instanceof ApiError ? err.message : 'Не вдалося зберегти пошук.');
+    } finally {
+      setIsSavingSearch(false);
+    }
   }
 
   return (
@@ -155,7 +212,28 @@ export function SearchScreen() {
           </Text>
           <Ionicons name="chevron-down" size={16} color={colors.accent[700]} />
         </Pressable>
+        <Pressable style={styles.filterButton} onPress={() => setFiltersModalOpen(true)}>
+          <Text style={styles.filterButtonText} numberOfLines={1}>
+            Фільтри{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+          </Text>
+          <Ionicons name="options" size={16} color={colors.accent[700]} />
+        </Pressable>
       </View>
+
+      {!isLoading && !error && (
+        <View style={styles.resultRow}>
+          <Text style={styles.resultCount}>
+            Знайдено {total} {pluralizeListings(total)}
+          </Text>
+          {user && (query || categoryId) && (
+            <Pressable onPress={saveSearch} disabled={isSavingSearch} hitSlop={8}>
+              <Text style={styles.saveSearchLink}>
+                {isSavingSearch ? 'Збереження…' : saveSearchMessage ?? 'Зберегти пошук'}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      )}
 
       {isLoading ? (
         <LoadingScreen />
@@ -264,6 +342,67 @@ export function SearchScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <Modal visible={filtersModalOpen} transparent animationType="fade" onRequestClose={() => setFiltersModalOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setFiltersModalOpen(false)}>
+          <Pressable style={styles.modalSheet} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.modalTitle}>Фільтри</Text>
+
+            <Text style={styles.filterLabel}>Ціна, ₴</Text>
+            <View style={styles.priceRow}>
+              <TextInput
+                value={priceMin}
+                onChangeText={(v) => setPriceMin(v.replace(/[^0-9]/g, ''))}
+                placeholder="Від"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="number-pad"
+                style={[styles.modalSearchInput, styles.priceInput]}
+              />
+              <TextInput
+                value={priceMax}
+                onChangeText={(v) => setPriceMax(v.replace(/[^0-9]/g, ''))}
+                placeholder="До"
+                placeholderTextColor={colors.textMuted}
+                keyboardType="number-pad"
+                style={[styles.modalSearchInput, styles.priceInput]}
+              />
+            </View>
+
+            <Text style={styles.filterLabel}>Стан</Text>
+            <View style={styles.conditionRow}>
+              {CONDITION_OPTIONS.map((option) => {
+                const active = condition === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    style={[styles.conditionChip, active && styles.conditionChipActive]}
+                    onPress={() => setCondition(active ? undefined : option.value)}
+                  >
+                    <Text style={[styles.conditionChipText, active && styles.conditionChipTextActive]}>{option.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.filtersActionsRow}>
+              <Pressable style={styles.resetButton} onPress={resetFilters} disabled={activeFilterCount === 0}>
+                <Text style={[styles.resetButtonText, activeFilterCount === 0 && styles.resetButtonTextDisabled]}>
+                  Скинути фільтри
+                </Text>
+              </Pressable>
+              <Pressable
+                style={styles.applyButton}
+                onPress={() => {
+                  setFiltersModalOpen(false);
+                  runSearch();
+                }}
+              >
+                <Text style={styles.retryText}>Показати</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -323,6 +462,34 @@ function createStyles(colors: ColorScheme) {
     gap: 6,
   },
   filterButtonText: { color: colors.accent[700], fontWeight: '500', fontSize: 13, flexShrink: 1 },
+  resultRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 10 },
+  resultCount: { color: colors.textMuted, fontSize: 13 },
+  saveSearchLink: { color: colors.accent[600], fontSize: 13, fontWeight: '600' },
+  filterLabel: { fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 12, marginBottom: 6 },
+  priceRow: { flexDirection: 'row', gap: 10 },
+  priceInput: { flex: 1, marginBottom: 0 },
+  conditionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  conditionChip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  conditionChipActive: { backgroundColor: colors.accent[50], borderColor: colors.accent[600] },
+  conditionChipText: { fontSize: 13, color: colors.text },
+  conditionChipTextActive: { color: colors.accent[700], fontWeight: '600' },
+  filtersActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18 },
+  resetButton: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  resetButtonText: { color: colors.accent[600], fontWeight: '600', fontSize: 14 },
+  resetButtonTextDisabled: { color: colors.textMuted },
+  applyButton: {
+    flex: 1,
+    backgroundColor: colors.accent[600],
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
   row: { gap: 12, marginBottom: 12 },
   resultsContent: { paddingTop: 12, paddingBottom: 24, gap: 12 },
   errorBox: { marginTop: 24, alignItems: 'center', gap: 10 },

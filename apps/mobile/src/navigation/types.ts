@@ -21,6 +21,7 @@ export type RootStackParamList = {
   MyListings: undefined;
   EditListing: { listingId: string };
   Favorites: undefined;
+  SavedSearches: undefined;
   ChatThread: { chatId: string };
 };
 

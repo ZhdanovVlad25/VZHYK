@@ -11,6 +11,7 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { ListingDetailScreen } from '../screens/ListingDetailScreen';
 import { MyListingsScreen } from '../screens/MyListingsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { SavedSearchesScreen } from '../screens/SavedSearchesScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { useLanguage } from '../lib/language-context';
 import { useTheme } from '../lib/theme-context';
@@ -85,6 +86,7 @@ export function RootNavigator() {
       <Stack.Screen name="MyListings" component={MyListingsScreen} options={{ title: 'Мої оголошення' }} />
       <Stack.Screen name="EditListing" component={EditListingScreen} options={{ title: 'Редагування' }} />
       <Stack.Screen name="Favorites" component={FavoritesScreen} options={{ title: 'Обране' }} />
+      <Stack.Screen name="SavedSearches" component={SavedSearchesScreen} options={{ title: 'Збережені пошуки' }} />
       <Stack.Screen name="ChatThread" component={ChatThreadScreen} options={{ title: 'Чат' }} />
     </Stack.Navigator>
   );

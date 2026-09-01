@@ -6,10 +6,13 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "vzhyk",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "ua.in.vzhyk"
     },
     "android": {
+      "package": "ua.in.vzhyk",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -35,7 +38,8 @@
         {
           "color": "#238A80"
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }

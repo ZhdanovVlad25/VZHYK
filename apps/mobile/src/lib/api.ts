@@ -171,6 +171,7 @@ export interface SearchResultItem {
 export interface SearchResult {
   items: SearchResultItem[];
   nextCursor: string | null;
+  total: number;
 }
 
 export interface City {
@@ -274,6 +275,10 @@ export interface PublicProfile {
   lastActiveAt: string | null;
   /** null для анонімного запиту — бекенд віддає реальний номер лише авторизованим. */
   phone: string | null;
+  /** Чи продавець приймає дзвінки (окремо від наявності phone) — власний вибір продавця. */
+  acceptsCalls: boolean;
+  /** Кожен телефон на платформі верифікований через OTP при прив'язці — сам факт наявності це й означає. */
+  phoneVerified: boolean;
 }
 
 export function getPublicProfile(userId: string, token?: string): Promise<PublicProfile> {
@@ -373,6 +378,14 @@ export function verifyOtp(phone: string, code: string): Promise<AuthTokens> {
   return apiFetch('/auth/otp/verify', {
     method: 'POST',
     body: { phone, code },
+  });
+}
+
+/** Google-вхід через expo-auth-session — надсилаємо готовий ID-токен, бекенд сам його перевіряє. */
+export function loginWithGoogleIdToken(idToken: string): Promise<AuthTokens> {
+  return apiFetch('/auth/google/mobile', {
+    method: 'POST',
+    body: { idToken },
   });
 }
 

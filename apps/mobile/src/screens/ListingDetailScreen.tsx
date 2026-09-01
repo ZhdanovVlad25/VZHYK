@@ -14,7 +14,7 @@ import {
   getListing,
   getListingMedia,
 } from '../lib/api';
-import { formatPrice } from '../lib/format';
+import { formatPrice, formatRelativeDate, parseDescription, pluralizeViews } from '../lib/format';
 import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
 import { CONDITION_OPTIONS, LISTING_TYPE_OPTIONS } from '../lib/listingOptions';
@@ -116,6 +116,8 @@ export function ListingDetailScreen({ route }: Props) {
     categoryTree.find((c) => c.id === listing.categoryId)?.nameUk ??
     categoryTree.find((c) => c.children.some((child) => child.id === listing.categoryId))?.nameUk ??
     null;
+  const publishedDate = listing.publishedAt ? formatRelativeDate(listing.publishedAt) : null;
+  const listingRef = listing.id.slice(0, 8).toUpperCase();
 
   function handleShare() {
     Share.share({ message: `${listing!.title} — ${formatPrice(listing!.price, listing!.currency)}` });
@@ -123,7 +125,7 @@ export function ListingDetailScreen({ route }: Props) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 32 }}>
-      <ListingGallery media={sortedMedia} />
+      <ListingGallery media={sortedMedia} title={listing.title} />
 
       <View style={styles.content}>
         <View style={styles.statusRow}>
@@ -136,7 +138,7 @@ export function ListingDetailScreen({ route }: Props) {
                 <Text style={styles.typeBadgeText}>{listingTypeLabel}</Text>
               </View>
             )}
-            <Text style={styles.viewsText}>{listing.viewsCount} переглядів</Text>
+            <Text style={styles.viewsText}>{listing.viewsCount} {pluralizeViews(listing.viewsCount)}</Text>
           </View>
           <View style={styles.actionsGroup}>
             <Pressable onPress={handleShare} hitSlop={8}>
@@ -152,6 +154,9 @@ export function ListingDetailScreen({ route }: Props) {
         {(cityName || conditionLabel) && (
           <Text style={styles.city}>{[cityName, conditionLabel].filter(Boolean).join(' · ')}</Text>
         )}
+        <Text style={styles.meta}>
+          {publishedDate && `Опубліковано ${publishedDate.label} · `}№ {listingRef}
+        </Text>
 
         <View style={styles.actionsRow}>
           <StartChatButton listingId={listing.id} ownerId={listing.userId} />
@@ -176,7 +181,22 @@ export function ListingDetailScreen({ route }: Props) {
         {listing.description && (
           <View style={styles.descriptionCard}>
             <Text style={styles.descriptionTitle}>Опис</Text>
-            <Text style={styles.description}>{listing.description}</Text>
+            {parseDescription(listing.description).map((block, index) =>
+              block.type === 'list' ? (
+                <View key={index} style={styles.descriptionList}>
+                  {block.lines.map((line, lineIndex) => (
+                    <View key={lineIndex} style={styles.descriptionListItem}>
+                      <Text style={styles.descriptionListBullet}>•</Text>
+                      <Text style={styles.description}>{line}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text key={index} style={styles.descriptionParagraph}>
+                  {block.lines[0]}
+                </Text>
+              ),
+            )}
           </View>
         )}
 
@@ -223,6 +243,7 @@ function createStyles(colors: ColorScheme) {
   price: { fontSize: 26, fontWeight: '800', color: colors.brand[700], marginTop: 6 },
   hint: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   city: { fontSize: 14, fontWeight: '500', color: colors.text, marginTop: 4 },
+  meta: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
   descriptionCard: {
     marginTop: 16,
     backgroundColor: colors.white,
@@ -232,7 +253,11 @@ function createStyles(colors: ColorScheme) {
     padding: 14,
   },
   descriptionTitle: { fontWeight: '600', color: colors.text, marginBottom: 8 },
-  description: { fontSize: 15, color: colors.text, lineHeight: 22 },
+  descriptionParagraph: { fontSize: 15, color: colors.text, lineHeight: 22, marginBottom: 8 },
+  descriptionList: { marginBottom: 8, gap: 4 },
+  descriptionListItem: { flexDirection: 'row', gap: 6 },
+  descriptionListBullet: { fontSize: 15, color: colors.text, lineHeight: 22 },
+  description: { fontSize: 15, color: colors.text, lineHeight: 22, flex: 1 },
   attributesCard: {
     marginTop: 16,
     backgroundColor: colors.white,

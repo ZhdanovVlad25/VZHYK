@@ -5,7 +5,7 @@ import { ApiError, Listing, ListingStatus, deleteListing, getMyListings } from '
 import { useAuth } from '../lib/auth-context';
 import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
-import { formatPrice } from '../lib/format';
+import { formatPrice, pluralizeViews } from '../lib/format';
 import { ChipSelect } from '../components/ChipSelect';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { STATUS_LABELS } from '../lib/listingOptions';
@@ -104,7 +104,7 @@ export function MyListingsScreen() {
                 {item.title}
               </Text>
               <Text style={styles.rowMeta}>
-                {formatPrice(item.price, item.currency)} · {item.viewsCount} переглядів
+                {formatPrice(item.price, item.currency)} · {item.viewsCount} {pluralizeViews(item.viewsCount)}
               </Text>
             </Pressable>
             <View style={styles.rowActions}>

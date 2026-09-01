@@ -32,6 +32,8 @@ export function SellerPhoneButton({ sellerId }: { sellerId: string }) {
       const profile = await getPublicProfile(sellerId, accessToken);
       if (profile.phone) {
         setPhone(profile.phone);
+      } else if (!profile.acceptsCalls) {
+        setError('Продавець приймає лише повідомлення в чаті.');
       } else {
         setError('Продавець не показує номер телефону.');
       }

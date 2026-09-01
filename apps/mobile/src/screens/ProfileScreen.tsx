@@ -1,11 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import * as Crypto from 'expo-crypto';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View,
@@ -18,6 +23,8 @@ import { useLanguage } from '../lib/language-context';
 import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
 import { assetToRNFile, pickPhoto } from '../lib/pickImage';
+import { formatMemberSince } from '../lib/format';
+import { WEB_URL } from '../lib/site';
 import { Avatar } from '../components/Avatar';
 import { DropdownSelect } from '../components/DropdownSelect';
 import { LanguageToggle } from '../components/LanguageToggle';
@@ -31,11 +38,18 @@ const PHONE_PREFIX = '+380';
 const PHONE_DIGITS_LENGTH = 9;
 const RESEND_COOLDOWN_SECONDS = 60;
 
-function formatMemberSince(iso: string): string {
-  return new Intl.DateTimeFormat('uk-UA', { month: 'long', year: 'numeric' }).format(new Date(iso));
-}
 
 /** Приймає як руками надруковані цифри, так і вставлений повний номер (з "+380"/"380"/пробілами) — той самий парсинг, що web login/page.tsx. */
+// Обов'язково на рівні модуля (не всередині компонента) — Expo docs: закриває
+// системний браузер після редиректу назад у застосунок.
+WebBrowser.maybeCompleteAuthSession();
+
+// iOS/Android потребують ОКРЕМИХ OAuth Client ID у Google Console (bundle ID / SHA-1
+// відбиток кожної платформи), на відміну від веба, де досить одного. Порожній рядок —
+// кнопка Google лишається вимкненою, доки значення не задане в .env.
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '';
+const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? '';
+
 function normalizePhoneDigits(raw: string): string {
   let digits = raw.replace(/\D/g, '');
   if (digits.startsWith('380')) {
@@ -52,8 +66,19 @@ export function ProfileScreen() {
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const styles = createStyles(colors);
-  const { user, displayName, avatarUrl, isLoading, requestOtp, verifyOtp, setDisplayName, setAvatarUrl, accessToken, logout } =
-    useAuth();
+  const {
+    user,
+    displayName,
+    avatarUrl,
+    isLoading,
+    requestOtp,
+    verifyOtp,
+    loginWithGoogle,
+    setDisplayName,
+    setAvatarUrl,
+    accessToken,
+    logout,
+  } = useAuth();
 
   const [step, setStep] = useState<Step>('phone');
   const [pendingName, setPendingName] = useState(false);
@@ -63,6 +88,9 @@ export function ProfileScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+  // MUST-аудит (RN-порт login/page.tsx): згода на оферту/приватність перед входом за
+  // номером — на вебі гейтить лише телефонний флоу (Google сам показує власний consent).
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
@@ -76,6 +104,38 @@ export function ProfileScreen() {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSaveMessage, setProfileSaveMessage] = useState<string | null>(null);
   const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
+
+  // Google-вхід (expo-auth-session) — RN-порт handleGoogleLogin() з apps/web/src/app/login/page.tsx.
+  // Працює через системний браузер (Expo Go-сумісно, без нативного SDK — на відміну від
+  // @react-native-google-signin/google-signin, який вимагає dev-client білд).
+  const googleNonce = useMemo(() => Crypto.randomUUID(), []);
+  const googleDiscovery = AuthSession.useAutoDiscovery('https://accounts.google.com');
+  const googleClientId = Platform.OS === 'android' ? GOOGLE_ANDROID_CLIENT_ID : GOOGLE_IOS_CLIENT_ID;
+  const [googleRequest, googleResponse, promptGoogleAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: googleClientId,
+      responseType: AuthSession.ResponseType.IdToken,
+      scopes: ['openid', 'profile', 'email'],
+      redirectUri: AuthSession.makeRedirectUri({ scheme: 'vzhyk' }),
+      extraParams: { nonce: googleNonce },
+    },
+    googleDiscovery,
+  );
+
+  useEffect(() => {
+    if (googleResponse?.type !== 'success') return;
+    const idToken = googleResponse.params.id_token;
+    if (!idToken) return;
+    setError(null);
+    setIsSubmitting(true);
+    loginWithGoogle(idToken)
+      .then(({ needsName }) => {
+        if (needsName) setPendingName(true);
+      })
+      .catch((err) => setError(err instanceof ApiError ? err.message : 'Не вдалося увійти через Google.'))
+      .finally(() => setIsSubmitting(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- запускаємо лише на нову googleResponse, loginWithGoogle стабільний між рендерами
+  }, [googleResponse]);
 
   useEffect(() => {
     getCities().then(setCities).catch(() => setCities([]));
@@ -142,6 +202,8 @@ export function ProfileScreen() {
   }, [resendCooldown]);
 
   async function sendCode() {
+    // Дублює disabled на кнопці — захист про всяк випадок, як на вебі.
+    if (!agreedToTerms) return;
     setError(null);
     setIsSubmitting(true);
     try {
@@ -186,8 +248,15 @@ export function ProfileScreen() {
 
   const settingsRow = (
     <View style={styles.settingsRow}>
-      <ThemeToggle />
-      <LanguageToggle />
+      <View style={styles.settingsGroup}>
+        <ThemeToggle />
+        <LanguageToggle />
+      </View>
+      {/* Правові сторінки на мобільному не мають власних екранів — відкриваємо веб-версію
+          в системному браузері (аудит 27.08, той самий гап, що був у мобільному drawer'і на вебі). */}
+      <Pressable onPress={() => Linking.openURL(`${WEB_URL}/rules`)} hitSlop={8}>
+        <Text style={styles.rulesLink}>Правила</Text>
+      </Pressable>
     </View>
   );
 
@@ -249,6 +318,9 @@ export function ProfileScreen() {
             </Pressable>
             <Pressable style={styles.secondaryActionButton} onPress={() => navigation.navigate('Favorites')}>
               <Text style={styles.secondaryActionButtonText}>{t('favorites')}</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryActionButton} onPress={() => navigation.navigate('SavedSearches')}>
+              <Text style={styles.secondaryActionButtonText}>{t('savedSearches')}</Text>
             </Pressable>
           </View>
 
@@ -354,6 +426,23 @@ export function ProfileScreen() {
           </>
         ) : step === 'phone' ? (
           <>
+            {googleClientId ? (
+              <>
+                <Pressable
+                  style={styles.googleButton}
+                  onPress={() => promptGoogleAsync()}
+                  disabled={!googleRequest || isSubmitting}
+                >
+                  <Text style={styles.googleButtonText}>Увійти через Google</Text>
+                </Pressable>
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>або</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+              </>
+            ) : null}
+
             <Text style={styles.label}>{t('loginPhoneLabel')}</Text>
             <View style={styles.phoneRow}>
               <Text style={styles.phonePrefix}>{PHONE_PREFIX}</Text>
@@ -369,13 +458,32 @@ export function ProfileScreen() {
               />
             </View>
             <Text style={styles.hint}>{t('loginPhoneHint')}</Text>
+
+            <View style={styles.consentRow}>
+              <Switch value={agreedToTerms} onValueChange={setAgreedToTerms} trackColor={{ true: colors.brand[500] }} />
+              <Text style={styles.consentText}>
+                Погоджуюсь з{' '}
+                <Text style={styles.consentLink} onPress={() => Linking.openURL(`${WEB_URL}/oferta`)}>
+                  Публічною офертою
+                </Text>{' '}
+                та{' '}
+                <Text style={styles.consentLink} onPress={() => Linking.openURL(`${WEB_URL}/privacy`)}>
+                  Політикою конфіденційності
+                </Text>
+              </Text>
+            </View>
+
             <Pressable
-              style={[styles.primaryButton, phoneDigits.length < PHONE_DIGITS_LENGTH && styles.primaryButtonDisabled]}
+              style={[
+                styles.primaryButton,
+                (phoneDigits.length < PHONE_DIGITS_LENGTH || !agreedToTerms) && styles.primaryButtonDisabled,
+              ]}
               onPress={sendCode}
-              disabled={isSubmitting || phoneDigits.length < PHONE_DIGITS_LENGTH}
+              disabled={isSubmitting || phoneDigits.length < PHONE_DIGITS_LENGTH || !agreedToTerms}
             >
               {isSubmitting ? <ActivityIndicator color={colors.buttonText} /> : <Text style={styles.primaryButtonText}>{t('loginSendCode')}</Text>}
             </Pressable>
+            {!agreedToTerms && <Text style={styles.hint}>Щоб продовжити, підтвердьте згоду з умовами вище</Text>}
           </>
         ) : (
           <>
@@ -419,11 +527,16 @@ function createStyles(colors: ColorScheme) {
     container: { flexGrow: 1, padding: 24, paddingTop: 48, gap: 12 },
     profileContainer: { flexGrow: 1, padding: 20, paddingTop: 24, gap: 14 },
     settingsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    settingsGroup: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    rulesLink: { fontSize: 13, fontWeight: '600', color: colors.accent[600] },
     title: { fontSize: 22, fontWeight: '700', color: colors.text, marginBottom: 8 },
     label: { fontSize: 14, fontWeight: '500', color: colors.text },
     field: { gap: 6 },
     hint: { fontSize: 13, color: colors.textMuted },
     hintValue: { color: colors.text, fontWeight: '500' },
+    consentRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+    consentText: { flex: 1, fontSize: 13, color: colors.text, lineHeight: 18 },
+    consentLink: { color: colors.accent[600], fontWeight: '600' },
     avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
     statsCard: {
       backgroundColor: colors.white,
@@ -493,6 +606,18 @@ function createStyles(colors: ColorScheme) {
     },
     primaryButtonDisabled: { opacity: 0.5 },
     primaryButtonText: { color: colors.buttonText, fontWeight: '600', fontSize: 15 },
+    googleButton: {
+      backgroundColor: colors.text,
+      borderRadius: 12,
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    // colors.buttonText (не colors.white — це "поверхня картки", не буквальний білий) — той
+    // самий токен, що вже використовується для тексту на насичених/темних фонах в theme.ts.
+    googleButtonText: { color: colors.buttonText, fontWeight: '600', fontSize: 15 },
+    dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 14 },
+    dividerLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+    dividerText: { fontSize: 12, color: colors.textMuted },
     secondaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
     linkButton: { color: colors.accent[700], fontSize: 13, fontWeight: '500' },
     linkButtonDisabled: { color: colors.textMuted },

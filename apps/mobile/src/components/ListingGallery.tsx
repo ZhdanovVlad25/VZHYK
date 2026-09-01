@@ -19,10 +19,12 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 type ListingGalleryProps = {
   media: Media[];
+  /** Для accessibilityLabel на фото — "{title} — фото {n} з {total}" (аудит 27.08, той самий фікс, що на вебі). */
+  title?: string;
 };
 
 /** Свайп-галерея з крапками-індикатором + повноекранний перегляд по тапу — RN-порт ListingGallery.tsx. */
-export function ListingGallery({ media }: ListingGalleryProps) {
+export function ListingGallery({ media, title }: ListingGalleryProps) {
   const { colors } = useTheme();
   const styles = createStyles(colors);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -53,9 +55,15 @@ export function ListingGallery({ media }: ListingGalleryProps) {
         showsHorizontalScrollIndicator={false}
         keyExtractor={(m) => m.id}
         onMomentumScrollEnd={onScrollEnd}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <Pressable style={styles.imageBox} onPress={() => setIsZoomed(true)}>
-            <Image source={{ uri: item.url }} style={styles.image} resizeMode="cover" />
+            <Image
+              source={{ uri: item.url }}
+              style={styles.image}
+              resizeMode="cover"
+              accessible
+              accessibilityLabel={title ? `${title} — фото ${index + 1} з ${media.length}` : `Фото ${index + 1} з ${media.length}`}
+            />
           </Pressable>
         )}
       />
@@ -89,9 +97,15 @@ export function ListingGallery({ media }: ListingGalleryProps) {
             showsHorizontalScrollIndicator={false}
             keyExtractor={(m) => m.id}
             onMomentumScrollEnd={onScrollEnd}
-            renderItem={({ item }) => (
+            renderItem={({ item, index }) => (
               <View style={styles.zoomImageBox}>
-                <Image source={{ uri: item.url }} style={styles.zoomImage} resizeMode="contain" />
+                <Image
+                  source={{ uri: item.url }}
+                  style={styles.zoomImage}
+                  resizeMode="contain"
+                  accessible
+                  accessibilityLabel={title ? `${title} — фото ${index + 1} з ${media.length}` : `Фото ${index + 1} з ${media.length}`}
+                />
               </View>
             )}
           />
