@@ -20,6 +20,7 @@ import {
   type Region,
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
+import { AutoRenewToggle } from '@/components/listings/AutoRenewToggle';
 import { Alert, Button, Card, Dropdown, Form, Input, LoadingState, Textarea } from '@/components/ui';
 import { getConditionOptions } from '@/lib/listing-condition';
 import { getListingTypeOptions, isJobCategory } from '@/lib/listing-type';
@@ -60,6 +61,7 @@ export default function NewListingPage() {
   const [currency, setCurrency] = useState('UAH');
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
+  const [autoRenew, setAutoRenew] = useState(false);
   const [regions, setRegions] = useState<Region[]>([]);
   const [isLoadingRegions, setIsLoadingRegions] = useState(true);
   const [regionId, setRegionId] = useState<string | null>(null);
@@ -247,6 +249,7 @@ export default function NewListingPage() {
           condition: (condition as 'new' | 'used' | 'for_parts') ?? undefined,
           locationId: locationId ?? undefined,
           isNegotiable,
+          autoRenew,
           attributes: categoryAttributes
             .filter((attr) => attributeValues[attr.id] !== undefined && attributeValues[attr.id] !== '')
             .map((attr) => ({ categoryAttributeId: attr.id, value: attributeValues[attr.id] })),
@@ -515,9 +518,7 @@ export default function NewListingPage() {
             />
           )}
 
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Оголошення буде активним 30 днів. Продовжити термін дії чи увімкнути автопродовження можна пізніше на сторінці оголошення.
-          </p>
+          <AutoRenewToggle checked={autoRenew} onChange={setAutoRenew} />
 
           <div className="flex flex-wrap gap-2">
             {/* Кнопки НЕ disabled на невалідній формі (аудит 27.08: раніше клік по disabled

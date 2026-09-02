@@ -67,4 +67,8 @@ export class CreateListingDto {
   @ValidateNested({ each: true })
   @Type(() => AttributeValueInputDto)
   attributes?: AttributeValueInputDto[];
+
+  @IsOptional()
+  @IsBoolean()
+  autoRenew?: boolean;
 }

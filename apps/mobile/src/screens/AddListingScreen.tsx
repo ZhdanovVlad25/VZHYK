@@ -32,6 +32,7 @@ import { useAuth } from '../lib/auth-context';
 import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
 import { assetToRNFile, pickPhotos } from '../lib/pickImage';
+import { AutoRenewToggle } from '../components/AutoRenewToggle';
 import { ChipSelect } from '../components/ChipSelect';
 import { DropdownSelect } from '../components/DropdownSelect';
 import { LoadingScreen } from '../components/LoadingScreen';
@@ -70,6 +71,7 @@ export function AddListingScreen() {
   const [currency, setCurrency] = useState('UAH');
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
+  const [autoRenew, setAutoRenew] = useState(false);
   const [pendingPhotos, setPendingPhotos] = useState<ImagePickerAsset[]>([]);
   const [isPickingPhoto, setIsPickingPhoto] = useState(false);
 
@@ -175,6 +177,7 @@ export function AddListingScreen() {
           condition: (condition as 'new' | 'used' | 'for_parts') ?? undefined,
           locationId: locationId ?? undefined,
           isNegotiable,
+          autoRenew,
         },
         accessToken,
       );
@@ -206,6 +209,7 @@ export function AddListingScreen() {
       setLocationId(null);
       setCondition(null);
       setIsNegotiable(false);
+      setAutoRenew(false);
       setPendingPhotos([]);
       // Alert, не setError — екран переходить на EditListing одразу, банер помилки тут ніхто б не побачив.
       if (failedPhotoCount > 0) {
@@ -386,9 +390,7 @@ export function AddListingScreen() {
           <Switch value={isNegotiable} onValueChange={setIsNegotiable} trackColor={{ true: colors.brand[500] }} />
         </View>
 
-        <Text style={styles.hint}>
-          Оголошення буде активним 30 днів. Продовжити термін дії чи увімкнути автопродовження можна пізніше на сторінці оголошення.
-        </Text>
+        <AutoRenewToggle checked={autoRenew} onChange={setAutoRenew} />
 
         <View style={styles.submitRow}>
           <Pressable

@@ -70,6 +70,7 @@ export class ListingsService {
         condition: dto.condition ?? null,
         locationId: dto.locationId ?? null,
         status: 'DRAFT',
+        autoRenew: dto.autoRenew ?? false,
       }),
     );
 
