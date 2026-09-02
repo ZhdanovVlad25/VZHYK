@@ -1,3 +1,5 @@
+import { isJobCategory } from './listing-type';
+
 export interface ConditionOption {
   value: 'new' | 'used' | 'for_parts';
   label: string;
@@ -113,6 +115,11 @@ export function getConditionOptions(
   categorySlug: string | null,
   currentValue?: string | null,
 ): ConditionOption[] {
+  // "Робота" — вакансія/резюме не мають "стану" апріорі (не товар), поле ховається цілком
+  // (не просто звужується список, як для "на запчастини" нижче).
+  if (isJobCategory(categorySlug)) {
+    return [];
+  }
   if (!categorySlug || !CATEGORIES_WITHOUT_FOR_PARTS.has(categorySlug)) {
     return ALL_CONDITION_OPTIONS;
   }

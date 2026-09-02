@@ -15,6 +15,7 @@ import {
 } from '@/lib/api';
 import { useAuth } from '@/lib/auth-context';
 import { pluralizeListings } from '@/lib/format';
+import { getListingTypeOptions } from '@/lib/listing-type';
 import { ListingCard } from '@/components/listings/ListingCard';
 import { Button, Dropdown, EmptyState, ErrorState, Input, LoadingState } from '@/components/ui';
 
@@ -54,6 +55,7 @@ function SearchPageContent() {
   const urlPriceMin = urlParams.get('priceMin') ?? '';
   const urlPriceMax = urlParams.get('priceMax') ?? '';
   const urlCondition = urlParams.get('condition') ?? '';
+  const urlListingType = urlParams.get('listingType') ?? '';
   const { user, accessToken } = useAuth();
 
   const [sort, setSort] = useState<SearchParams['sort']>(q ? 'relevance' : 'newest');
@@ -88,9 +90,13 @@ function SearchPageContent() {
   // окремого дерева server-роутів — тут мінімально виправлено title/h1/meta description
   // під конкретну категорію, лишаючись на тому самому ?category=UUID URL.
   const [categoryName, setCategoryName] = useState<string | null>(null);
+  // categorySlug — потрібен окремо від categoryName для category-aware "Тип оголошення"
+  // (вакансія/резюме на "Роботі" замість продаю/куплю/...), той самий helper, що в формі подання.
+  const [categorySlug, setCategorySlug] = useState<string | null>(null);
   useEffect(() => {
     if (!category) {
       setCategoryName(null);
+      setCategorySlug(null);
       return;
     }
     let cancelled = false;
@@ -98,13 +104,26 @@ function SearchPageContent() {
       .then((tree) => {
         if (cancelled) return;
         for (const top of tree) {
-          if (top.id === category) return setCategoryName(top.nameUk);
+          if (top.id === category) {
+            setCategoryName(top.nameUk);
+            setCategorySlug(top.slug);
+            return;
+          }
           const child = top.children.find((c) => c.id === category);
-          if (child) return setCategoryName(child.nameUk);
+          if (child) {
+            setCategoryName(child.nameUk);
+            setCategorySlug(child.slug);
+            return;
+          }
         }
         setCategoryName(null);
+        setCategorySlug(null);
       })
-      .catch(() => !cancelled && setCategoryName(null));
+      .catch(() => {
+        if (cancelled) return;
+        setCategoryName(null);
+        setCategorySlug(null);
+      });
     return () => {
       cancelled = true;
     };
@@ -126,8 +145,11 @@ function SearchPageContent() {
   const priceMinNum = urlPriceMin ? Number(urlPriceMin) : undefined;
   const priceMaxNum = urlPriceMax ? Number(urlPriceMax) : undefined;
   const condition = urlCondition || undefined;
+  const listingType = urlListingType || undefined;
 
-  const activeFilterCount = [location, priceMinNum, priceMaxNum, condition].filter((v) => v !== undefined).length;
+  const activeFilterCount = [location, priceMinNum, priceMaxNum, condition, listingType].filter(
+    (v) => v !== undefined,
+  ).length;
 
   function buildUrl(overrides: Record<string, string | undefined>) {
     const params = new URLSearchParams(urlParams.toString());
@@ -146,12 +168,18 @@ function SearchPageContent() {
     router.push(buildUrl({ condition: value ?? undefined }));
   }
 
+  function applyListingTypeFilter(value: string | null) {
+    router.push(buildUrl({ listingType: value ?? undefined }));
+  }
+
   function applyLocationFilter(value: string | null) {
     router.push(buildUrl({ location: value ?? undefined }));
   }
 
   function resetFilters() {
-    router.push(buildUrl({ location: undefined, priceMin: undefined, priceMax: undefined, condition: undefined }));
+    router.push(
+      buildUrl({ location: undefined, priceMin: undefined, priceMax: undefined, condition: undefined, listingType: undefined }),
+    );
   }
 
   const runSearch = useCallback(async () => {
@@ -166,6 +194,7 @@ function SearchPageContent() {
         priceMin: priceMinNum,
         priceMax: priceMaxNum,
         condition,
+        listingType,
         sort,
       });
       setItems(result.items);
@@ -176,8 +205,8 @@ function SearchPageContent() {
     } finally {
       setIsLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- priceMinNum/priceMaxNum/condition похідні від urlParams, вже покриті нижче
-  }, [q, category, seller, location, priceMinNum, priceMaxNum, condition, sort]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- priceMinNum/priceMaxNum/condition/listingType похідні від urlParams, вже покриті нижче
+  }, [q, category, seller, location, priceMinNum, priceMaxNum, condition, listingType, sort]);
 
   useEffect(() => {
     runSearch();
@@ -195,6 +224,7 @@ function SearchPageContent() {
         priceMin: priceMinNum,
         priceMax: priceMaxNum,
         condition,
+        listingType,
         sort,
         cursor: nextCursor,
       });
@@ -302,6 +332,13 @@ function SearchPageContent() {
             options={CONDITION_OPTIONS}
             value={condition ?? null}
             onChange={applyConditionFilter}
+            placeholder="Будь-який"
+          />
+          <Dropdown
+            label="Тип оголошення"
+            options={getListingTypeOptions(categorySlug)}
+            value={listingType ?? null}
+            onChange={applyListingTypeFilter}
             placeholder="Будь-який"
           />
           {/* MUST-аудит: "Скинути фільтри" лежала поверх "Ціна до" — <input> безw-full

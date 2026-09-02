@@ -22,15 +22,9 @@ import {
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
 import { Alert, Button, Card, Dropdown, Form, Input, LoadingState, Textarea } from '@/components/ui';
 import { getConditionOptions } from '@/lib/listing-condition';
+import { getListingTypeOptions, isJobCategory } from '@/lib/listing-type';
 
-const LISTING_TYPE_OPTIONS: { value: ListingType; label: string }[] = [
-  { value: 'sell', label: 'Продаю' },
-  { value: 'buy', label: 'Куплю' },
-  { value: 'exchange', label: 'Обміняю' },
-  { value: 'give_away', label: 'Віддам безкоштовно' },
-  { value: 'service', label: 'Послуга' },
-  { value: 'rent', label: 'Оренда' },
-];
+const PRICE_OPTIONAL_TYPES = new Set<ListingType>(['buy', 'give_away', 'vacancy', 'resume']);
 
 const CURRENCY_OPTIONS = [
   { value: 'UAH', label: 'грн' },
@@ -140,6 +134,26 @@ export default function NewListingPage() {
   // "На запчастини" виключається/лишається залежно від конкретної підкатегорії (напр. шини).
   const categorySlug =
     (subCategories.length > 0 ? subCategories : topCategories).find((c) => c.id === categoryId)?.slug ?? null;
+
+  // "Робота" пропонує зовсім інший набір типів (вакансія/резюме замість продаю/куплю/...) —
+  // перемикання категорії туди-назад мусить скидати вибір, інакше лишається невалідний
+  // тип із попереднього набору (напр. "Продаю" на вакансії).
+  const listingTypeOptions = getListingTypeOptions(categorySlug);
+  useEffect(() => {
+    if (!listingTypeOptions.some((o) => o.value === listingType)) {
+      setListingType(listingTypeOptions[0]?.value as ListingType);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- лише на зміну доступних варіантів (categorySlug), не на кожен рендер
+  }, [listingTypeOptions]);
+
+  // Той самий скид для "Стан" — на "Роботі" поле ховається (options === []), але без цього
+  // раніше обране значення лишалось би в стані й пішло б у запит попри приховане поле.
+  useEffect(() => {
+    if (isJobCategory(categorySlug) && condition !== null) {
+      setCondition(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- лише на зміну categorySlug
+  }, [categorySlug]);
 
   // Дебаунс: підказка категорії за назвою (backend `/categories/suggest`, ключові слова).
   // Скидаємо "відхилено" і саму підказку щоразу, коли назва міняється — стара підказка
@@ -366,7 +380,7 @@ export default function NewListingPage() {
 
             <Dropdown
               label="Тип оголошення"
-              options={LISTING_TYPE_OPTIONS}
+              options={listingTypeOptions}
               value={listingType}
               onChange={(v) => setListingType(v as ListingType)}
             />
@@ -395,7 +409,7 @@ export default function NewListingPage() {
                   min={0}
                   value={price}
                   onChange={(e) => setPrice(sanitizeNonNegative(e.target.value))}
-                  hint={listingType === 'buy' || listingType === 'give_away' ? 'Необов\'язково для цього типу' : undefined}
+                  hint={PRICE_OPTIONAL_TYPES.has(listingType) ? 'Необов\'язково для цього типу' : undefined}
                 />
               </div>
               <div className="w-24">
@@ -427,13 +441,15 @@ export default function NewListingPage() {
               required
             />
 
-            <Dropdown
-              label="Стан"
-              options={getConditionOptions(categorySlug, condition)}
-              value={condition}
-              onChange={setCondition}
-              placeholder="Не вказано"
-            />
+            {getConditionOptions(categorySlug, condition).length > 0 && (
+              <Dropdown
+                label="Стан"
+                options={getConditionOptions(categorySlug, condition)}
+                value={condition}
+                onChange={setCondition}
+                placeholder="Не вказано"
+              />
+            )}
           </div>
 
           <div>

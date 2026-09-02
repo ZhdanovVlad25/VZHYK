@@ -28,15 +28,9 @@ import { AttributeFields, type AttributeValues } from '@/components/listings/Att
 import { Alert, Badge, Button, Card, Dropdown, ErrorState, Form, Input, LoadingState, Textarea } from '@/components/ui';
 import { formatPrice } from '@/lib/format';
 import { getConditionOptions } from '@/lib/listing-condition';
+import { getListingTypeLabel, getListingTypeOptions } from '@/lib/listing-type';
 
-const LISTING_TYPE_OPTIONS: { value: ListingType; label: string }[] = [
-  { value: 'sell', label: 'Продаю' },
-  { value: 'buy', label: 'Куплю' },
-  { value: 'exchange', label: 'Обміняю' },
-  { value: 'give_away', label: 'Віддам безкоштовно' },
-  { value: 'service', label: 'Послуга' },
-  { value: 'rent', label: 'Оренда' },
-];
+const PRICE_OPTIONAL_TYPES = new Set<ListingType>(['buy', 'give_away', 'vacancy', 'resume']);
 
 const TITLE_MIN_LENGTH = 5;
 const DESCRIPTION_MIN_LENGTH = 10;
@@ -369,9 +363,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
             </div>
             <div className="contents">
               <dt className="text-gray-500 dark:text-gray-400">Тип</dt>
-              <dd className="text-gray-900 dark:text-gray-100">
-                {LISTING_TYPE_OPTIONS.find((o) => o.value === listingType)?.label ?? listingType}
-              </dd>
+              <dd className="text-gray-900 dark:text-gray-100">{getListingTypeLabel(listingType)}</dd>
             </div>
             {cityName && (
               <div className="contents">
@@ -520,7 +512,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
 
             <Dropdown
               label="Тип оголошення"
-              options={LISTING_TYPE_OPTIONS}
+              options={getListingTypeOptions(categorySlug)}
               value={listingType}
               onChange={(v) => setListingType(v as ListingType)}
             />
@@ -552,7 +544,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
                   min={0}
                   value={price}
                   onChange={(e) => setPrice(sanitizeNonNegative(e.target.value))}
-                  hint={listingType === 'buy' || listingType === 'give_away' ? "Необов'язково для цього типу" : undefined}
+                  hint={PRICE_OPTIONAL_TYPES.has(listingType) ? "Необов'язково для цього типу" : undefined}
                 />
               </div>
               <div className="w-24">
@@ -592,13 +584,15 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
               required
             />
 
-            <Dropdown
-              label="Стан"
-              options={getConditionOptions(categorySlug, condition)}
-              value={condition}
-              onChange={setCondition}
-              placeholder="Не вказано"
-            />
+            {getConditionOptions(categorySlug, condition).length > 0 && (
+              <Dropdown
+                label="Стан"
+                options={getConditionOptions(categorySlug, condition)}
+                value={condition}
+                onChange={setCondition}
+                placeholder="Не вказано"
+              />
+            )}
 
             <AttributeFields
               attributes={categoryAttributes}
