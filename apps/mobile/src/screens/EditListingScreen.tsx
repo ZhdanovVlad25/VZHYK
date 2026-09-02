@@ -42,9 +42,10 @@ import {
   CONDITION_OPTIONS,
   CURRENCY_OPTIONS,
   DESCRIPTION_MIN_LENGTH,
-  LISTING_TYPE_OPTIONS,
   STATUS_LABELS,
   TITLE_MIN_LENGTH,
+  getListingTypeOptions,
+  isJobCategory,
   sanitizeNonNegative,
 } from '../lib/listingOptions';
 import type { RootStackParamList } from '../navigation/types';
@@ -63,6 +64,15 @@ function findCategoryLabel(categories: Category[], id: string, prefix = ''): str
   return null;
 }
 
+function findCategorySlug(categories: Category[], id: string): string | null {
+  for (const c of categories) {
+    if (c.id === id) return c.slug;
+    const found = findCategorySlug(c.children, id);
+    if (found) return found;
+  }
+  return null;
+}
+
 /** Фото, редагування, публікація — RN-порт apps/web/src/app/listings/[id]/edit/page.tsx (без category attributes, Фаза 3 роадмапу). */
 export function EditListingScreen({ route }: Props) {
   const { listingId } = route.params;
@@ -73,6 +83,7 @@ export function EditListingScreen({ route }: Props) {
   const [listing, setListing] = useState<Listing | null>(null);
   const [media, setMedia] = useState<Media[]>([]);
   const [categoryLabel, setCategoryLabel] = useState<string | null>(null);
+  const [categorySlug, setCategorySlug] = useState<string | null>(null);
   const [cities, setCities] = useState<City[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
   const [isLoadingRegions, setIsLoadingRegions] = useState(true);
@@ -109,6 +120,7 @@ export function EditListingScreen({ route }: Props) {
       setListing(listingResult);
       setMedia(mediaResult);
       setCategoryLabel(findCategoryLabel(categories, listingResult.categoryId));
+      setCategorySlug(findCategorySlug(categories, listingResult.categoryId));
 
       setListingType(listingResult.listingType);
       setTitle(listingResult.title);
@@ -294,7 +306,7 @@ export function EditListingScreen({ route }: Props) {
 
             <ChipSelect
               label="Тип оголошення"
-              options={LISTING_TYPE_OPTIONS}
+              options={getListingTypeOptions(categorySlug)}
               value={listingType}
               onChange={(v) => setListingType(v as ListingType)}
             />
@@ -348,7 +360,9 @@ export function EditListingScreen({ route }: Props) {
               emptyHint={regionId ? 'У цій області немає міст' : 'Спочатку оберіть область'}
             />
 
-            <ChipSelect label="Стан" options={CONDITION_OPTIONS} value={condition} onChange={setCondition} />
+            {!isJobCategory(categorySlug) && (
+              <ChipSelect label="Стан" options={CONDITION_OPTIONS} value={condition} onChange={setCondition} />
+            )}
 
             <Pressable
               style={[styles.primaryButton, !canSave && styles.primaryButtonDisabled]}

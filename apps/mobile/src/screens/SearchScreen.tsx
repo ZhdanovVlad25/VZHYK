@@ -4,12 +4,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { ApiError, City, SearchResultItem, createSavedSearch, getCities, search, type SearchParams as ApiSearchParams } from '../lib/api';
+import {
+  ApiError,
+  Category,
+  City,
+  SearchResultItem,
+  createSavedSearch,
+  getCategoryTree,
+  getCities,
+  search,
+  type SearchParams as ApiSearchParams,
+} from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
 import { pluralizeListings } from '../lib/format';
-import { CONDITION_OPTIONS } from '../lib/listingOptions';
+import { CONDITION_OPTIONS, getListingTypeOptions, isJobCategory } from '../lib/listingOptions';
 import { ListingCard } from '../components/ListingCard';
 import { LoadingScreen } from '../components/LoadingScreen';
 import type { AppNavigation, TabParamList } from '../navigation/types';
@@ -42,6 +52,8 @@ export function SearchScreen() {
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
   const [condition, setCondition] = useState<string | undefined>(undefined);
+  const [listingType, setListingType] = useState<string | undefined>(undefined);
+  const [categoryTree, setCategoryTree] = useState<Category[]>([]);
 
   const [sortModalOpen, setSortModalOpen] = useState(false);
   const [cityModalOpen, setCityModalOpen] = useState(false);
@@ -57,11 +69,27 @@ export function SearchScreen() {
 
   useEffect(() => {
     getCities().then(setCities).catch(() => setCities([]));
+    getCategoryTree().then(setCategoryTree).catch(() => setCategoryTree([]));
   }, []);
+
+  // Для category-aware "Тип оголошення" (вакансія/резюме на "Роботі") — той самий підхід,
+  // що web/src/app/search/page.tsx: слаг обраної категорії, не сам categoryId.
+  const categorySlug = useMemo(() => {
+    if (!categoryId) return null;
+    for (const top of categoryTree) {
+      if (top.id === categoryId) return top.slug;
+      const child = top.children.find((c) => c.id === categoryId);
+      if (child) return child.slug;
+    }
+    return null;
+  }, [categoryTree, categoryId]);
+  const listingTypeOptions = getListingTypeOptions(categorySlug);
 
   const priceMinNum = priceMin ? Number(priceMin) : undefined;
   const priceMaxNum = priceMax ? Number(priceMax) : undefined;
-  const activeFilterCount = [locationId, priceMinNum, priceMaxNum, condition].filter((v) => v !== undefined).length;
+  const activeFilterCount = [locationId, priceMinNum, priceMaxNum, condition, listingType].filter(
+    (v) => v !== undefined,
+  ).length;
 
   const runSearch = useCallback(async () => {
     setIsLoading(true);
@@ -75,6 +103,7 @@ export function SearchScreen() {
         priceMin: priceMinNum,
         priceMax: priceMaxNum,
         condition,
+        listingType,
         sort,
       });
       setItems(result.items);
@@ -85,7 +114,7 @@ export function SearchScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [query, categoryId, seller, locationId, priceMinNum, priceMaxNum, condition, sort]);
+  }, [query, categoryId, seller, locationId, priceMinNum, priceMaxNum, condition, listingType, sort]);
 
   useEffect(() => {
     runSearch();
@@ -110,6 +139,7 @@ export function SearchScreen() {
         priceMin: priceMinNum,
         priceMax: priceMaxNum,
         condition,
+        listingType,
         sort,
         cursor: nextCursor,
       });
@@ -146,6 +176,7 @@ export function SearchScreen() {
     setPriceMin('');
     setPriceMax('');
     setCondition(undefined);
+    setListingType(undefined);
   }
 
   const [isSavingSearch, setIsSavingSearch] = useState(false);
@@ -368,21 +399,41 @@ export function SearchScreen() {
               />
             </View>
 
-            <Text style={styles.filterLabel}>Стан</Text>
+            <Text style={styles.filterLabel}>Тип оголошення</Text>
             <View style={styles.conditionRow}>
-              {CONDITION_OPTIONS.map((option) => {
-                const active = condition === option.value;
+              {listingTypeOptions.map((option) => {
+                const active = listingType === option.value;
                 return (
                   <Pressable
                     key={option.value}
                     style={[styles.conditionChip, active && styles.conditionChipActive]}
-                    onPress={() => setCondition(active ? undefined : option.value)}
+                    onPress={() => setListingType(active ? undefined : option.value)}
                   >
                     <Text style={[styles.conditionChipText, active && styles.conditionChipTextActive]}>{option.label}</Text>
                   </Pressable>
                 );
               })}
             </View>
+
+            {!isJobCategory(categorySlug) && (
+              <>
+                <Text style={styles.filterLabel}>Стан</Text>
+                <View style={styles.conditionRow}>
+                  {CONDITION_OPTIONS.map((option) => {
+                    const active = condition === option.value;
+                    return (
+                      <Pressable
+                        key={option.value}
+                        style={[styles.conditionChip, active && styles.conditionChipActive]}
+                        onPress={() => setCondition(active ? undefined : option.value)}
+                      >
+                        <Text style={[styles.conditionChipText, active && styles.conditionChipTextActive]}>{option.label}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            )}
 
             <View style={styles.filtersActionsRow}>
               <Pressable style={styles.resetButton} onPress={resetFilters} disabled={activeFilterCount === 0}>

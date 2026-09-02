@@ -17,7 +17,7 @@ import {
 import { formatPrice, formatRelativeDate, parseDescription, pluralizeViews } from '../lib/format';
 import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
-import { CONDITION_OPTIONS, LISTING_TYPE_OPTIONS } from '../lib/listingOptions';
+import { CONDITION_OPTIONS, getListingTypeLabel } from '../lib/listingOptions';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { ListingGallery } from '../components/ListingGallery';
 import { LoadingScreen } from '../components/LoadingScreen';
@@ -108,7 +108,7 @@ export function ListingDetailScreen({ route }: Props) {
   const attributeLabelById = new Map(attributes.map((a) => [a.id, a.labelUk]));
   const mainMedia = media.find((m) => m.isMain) ?? media[0];
   const sortedMedia = mainMedia ? [mainMedia, ...media.filter((m) => m.id !== mainMedia.id)] : media;
-  const listingTypeLabel = LISTING_TYPE_OPTIONS.find((o) => o.value === listing.listingType)?.label;
+  const listingTypeLabel = getListingTypeLabel(listing.listingType);
   const conditionLabel = CONDITION_OPTIONS.find((o) => o.value === listing.condition)?.label;
   // Топ-категорія оголошення (навіть якщо categoryId — підкатегорія) — потрібна лише для
   // звуження діапазону слайдера "Хочу дешевше" на авто/нерухомості (PriceOfferButton).

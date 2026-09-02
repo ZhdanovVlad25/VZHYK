@@ -1,7 +1,7 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { SearchResultItem } from '../lib/api';
 import { formatPrice } from '../lib/format';
-import { LISTING_TYPE_OPTIONS } from '../lib/listingOptions';
+import { getListingTypeLabel } from '../lib/listingOptions';
 import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
 
@@ -19,7 +19,7 @@ export function ListingCard({ item, onPress }: ListingCardProps) {
   const isNew =
     !!item.publishedAt && Date.now() - new Date(item.publishedAt).getTime() < NEW_BADGE_THRESHOLD_MS;
   // "Продаю" — типовий, найчастіший тип, бейдж для нього лише зайвий шум на кожній картці.
-  const typeLabel = item.listingType !== 'sell' ? LISTING_TYPE_OPTIONS.find((o) => o.value === item.listingType)?.label : null;
+  const typeLabel = item.listingType !== 'sell' ? getListingTypeLabel(item.listingType) : null;
 
   return (
     <Pressable style={styles.card} onPress={onPress}>

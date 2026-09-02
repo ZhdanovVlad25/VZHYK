@@ -38,18 +38,13 @@ const PHONE_PREFIX = '+380';
 const PHONE_DIGITS_LENGTH = 9;
 const RESEND_COOLDOWN_SECONDS = 60;
 
-
-/** Приймає як руками надруковані цифри, так і вставлений повний номер (з "+380"/"380"/пробілами) — той самий парсинг, що web login/page.tsx. */
-// Обов'язково на рівні модуля (не всередині компонента) — Expo docs: закриває
-// системний браузер після редиректу назад у застосунок.
-WebBrowser.maybeCompleteAuthSession();
-
 // iOS/Android потребують ОКРЕМИХ OAuth Client ID у Google Console (bundle ID / SHA-1
 // відбиток кожної платформи), на відміну від веба, де досить одного. Порожній рядок —
 // кнопка Google лишається вимкненою, доки значення не задане в .env.
 const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '';
 const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? '';
 
+/** Приймає як руками надруковані цифри, так і вставлений повний номер (з "+380"/"380"/пробілами) — той самий парсинг, що web login/page.tsx. */
 function normalizePhoneDigits(raw: string): string {
   let digits = raw.replace(/\D/g, '');
   if (digits.startsWith('380')) {
@@ -136,6 +131,13 @@ export function ProfileScreen() {
       .finally(() => setIsSubmitting(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- запускаємо лише на нову googleResponse, loginWithGoogle стабільний між рендерами
   }, [googleResponse]);
+
+  // Всередині компонента (не на рівні модуля) — виклик нативного моста одразу при
+  // парсингу бандла, до того як RN runtime повністю готовий, крашив застосунок на
+  // старті ("[runtime not ready]") на реальному пристрої (Expo Go/Android).
+  useEffect(() => {
+    WebBrowser.maybeCompleteAuthSession();
+  }, []);
 
   useEffect(() => {
     getCities().then(setCities).catch(() => setCities([]));

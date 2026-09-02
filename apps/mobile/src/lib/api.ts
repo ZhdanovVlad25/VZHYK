@@ -76,7 +76,7 @@ export interface RNFile {
 // ---- Types ----
 
 export type ListingType =
-  'sell' | 'buy' | 'exchange' | 'give_away' | 'service' | 'rent';
+  'sell' | 'buy' | 'exchange' | 'give_away' | 'service' | 'rent' | 'vacancy' | 'resume';
 export type ListingStatus =
   | 'DRAFT'
   | 'PENDING_MODERATION'
@@ -203,6 +203,7 @@ export interface SearchParams {
   priceMin?: number;
   priceMax?: number;
   condition?: string;
+  listingType?: string;
   hasPhoto?: boolean;
   sort?: 'relevance' | 'newest' | 'price_asc' | 'price_desc';
   cursor?: string;
@@ -360,6 +361,7 @@ export function search(params: SearchParams): Promise<SearchResult> {
   if (params.priceMax !== undefined)
     qs.set('priceMax', String(params.priceMax));
   if (params.condition) qs.set('condition', params.condition);
+  if (params.listingType) qs.set('listingType', params.listingType);
   if (params.hasPhoto) qs.set('hasPhoto', 'true');
   if (params.sort) qs.set('sort', params.sort);
   if (params.cursor) qs.set('cursor', params.cursor);

@@ -39,8 +39,9 @@ import {
   CONDITION_OPTIONS,
   CURRENCY_OPTIONS,
   DESCRIPTION_MIN_LENGTH,
-  LISTING_TYPE_OPTIONS,
   TITLE_MIN_LENGTH,
+  getListingTypeOptions,
+  isJobCategory,
   sanitizeNonNegative,
 } from '../lib/listingOptions';
 import type { AppNavigation } from '../navigation/types';
@@ -105,6 +106,22 @@ export function AddListingScreen() {
   const selectedTop = useMemo(() => topCategories.find((c) => c.id === topCategoryId) ?? null, [topCategories, topCategoryId]);
   const subCategories = selectedTop?.children ?? [];
   const categoryId = subCategories.length > 0 ? subCategoryId : topCategoryId;
+  const categorySlug =
+    (subCategories.length > 0 ? subCategories : topCategories).find((c) => c.id === categoryId)?.slug ?? null;
+  const listingTypeOptions = getListingTypeOptions(categorySlug);
+  const conditionAvailable = !isJobCategory(categorySlug);
+
+  // "Робота" пропонує інший набір типів (вакансія/резюме) — перемикання категорії туди-назад
+  // мусить скидати вибір і "Стан", інакше лишається невалідне значення з попереднього набору.
+  useEffect(() => {
+    if (!listingTypeOptions.some((o) => o.value === listingType)) {
+      setListingType(listingTypeOptions[0]?.value ?? 'sell');
+    }
+    if (!conditionAvailable && condition !== null) {
+      setCondition(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- лише на зміну доступних варіантів категорії
+  }, [categorySlug]);
 
   const selectedRegion = useMemo(() => regions.find((r) => r.id === regionId) ?? null, [regions, regionId]);
   const citiesInRegion = selectedRegion?.cities ?? [];
@@ -285,7 +302,7 @@ export function AddListingScreen() {
 
         <ChipSelect
           label="Тип оголошення"
-          options={LISTING_TYPE_OPTIONS}
+          options={listingTypeOptions}
           value={listingType}
           onChange={(v) => setListingType(v as ListingType)}
         />
@@ -360,7 +377,9 @@ export function AddListingScreen() {
           emptyHint={regionId ? 'У цій області немає міст' : 'Спочатку оберіть область'}
         />
 
-        <ChipSelect label="Стан" options={CONDITION_OPTIONS} value={condition} onChange={setCondition} />
+        {conditionAvailable && (
+          <ChipSelect label="Стан" options={CONDITION_OPTIONS} value={condition} onChange={setCondition} />
+        )}
 
         <View style={styles.switchRow}>
           <Text style={styles.label}>Торг можливий</Text>
