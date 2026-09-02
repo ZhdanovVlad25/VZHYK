@@ -542,6 +542,7 @@ export interface ChatDto {
 export interface ChatListItem {
   chatId: string;
   listingId: string | null;
+  listingUserId: string | null;
   otherUserId: string | null;
   lastMessageAt: string | null;
   unreadCount: number;

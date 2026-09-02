@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -24,6 +25,14 @@ export function ChatsScreen() {
   const styles = createStyles(colors);
   const { user, isLoading: authLoading } = useAuth();
   const { chats, isLoadingChats, chatsError, reloadChats, presence } = useChatContext();
+  const [tab, setTab] = useState<'selling' | 'buying'>('selling');
+
+  // "Продаю" — я власник оголошення в чаті; "Купую" — все інше (чужі оголошення, чати без оголошення).
+  const sellingChats = useMemo(() => chats.filter((c) => c.listingUserId === user?.id), [chats, user?.id]);
+  const buyingChats = useMemo(() => chats.filter((c) => c.listingUserId !== user?.id), [chats, user?.id]);
+  const visibleChats = tab === 'selling' ? sellingChats : buyingChats;
+  const sellingUnread = useMemo(() => sellingChats.reduce((sum, c) => sum + c.unreadCount, 0), [sellingChats]);
+  const buyingUnread = useMemo(() => buyingChats.reduce((sum, c) => sum + c.unreadCount, 0), [buyingChats]);
 
   if (!authLoading && !user) {
     return (
@@ -39,7 +48,7 @@ export function ChatsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <FlatList
-        data={chats}
+        data={visibleChats}
         keyExtractor={(c) => c.chatId}
         renderItem={({ item }) => {
           const isOnline = item.otherUserId ? presence[item.otherUserId] === 'online' : false;
@@ -78,7 +87,29 @@ export function ChatsScreen() {
             </Pressable>
           );
         }}
-        ListHeaderComponent={<Text style={styles.title}>{t('messages')}</Text>}
+        ListHeaderComponent={
+          <>
+            <Text style={styles.title}>{t('messages')}</Text>
+            <View style={styles.tabRow}>
+              <Pressable style={[styles.tab, tab === 'selling' && styles.tabActive]} onPress={() => setTab('selling')}>
+                <Text style={[styles.tabText, tab === 'selling' && styles.tabTextActive]}>Продаю</Text>
+                {sellingUnread > 0 && (
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>{sellingUnread}</Text>
+                  </View>
+                )}
+              </Pressable>
+              <Pressable style={[styles.tab, tab === 'buying' && styles.tabActive]} onPress={() => setTab('buying')}>
+                <Text style={[styles.tabText, tab === 'buying' && styles.tabTextActive]}>Купую</Text>
+                {buyingUnread > 0 && (
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>{buyingUnread}</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+          </>
+        }
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={isLoadingChats && chats.length > 0} onRefresh={reloadChats} tintColor={colors.brand[600]} />}
         ListEmptyComponent={
@@ -92,7 +123,11 @@ export function ChatsScreen() {
               </Pressable>
             </View>
           ) : (
-            <Text style={styles.emptyText}>Чатів поки немає. Напишіть продавцю зі сторінки оголошення.</Text>
+            <Text style={styles.emptyText}>
+              {tab === 'selling'
+                ? 'Тут з’являться чати щодо ваших оголошень.'
+                : 'Чатів поки немає. Напишіть продавцю зі сторінки оголошення.'}
+            </Text>
           )
         }
       />
@@ -107,6 +142,24 @@ function createStyles(colors: ColorScheme) {
   centerText: { color: colors.textMuted, fontSize: 15, textAlign: 'center' },
   listContent: { padding: 16 },
   title: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 12 },
+  tabRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  tabActive: { backgroundColor: colors.brand[100], borderColor: colors.brand[200] },
+  tabText: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
+  tabTextActive: { color: colors.brand[700] },
+  tabBadge: { backgroundColor: colors.brand[600], borderRadius: 999, paddingHorizontal: 6, paddingVertical: 1 },
+  tabBadgeText: { color: colors.buttonText, fontSize: 11, fontWeight: '700' },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

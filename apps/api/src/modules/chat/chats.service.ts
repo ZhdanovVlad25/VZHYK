@@ -19,6 +19,8 @@ const CHAT_MESSAGE_PER_MINUTE_LIMIT = 60; // docs/security.md §6
 export interface ChatListItem {
   chatId: string;
   listingId: string | null;
+  /** userId власника listingId — фронтенд рахує "Продаю" (== userId запиту) / "Купую" (інше), щоб не плутати ролі в одному списку. */
+  listingUserId: string | null;
   otherUserId: string | null;
   lastMessageAt: Date | null;
   lastMessageText: string | null;
@@ -102,15 +104,28 @@ export class ChatsService {
       }
     }
 
+    // "Продаю"/"Купую" вкладки на клієнті потребують власника оголошення, не лише його id —
+    // один додатковий batch-запит замість N+1 (той самий патерн, що allParticipants вище).
+    const listingIds = [...new Set(chats.map((c) => c.listingId).filter((id): id is string => id !== null))];
+    const listingUserIdById = listingIds.length
+      ? new Map(
+          (await this.listings.find({ where: { id: In(listingIds) }, select: ['id', 'userId'] })).map((l) => [l.id, l.userId]),
+        )
+      : new Map<string, string>();
+
     return myParticipations
-      .map((p) => ({
-        chatId: p.chatId,
-        listingId: chatById.get(p.chatId)?.listingId ?? null,
-        otherUserId: otherUserByChatId.get(p.chatId) ?? null,
-        lastMessageAt: chatById.get(p.chatId)?.lastMessageAt ?? null,
-        lastMessageText: chatById.get(p.chatId)?.lastMessageText ?? null,
-        unreadCount: p.unreadCount,
-      }))
+      .map((p) => {
+        const listingId = chatById.get(p.chatId)?.listingId ?? null;
+        return {
+          chatId: p.chatId,
+          listingId,
+          listingUserId: listingId ? listingUserIdById.get(listingId) ?? null : null,
+          otherUserId: otherUserByChatId.get(p.chatId) ?? null,
+          lastMessageAt: chatById.get(p.chatId)?.lastMessageAt ?? null,
+          lastMessageText: chatById.get(p.chatId)?.lastMessageText ?? null,
+          unreadCount: p.unreadCount,
+        };
+      })
       .sort((a, b) => (b.lastMessageAt?.getTime() ?? 0) - (a.lastMessageAt?.getTime() ?? 0));
   }
 

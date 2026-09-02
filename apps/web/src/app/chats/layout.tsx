@@ -1,6 +1,6 @@
 'use client';
 
-import { type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
@@ -15,7 +15,16 @@ function formatTime(iso: string | null): string {
 
 function ChatSidebar({ hiddenOnMobile }: { hiddenOnMobile: boolean }) {
   const pathname = usePathname();
+  const { user } = useAuth();
   const { chats, isLoadingChats, chatsError, reloadChats, presence } = useChatContext();
+  const [tab, setTab] = useState<'selling' | 'buying'>('selling');
+
+  // "Продаю" — я власник оголошення в чаті; "Купую" — все інше (чужі оголошення, чати без оголошення).
+  const sellingChats = useMemo(() => chats.filter((c) => c.listingUserId === user?.id), [chats, user?.id]);
+  const buyingChats = useMemo(() => chats.filter((c) => c.listingUserId !== user?.id), [chats, user?.id]);
+  const visibleChats = tab === 'selling' ? sellingChats : buyingChats;
+  const sellingUnread = useMemo(() => sellingChats.reduce((sum, c) => sum + c.unreadCount, 0), [sellingChats]);
+  const buyingUnread = useMemo(() => buyingChats.reduce((sum, c) => sum + c.unreadCount, 0), [buyingChats]);
 
   return (
     <aside
@@ -25,15 +34,46 @@ function ChatSidebar({ hiddenOnMobile }: { hiddenOnMobile: boolean }) {
       )}
     >
       <h1 className="border-b border-gray-200 px-4 py-3 text-lg font-semibold text-gray-900 dark:border-gray-700 dark:text-gray-100">Повідомлення</h1>
+      <div className="flex border-b border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          onClick={() => setTab('selling')}
+          className={cn(
+            'flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors',
+            tab === 'selling'
+              ? 'border-b-2 border-brand-600 text-brand-700 dark:text-brand-400'
+              : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+          )}
+        >
+          Продаю
+          {sellingUnread > 0 && <Badge tone="info">{sellingUnread}</Badge>}
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('buying')}
+          className={cn(
+            'flex flex-1 items-center justify-center gap-1.5 px-3 py-2.5 text-sm font-medium transition-colors',
+            tab === 'buying'
+              ? 'border-b-2 border-brand-600 text-brand-700 dark:text-brand-400'
+              : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+          )}
+        >
+          Купую
+          {buyingUnread > 0 && <Badge tone="info">{buyingUnread}</Badge>}
+        </button>
+      </div>
       {isLoadingChats ? (
         <LoadingState label="Завантаження чатів…" />
       ) : chatsError ? (
         <ErrorState description={chatsError} onRetry={reloadChats} />
-      ) : chats.length === 0 ? (
-        <EmptyState title="Чатів поки немає" description="Напишіть продавцю зі сторінки оголошення." />
+      ) : visibleChats.length === 0 ? (
+        <EmptyState
+          title="Чатів поки немає"
+          description={tab === 'selling' ? 'Тут з’являться чати щодо ваших оголошень.' : 'Напишіть продавцю зі сторінки оголошення.'}
+        />
       ) : (
         <ul className="flex flex-col">
-          {chats.map((chat) => {
+          {visibleChats.map((chat) => {
             const isActive = pathname === `/chats/${chat.chatId}`;
             const isOnline = chat.otherUserId ? presence[chat.otherUserId] === 'online' : false;
             return (
