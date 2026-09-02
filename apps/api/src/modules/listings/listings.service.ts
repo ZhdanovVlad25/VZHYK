@@ -71,6 +71,7 @@ export class ListingsService {
         locationId: dto.locationId ?? null,
         status: 'DRAFT',
         autoRenew: dto.autoRenew ?? false,
+        sellerType: dto.sellerType,
       }),
     );
 
@@ -110,6 +111,7 @@ export class ListingsService {
       condition: dto.condition ?? listing.condition,
       locationId: dto.locationId ?? listing.locationId,
       autoRenew: dto.autoRenew ?? listing.autoRenew,
+      sellerType: dto.sellerType ?? listing.sellerType,
     });
 
     const saved = await this.saveWithConflictHandling(listing);

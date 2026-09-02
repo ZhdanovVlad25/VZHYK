@@ -23,9 +23,11 @@ import {
   type ListingType,
   type Media,
   type Region,
+  type SellerType,
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
 import { AutoRenewToggle } from '@/components/listings/AutoRenewToggle';
+import { SellerTypeToggle } from '@/components/listings/SellerTypeToggle';
 import { Alert, Badge, Button, Card, Dropdown, ErrorState, Form, Input, LoadingState, Textarea } from '@/components/ui';
 import { formatPrice } from '@/lib/format';
 import { getConditionOptions } from '@/lib/listing-condition';
@@ -105,6 +107,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [currency, setCurrency] = useState('UAH');
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
+  const [sellerType, setSellerType] = useState<SellerType | null>(null);
   const [attributeValues, setAttributeValues] = useState<AttributeValues>({});
   const [cities, setCities] = useState<City[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
@@ -151,6 +154,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       setCurrency(listingResult.currency);
       setCondition(listingResult.condition);
       setIsNegotiable(listingResult.isNegotiable);
+      setSellerType(listingResult.sellerType);
       setLocationId(listingResult.locationId);
       setAttributeValues(Object.fromEntries(listingResult.attributes.map((a) => [a.categoryAttributeId, a.value])));
 
@@ -270,7 +274,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
 
   const isTitleValid = title.trim().length >= TITLE_MIN_LENGTH;
   const isDescriptionValid = description.trim().length >= DESCRIPTION_MIN_LENGTH;
-  const canSave = isTitleValid && isDescriptionValid && Boolean(locationId);
+  const canSave = isTitleValid && isDescriptionValid && Boolean(locationId) && Boolean(sellerType);
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -290,6 +294,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           condition: (condition as 'new' | 'used' | 'for_parts') ?? undefined,
           locationId: locationId ?? undefined,
           isNegotiable,
+          sellerType: sellerType ?? undefined,
           attributes: categoryAttributes
             .filter((attr) => attributeValues[attr.id] !== undefined && attributeValues[attr.id] !== '')
             .map((attr) => ({ categoryAttributeId: attr.id, value: attributeValues[attr.id] })),
@@ -555,6 +560,8 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
               />
               Торг можливий
             </label>
+
+            <SellerTypeToggle value={sellerType} onChange={setSellerType} />
 
             <Dropdown
               label="Область"

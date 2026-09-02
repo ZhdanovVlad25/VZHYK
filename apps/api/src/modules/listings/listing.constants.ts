@@ -9,6 +9,10 @@ export type ListingCurrency = (typeof LISTING_CURRENCIES)[number];
 export const LISTING_CONDITIONS = ['new', 'used', 'for_parts'] as const;
 export type ListingCondition = (typeof LISTING_CONDITIONS)[number];
 
+/** Обов'язковий вибір при створенні (статистика + майбутні бізнес-функції, напр. окремі ліміти). */
+export const SELLER_TYPES = ['private', 'business'] as const;
+export type SellerType = (typeof SELLER_TYPES)[number];
+
 /** docs/architecture.md §6 State Machine (Listing) */
 export const LISTING_STATUSES = [
   'DRAFT',

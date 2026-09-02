@@ -77,6 +77,7 @@ export interface RNFile {
 
 export type ListingType =
   'sell' | 'buy' | 'exchange' | 'give_away' | 'service' | 'rent' | 'vacancy' | 'resume';
+export type SellerType = 'private' | 'business';
 export type ListingStatus =
   | 'DRAFT'
   | 'PENDING_MODERATION'
@@ -144,6 +145,7 @@ export interface Listing {
   publishedAt: string | null;
   expiresAt: string | null;
   autoRenew: boolean;
+  sellerType: SellerType;
   createdAt: string;
   attributes: ListingAttributeValue[];
 }
@@ -416,6 +418,7 @@ export interface CreateListingDto {
   locationId?: string;
   attributes?: AttributeValueInput[];
   autoRenew?: boolean;
+  sellerType: SellerType;
 }
 
 export type UpdateListingDto = Partial<Omit<CreateListingDto, 'categoryId'>>;

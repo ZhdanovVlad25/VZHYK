@@ -16,10 +16,12 @@ import {
   LISTING_CURRENCIES,
   LISTING_STATUSES,
   LISTING_TYPES,
+  SELLER_TYPES,
   ListingCondition,
   ListingCurrency,
   ListingStatus,
   ListingType,
+  SellerType,
 } from './listing.constants';
 
 /** Numeric-колонки Postgres повертаються як string через pg-driver — приводимо до number. */
@@ -72,6 +74,10 @@ export class Listing {
 
   @Column({ type: 'enum', enum: LISTING_CONDITIONS, nullable: true })
   condition: ListingCondition | null;
+
+  /** Обов'язковий вибір при створенні — статистика приватні/бізнес + майбутні бізнес-функції. Існуючі оголошення (до цього поля) — 'private' за замовчуванням колонки. */
+  @Column({ type: 'enum', enum: SELLER_TYPES, default: 'private' })
+  sellerType: SellerType;
 
   @ManyToOne(() => Location, { nullable: true, onDelete: 'RESTRICT' })
   location: Location | null;

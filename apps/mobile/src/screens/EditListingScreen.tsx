@@ -30,6 +30,7 @@ import {
   updateListing,
   uploadListingMedia,
   type ListingType,
+  type SellerType,
 } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { useTheme } from '../lib/theme-context';
@@ -44,6 +45,7 @@ import {
   CONDITION_OPTIONS,
   CURRENCY_OPTIONS,
   DESCRIPTION_MIN_LENGTH,
+  SELLER_TYPE_OPTIONS,
   STATUS_LABELS,
   TITLE_MIN_LENGTH,
   getListingTypeOptions,
@@ -104,6 +106,7 @@ export function EditListingScreen({ route }: Props) {
   const [currency, setCurrency] = useState('UAH');
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
+  const [sellerType, setSellerType] = useState<SellerType | null>(null);
   const [regionId, setRegionId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
 
@@ -133,6 +136,7 @@ export function EditListingScreen({ route }: Props) {
       setCurrency(listingResult.currency);
       setCondition(listingResult.condition);
       setIsNegotiable(listingResult.isNegotiable);
+      setSellerType(listingResult.sellerType);
       setLocationId(listingResult.locationId);
     } catch (err) {
       setLoadError(err instanceof ApiError ? err.message : 'Не вдалося завантажити оголошення.');
@@ -227,7 +231,7 @@ export function EditListingScreen({ route }: Props) {
 
   const isTitleValid = title.trim().length >= TITLE_MIN_LENGTH;
   const isDescriptionValid = description.trim().length >= DESCRIPTION_MIN_LENGTH;
-  const canSave = isTitleValid && isDescriptionValid && Boolean(locationId);
+  const canSave = isTitleValid && isDescriptionValid && Boolean(locationId) && Boolean(sellerType);
 
   async function handleSave() {
     if (!accessToken || !listing || !canSave) return;
@@ -246,6 +250,7 @@ export function EditListingScreen({ route }: Props) {
           condition: (condition as 'new' | 'used' | 'for_parts') ?? undefined,
           locationId: locationId ?? undefined,
           isNegotiable,
+          sellerType: sellerType ?? undefined,
         },
         accessToken,
       );
@@ -389,6 +394,8 @@ export function EditListingScreen({ route }: Props) {
               <Text style={styles.label}>Торг можливий</Text>
               <Switch value={isNegotiable} onValueChange={setIsNegotiable} trackColor={{ true: colors.brand[500] }} />
             </View>
+
+            <ChipSelect label="Приватні чи бізнес" options={SELLER_TYPE_OPTIONS} value={sellerType} onChange={(v) => setSellerType(v as SellerType)} />
 
             <DropdownSelect
               label="Область"

@@ -18,9 +18,11 @@ import {
   type CategorySuggestion,
   type ListingType,
   type Region,
+  type SellerType,
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
 import { AutoRenewToggle } from '@/components/listings/AutoRenewToggle';
+import { SellerTypeToggle } from '@/components/listings/SellerTypeToggle';
 import { Alert, Button, Card, Dropdown, Form, Input, LoadingState, Textarea } from '@/components/ui';
 import { getConditionOptions } from '@/lib/listing-condition';
 import { getListingTypeOptions, isJobCategory } from '@/lib/listing-type';
@@ -62,6 +64,7 @@ export default function NewListingPage() {
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [autoRenew, setAutoRenew] = useState(false);
+  const [sellerType, setSellerType] = useState<SellerType | null>(null);
   const [regions, setRegions] = useState<Region[]>([]);
   const [isLoadingRegions, setIsLoadingRegions] = useState(true);
   const [regionId, setRegionId] = useState<string | null>(null);
@@ -213,7 +216,7 @@ export default function NewListingPage() {
 
   const isTitleValid = title.trim().length >= TITLE_MIN_LENGTH;
   const isDescriptionValid = description.trim().length >= DESCRIPTION_MIN_LENGTH;
-  const canSubmit = Boolean(categoryId) && isTitleValid && isDescriptionValid && Boolean(locationId);
+  const canSubmit = Boolean(categoryId) && isTitleValid && isDescriptionValid && Boolean(locationId) && Boolean(sellerType);
 
   function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
@@ -234,6 +237,7 @@ export default function NewListingPage() {
       return;
     }
 
+    if (!sellerType) return;
     setError(null);
     if (publishNow) setIsPublishing(true);
     else setIsSubmitting(true);
@@ -250,6 +254,7 @@ export default function NewListingPage() {
           locationId: locationId ?? undefined,
           isNegotiable,
           autoRenew,
+          sellerType,
           attributes: categoryAttributes
             .filter((attr) => attributeValues[attr.id] !== undefined && attributeValues[attr.id] !== '')
             .map((attr) => ({ categoryAttributeId: attr.id, value: attributeValues[attr.id] })),
@@ -509,6 +514,12 @@ export default function NewListingPage() {
             />
             Торг можливий
           </label>
+
+          <SellerTypeToggle
+            value={sellerType}
+            onChange={setSellerType}
+            error={attemptedSubmit && !sellerType ? 'Оберіть, приватна особа ви чи бізнес' : undefined}
+          />
 
           {categoryId && (
             <AttributeFields

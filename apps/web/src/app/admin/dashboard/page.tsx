@@ -104,6 +104,10 @@ export default function AdminDashboardPage() {
                   </Badge>
                 ))}
             </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <Badge tone="neutral">Приватні: {metrics.listings.bySellerType.private}</Badge>
+              <Badge tone="info">Бізнес: {metrics.listings.bySellerType.business}</Badge>
+            </div>
           </Card>
 
           <Card>

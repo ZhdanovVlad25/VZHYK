@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, MoreThan, Repository } from 'typeorm';
 import { User } from '../users/user.entity';
 import { Listing } from '../listings/listing.entity';
-import { LISTING_STATUSES, ListingStatus } from '../listings/listing.constants';
+import { LISTING_STATUSES, ListingStatus, SELLER_TYPES, SellerType } from '../listings/listing.constants';
 import { ModerationCase } from '../moderation/moderation-case.entity';
 import { Report } from '../reports/report.entity';
 import { RiskScore } from '../risk/risk-score.entity';
@@ -11,7 +11,7 @@ import { SettingsService } from '../settings/settings.service';
 
 export interface DashboardMetrics {
   users: { total: number; active: number; blocked: number };
-  listings: { total: number; byStatus: Record<ListingStatus, number> };
+  listings: { total: number; byStatus: Record<ListingStatus, number>; bySellerType: Record<SellerType, number> };
   moderation: { pending: number; needsReview: number };
   reports: { pending: number; reviewing: number };
   riskFlaggedUsers: number;
@@ -47,6 +47,14 @@ export class DashboardService {
     );
     const byStatus = Object.fromEntries(byStatusPairs) as Record<ListingStatus, number>;
 
+    const bySellerTypePairs = await Promise.all(
+      SELLER_TYPES.map(
+        async (sellerType) =>
+          [sellerType, await this.listings.count({ where: { sellerType, deletedAt: IsNull() } })] as const,
+      ),
+    );
+    const bySellerType = Object.fromEntries(bySellerTypePairs) as Record<SellerType, number>;
+
     const [pendingCases, needsReviewCases] = await Promise.all([
       this.moderationCases.count({ where: { status: 'PENDING' } }),
       this.moderationCases.count({ where: { status: 'NEEDS_REVIEW' } }),
@@ -62,7 +70,7 @@ export class DashboardService {
 
     return {
       users: { total: totalUsers, active: activeUsers, blocked: blockedUsers },
-      listings: { total: totalListings, byStatus },
+      listings: { total: totalListings, byStatus, bySellerType },
       moderation: { pending: pendingCases, needsReview: needsReviewCases },
       reports: { pending: pendingReports, reviewing: reviewingReports },
       riskFlaggedUsers,

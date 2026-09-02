@@ -53,6 +53,11 @@ export const CONDITION_OPTIONS = [
   { value: 'for_parts', label: 'На запчастини' },
 ];
 
+export const SELLER_TYPE_OPTIONS = [
+  { value: 'private', label: 'Приватна особа' },
+  { value: 'business', label: 'Бізнес' },
+];
+
 export const TITLE_MIN_LENGTH = 5;
 export const DESCRIPTION_MIN_LENGTH = 10;
 

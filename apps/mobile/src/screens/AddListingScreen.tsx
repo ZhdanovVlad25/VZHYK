@@ -27,6 +27,7 @@ import {
   suggestCategory,
   uploadListingMedia,
   type ListingType,
+  type SellerType,
 } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { useTheme } from '../lib/theme-context';
@@ -40,6 +41,7 @@ import {
   CONDITION_OPTIONS,
   CURRENCY_OPTIONS,
   DESCRIPTION_MIN_LENGTH,
+  SELLER_TYPE_OPTIONS,
   TITLE_MIN_LENGTH,
   getListingTypeOptions,
   isJobCategory,
@@ -72,6 +74,7 @@ export function AddListingScreen() {
   const [condition, setCondition] = useState<string | null>(null);
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [autoRenew, setAutoRenew] = useState(false);
+  const [sellerType, setSellerType] = useState<SellerType | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<ImagePickerAsset[]>([]);
   const [isPickingPhoto, setIsPickingPhoto] = useState(false);
 
@@ -130,7 +133,7 @@ export function AddListingScreen() {
 
   const isTitleValid = title.trim().length >= TITLE_MIN_LENGTH;
   const isDescriptionValid = description.trim().length >= DESCRIPTION_MIN_LENGTH;
-  const canSubmit = Boolean(categoryId) && isTitleValid && isDescriptionValid && Boolean(locationId);
+  const canSubmit = Boolean(categoryId) && isTitleValid && isDescriptionValid && Boolean(locationId) && Boolean(sellerType);
 
   const showSuggestion =
     !suggestionDismissed &&
@@ -161,7 +164,7 @@ export function AddListingScreen() {
   }
 
   async function handleSubmit(publishNow: boolean) {
-    if (!accessToken || !canSubmit || !categoryId) return;
+    if (!accessToken || !canSubmit || !categoryId || !sellerType) return;
     setError(null);
     if (publishNow) setIsPublishing(true);
     else setIsSubmitting(true);
@@ -178,6 +181,7 @@ export function AddListingScreen() {
           locationId: locationId ?? undefined,
           isNegotiable,
           autoRenew,
+          sellerType,
         },
         accessToken,
       );
@@ -210,6 +214,7 @@ export function AddListingScreen() {
       setCondition(null);
       setIsNegotiable(false);
       setAutoRenew(false);
+      setSellerType(null);
       setPendingPhotos([]);
       // Alert, не setError — екран переходить на EditListing одразу, банер помилки тут ніхто б не побачив.
       if (failedPhotoCount > 0) {
@@ -389,6 +394,8 @@ export function AddListingScreen() {
           <Text style={styles.label}>Торг можливий</Text>
           <Switch value={isNegotiable} onValueChange={setIsNegotiable} trackColor={{ true: colors.brand[500] }} />
         </View>
+
+        <ChipSelect label="Приватні чи бізнес" options={SELLER_TYPE_OPTIONS} value={sellerType} onChange={(v) => setSellerType(v as SellerType)} />
 
         <AutoRenewToggle checked={autoRenew} onChange={setAutoRenew} />
 

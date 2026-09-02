@@ -16,9 +16,11 @@ import {
   LISTING_CONDITIONS,
   LISTING_CURRENCIES,
   LISTING_TYPES,
+  SELLER_TYPES,
   ListingCondition,
   ListingCurrency,
   ListingType,
+  SellerType,
 } from '../listing.constants';
 import { AttributeValueInputDto } from './attribute-value-input.dto';
 import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
@@ -60,6 +62,10 @@ export class UpdateListingDto {
   @IsOptional()
   @IsUuidLike()
   locationId?: string;
+
+  @IsOptional()
+  @IsIn(SELLER_TYPES)
+  sellerType?: SellerType;
 
   @IsOptional()
   @IsArray()
