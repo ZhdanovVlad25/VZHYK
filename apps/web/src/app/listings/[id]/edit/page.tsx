@@ -25,6 +25,7 @@ import {
   type Region,
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
+import { AutoRenewToggle } from '@/components/listings/AutoRenewToggle';
 import { Alert, Badge, Button, Card, Dropdown, ErrorState, Form, Input, LoadingState, Textarea } from '@/components/ui';
 import { formatPrice } from '@/lib/format';
 import { getConditionOptions } from '@/lib/listing-condition';
@@ -411,27 +412,20 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       {/* Термін дії — лише для ACTIVE/EXPIRED, для інших статусів expiresAt ще не заданий
           (виставляється при схваленні модерацією, moderation.service.ts). */}
       {(listing.status === 'ACTIVE' || listing.status === 'EXPIRED') && (
-        <div className="mb-6 flex flex-wrap items-center gap-3 text-sm">
-          {listing.expiresAt && (
-            <span className="text-gray-600 dark:text-gray-400">
-              {listing.status === 'EXPIRED'
-                ? 'Термін дії закінчився'
-                : `Активне до ${new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(listing.expiresAt))}`}
-            </span>
-          )}
-          <Button size="sm" variant="secondary" isLoading={isRenewing} onClick={handleRenew}>
-            Оновити
-          </Button>
-          <label className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
-            <input
-              type="checkbox"
-              checked={listing.autoRenew}
-              disabled={isSavingAutoRenew}
-              onChange={(e) => handleToggleAutoRenew(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 dark:bg-gray-800"
-            />
-            Автопродовження
-          </label>
+        <div className="mb-6 space-y-3">
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            {listing.expiresAt && (
+              <span className="text-gray-600 dark:text-gray-400">
+                {listing.status === 'EXPIRED'
+                  ? 'Термін дії закінчився'
+                  : `Активне до ${new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(listing.expiresAt))}`}
+              </span>
+            )}
+            <Button size="sm" variant="secondary" isLoading={isRenewing} onClick={handleRenew}>
+              Оновити
+            </Button>
+          </div>
+          <AutoRenewToggle checked={listing.autoRenew} disabled={isSavingAutoRenew} onChange={handleToggleAutoRenew} />
         </div>
       )}
 

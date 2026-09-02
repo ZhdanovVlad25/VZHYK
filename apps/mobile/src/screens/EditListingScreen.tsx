@@ -26,6 +26,7 @@ import {
   getListingMedia,
   getRegions,
   publishListing,
+  renewListing,
   updateListing,
   uploadListingMedia,
   type ListingType,
@@ -35,6 +36,7 @@ import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
 import { formatPrice } from '../lib/format';
 import { assetToRNFile, pickPhotos } from '../lib/pickImage';
+import { AutoRenewToggle } from '../components/AutoRenewToggle';
 import { ChipSelect } from '../components/ChipSelect';
 import { DropdownSelect } from '../components/DropdownSelect';
 import { LoadingScreen } from '../components/LoadingScreen';
@@ -91,6 +93,8 @@ export function EditListingScreen({ route }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isRenewing, setIsRenewing] = useState(false);
+  const [isSavingAutoRenew, setIsSavingAutoRenew] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [listingType, setListingType] = useState<ListingType>('sell');
@@ -194,6 +198,33 @@ export function EditListingScreen({ route }: Props) {
     }
   }
 
+  async function handleRenew() {
+    if (!accessToken) return;
+    setActionError(null);
+    setIsRenewing(true);
+    try {
+      const updated = await renewListing(listingId, accessToken);
+      setListing(updated);
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Не вдалося оновити термін дії.');
+    } finally {
+      setIsRenewing(false);
+    }
+  }
+
+  async function handleToggleAutoRenew(next: boolean) {
+    if (!accessToken || !listing) return;
+    setIsSavingAutoRenew(true);
+    try {
+      const updated = await updateListing(listingId, { autoRenew: next }, accessToken);
+      setListing(updated);
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Не вдалося зберегти автопродовження.');
+    } finally {
+      setIsSavingAutoRenew(false);
+    }
+  }
+
   const isTitleValid = title.trim().length >= TITLE_MIN_LENGTH;
   const isDescriptionValid = description.trim().length >= DESCRIPTION_MIN_LENGTH;
   const canSave = isTitleValid && isDescriptionValid && Boolean(locationId);
@@ -264,6 +295,24 @@ export function EditListingScreen({ route }: Props) {
           <Text style={styles.title}>{listing.title}</Text>
         </View>
         <Text style={styles.price}>{formatPrice(listing.price, listing.currency)}</Text>
+
+        {(listing.status === 'ACTIVE' || listing.status === 'EXPIRED') && (
+          <View style={styles.field}>
+            <View style={styles.expiryRow}>
+              {listing.expiresAt && (
+                <Text style={styles.hint}>
+                  {listing.status === 'EXPIRED'
+                    ? 'Термін дії закінчився'
+                    : `Активне до ${new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(listing.expiresAt))}`}
+                </Text>
+              )}
+              <Pressable style={styles.secondaryButton} onPress={handleRenew} disabled={isRenewing}>
+                {isRenewing ? <ActivityIndicator color={colors.accent[700]} /> : <Text style={styles.secondaryButtonText}>Оновити</Text>}
+              </Pressable>
+            </View>
+            <AutoRenewToggle checked={listing.autoRenew} disabled={isSavingAutoRenew} onChange={handleToggleAutoRenew} />
+          </View>
+        )}
 
         {actionError && (
           <View style={styles.errorBox}>
@@ -399,6 +448,7 @@ function createStyles(colors: ColorScheme) {
   field: { gap: 6 },
   label: { fontSize: 14, fontWeight: '500', color: colors.text },
   hint: { fontSize: 13, color: colors.textMuted },
+  expiryRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 8 },
   categoryValue: { color: colors.text, fontWeight: '500' },
   input: {
     backgroundColor: colors.white,

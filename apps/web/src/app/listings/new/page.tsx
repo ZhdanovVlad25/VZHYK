@@ -515,6 +515,10 @@ export default function NewListingPage() {
             />
           )}
 
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Оголошення буде активним 30 днів. Продовжити термін дії чи увімкнути автопродовження можна пізніше на сторінці оголошення.
+          </p>
+
           <div className="flex flex-wrap gap-2">
             {/* Кнопки НЕ disabled на невалідній формі (аудит 27.08: раніше клік по disabled
                 кнопці нічого не робив і не пояснював чому) — клік завжди запускає submit(),

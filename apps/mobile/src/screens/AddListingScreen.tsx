@@ -386,6 +386,10 @@ export function AddListingScreen() {
           <Switch value={isNegotiable} onValueChange={setIsNegotiable} trackColor={{ true: colors.brand[500] }} />
         </View>
 
+        <Text style={styles.hint}>
+          Оголошення буде активним 30 днів. Продовжити термін дії чи увімкнути автопродовження можна пізніше на сторінці оголошення.
+        </Text>
+
         <View style={styles.submitRow}>
           <Pressable
             style={[styles.primaryButton, styles.submitButton, !canSubmit && styles.primaryButtonDisabled]}
