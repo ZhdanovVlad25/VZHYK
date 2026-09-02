@@ -1,8 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   FlatList,
-  Image,
   Modal,
   NativeScrollEvent,
   NativeSyntheticEvent,
@@ -11,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import type { Media } from '../lib/api';
 import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
@@ -31,6 +31,13 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
   const [isZoomed, setIsZoomed] = useState(false);
   const listRef = useRef<FlatList<Media>>(null);
   const zoomListRef = useRef<FlatList<Media>>(null);
+
+  // Свайп у повноекранному перегляді був помітно повільним — кожне фото довантажувалось
+  // заново замість використання диск/пам'ять-кешу. Прогріваємо кеш одразу всіма фото
+  // оголошення (їх зазвичай небагато), а не лише тим, що зараз у в'юпорті.
+  useEffect(() => {
+    Image.prefetch(media.map((m) => m.url)).catch(() => {});
+  }, [media]);
 
   function onScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
@@ -60,7 +67,8 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
             <Image
               source={{ uri: item.url }}
               style={styles.image}
-              resizeMode="cover"
+              contentFit="cover"
+              cachePolicy="memory-disk"
               accessible
               accessibilityLabel={title ? `${title} — фото ${index + 1} з ${media.length}` : `Фото ${index + 1} з ${media.length}`}
             />
@@ -102,7 +110,8 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
                 <Image
                   source={{ uri: item.url }}
                   style={styles.zoomImage}
-                  resizeMode="contain"
+                  contentFit="contain"
+                  cachePolicy="memory-disk"
                   accessible
                   accessibilityLabel={title ? `${title} — фото ${index + 1} з ${media.length}` : `Фото ${index + 1} з ${media.length}`}
                 />

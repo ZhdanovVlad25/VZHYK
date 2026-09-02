@@ -33,19 +33,24 @@ export function AutoRenewToggle({ checked, disabled, onChange }: AutoRenewToggle
   }
 
   return (
-    <div className="relative flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-      <div className="flex-1">
-        <p className="font-medium text-gray-900 dark:text-gray-100">Автопродовження</p>
-        <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
-          {checked
-            ? 'Оголошення автоматично продовжуватиметься після закінчення терміну дії.'
-            : 'Відображення оголошення не буде автоматично продовжуватись по закінченню строку його дії.'}
-        </p>
+    // Не absolute — підказка мусить займати місце в потоці й відштовхувати кнопки
+    // "Опублікувати"/"Зберегти" нижче, інакше вона просто лягає поверх них (аудит: скріншот
+    // з мобільного показав підказку, що перекриває "Опублікувати").
+    <div className="flex flex-col gap-2">
+      <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+        <div className="flex-1">
+          <p className="font-medium text-gray-900 dark:text-gray-100">Автопродовження</p>
+          <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+            {checked
+              ? 'Оголошення автоматично продовжуватиметься після закінчення терміну дії.'
+              : 'Відображення оголошення не буде автоматично продовжуватись по закінченню строку його дії.'}
+          </p>
+        </div>
+        <Toggle checked={checked} disabled={disabled} onChange={onChange} />
       </div>
-      <Toggle checked={checked} disabled={disabled} onChange={onChange} />
 
       {showTip && (
-        <div className="absolute right-0 top-full z-10 mt-2 w-72 rounded-xl bg-brand-900 p-4 text-sm text-white shadow-lg">
+        <div className="relative rounded-xl bg-brand-900 p-4 text-sm text-white shadow-lg">
           <span className="absolute -top-1.5 right-6 h-3 w-3 rotate-45 bg-brand-900" aria-hidden="true" />
           <p>Оголошення активні протягом 30 днів, але ви можете продовжувати їх скільки завгодно.</p>
           <button

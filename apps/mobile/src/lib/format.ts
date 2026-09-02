@@ -8,7 +8,16 @@ export function formatPrice(price: number | null, currency: string): string {
 
 // Портовано з apps/web/src/lib/format.ts (аудит 27.08) — той самий баг був і тут:
 // {count} переглядів/оголошень завжди в одній формі незалежно від числа.
-const UK_PLURAL_RULES = new Intl.PluralRules('uk');
+//
+// Ліниво (не на module scope!) — new Intl.PluralRules() одразу при імпорті файла крашив
+// холодний старт у Expo Go ("[runtime not ready]: Cannot read property 'prototype' of
+// undefined"): format.ts підвантажується дуже рано в дереві імпортів, до того як Hermes-
+// підсистема Intl гарантовано готова. Побудова при першому реальному виклику це обходить.
+let ukPluralRules: Intl.PluralRules | null = null;
+function getUkPluralRules(): Intl.PluralRules {
+  if (!ukPluralRules) ukPluralRules = new Intl.PluralRules('uk');
+  return ukPluralRules;
+}
 
 /**
  * Intl.PluralRules('uk').select() дає КАТЕГОРІЮ (one/few/many/other), не форматований
@@ -17,7 +26,7 @@ const UK_PLURAL_RULES = new Intl.PluralRules('uk');
  * розбіжності між збірками.
  */
 function pluralizeUk(count: number, forms: { one: string; few: string; many: string }): string {
-  const category = UK_PLURAL_RULES.select(count);
+  const category = getUkPluralRules().select(count);
   if (category === 'one') return forms.one;
   if (category === 'few') return forms.few;
   return forms.many;

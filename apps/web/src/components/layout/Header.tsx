@@ -226,8 +226,10 @@ export function Header() {
           <div className="mt-3 flex flex-col gap-4 border-t border-gray-100 pt-3 md:hidden dark:border-gray-800">
             {/* Кабінет/обране/чат уже доступні через ProfileMenu (аватар поруч із бургером,
                 завжди видимий, коли є user) — тут навмисно не дублюємо. Тут те, чого більше
-                ніде нема на мобільному: категорії й правила. */}
-            {categories.length > 0 && (
+                ніде нема на мобільному: категорії й правила. Категорії ховаємо саме на "/" —
+                там вони вже показані плитками на самій сторінці одразу під цим drawer'ом,
+                інакше список буквально дублювався на екрані. */}
+            {categories.length > 0 && pathname !== '/' && (
               <div>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
                   Категорії
