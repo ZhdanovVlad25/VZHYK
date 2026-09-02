@@ -1,6 +1,6 @@
 import { Transform, Type } from 'class-transformer';
 import { IsIn, IsInt, IsNumber, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
-import { LISTING_CONDITIONS, ListingCondition } from '../../listings/listing.constants';
+import { LISTING_CONDITIONS, LISTING_TYPES, ListingCondition, ListingType } from '../../listings/listing.constants';
 import { SearchSort } from '../../../providers/search/search-provider.interface';
 import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
@@ -40,6 +40,10 @@ export class SearchQueryDto {
   @IsOptional()
   @IsIn(LISTING_CONDITIONS)
   condition?: ListingCondition;
+
+  @IsOptional()
+  @IsIn(LISTING_TYPES)
+  listingType?: ListingType;
 
   @IsOptional()
   @Transform(({ value }) => value === 'true' || value === true)

@@ -15,6 +15,7 @@ export class SearchService {
       priceMin: dto.priceMin,
       priceMax: dto.priceMax,
       condition: dto.condition,
+      listingType: dto.listingType,
       hasPhoto: dto.hasPhoto,
       sort: dto.sort,
       cursor: dto.cursor,

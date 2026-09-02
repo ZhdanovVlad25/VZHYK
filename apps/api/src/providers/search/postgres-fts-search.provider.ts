@@ -99,6 +99,10 @@ export class PostgresFtsSearchProvider implements SearchProvider {
       params.push(filters.condition);
       conditions.push(`l."condition" = $${params.length}`);
     }
+    if (filters.listingType) {
+      params.push(filters.listingType);
+      conditions.push(`l."listingType" = $${params.length}`);
+    }
     if (filters.hasPhoto) {
       conditions.push(`EXISTS (SELECT 1 FROM "media" m WHERE m."listingId" = l."id")`);
     }

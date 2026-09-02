@@ -12,6 +12,7 @@ export interface SearchFilters {
   priceMin?: number;
   priceMax?: number;
   condition?: string;
+  listingType?: string;
   hasPhoto?: boolean;
   sort?: SearchSort;
   cursor?: string;
