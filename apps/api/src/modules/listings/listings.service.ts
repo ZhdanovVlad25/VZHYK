@@ -167,7 +167,7 @@ export class ListingsService {
     const activeCount = await this.listings.count({
       where: { userId, status: In(ACTIVE_SLOT_STATUSES), deletedAt: IsNull() },
     });
-    const maxActive = await this.settings.getMaxActiveListingsPerUser();
+    const maxActive = user.maxActiveListingsOverride ?? (await this.settings.getMaxActiveListingsPerUser());
     if (activeCount >= maxActive) {
       throw new ForbiddenException({
         code: 'LISTING_ACTIVE_LIMIT_REACHED',

@@ -1,9 +1,10 @@
-import { Controller, Get, Ip, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Ip, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { AdminUsersService } from './admin-users.service';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { RolesGuard } from '../../shared/guards/roles.guard';
 import { Roles } from '../../shared/decorators/roles.decorator';
 import { CurrentUser, AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
+import { SetMaxActiveListingsDto } from './dto/set-max-active-listings.dto';
 
 /** docs/api.md §12 — лише admin (не moderator): блокування облікових записів — чутливіша дія за модерацію контенту. */
 @Controller('admin/users')
@@ -30,5 +31,15 @@ export class AdminUsersController {
   @Post(':id/unblock')
   unblock(@CurrentUser() actor: AuthenticatedUser, @Param('id') id: string, @Ip() ip: string) {
     return this.adminUsers.unblock(actor.id, id, ip);
+  }
+
+  @Post(':id/max-active-listings')
+  setMaxActiveListings(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: SetMaxActiveListingsDto,
+    @Ip() ip: string,
+  ) {
+    return this.adminUsers.setMaxActiveListingsOverride(actor.id, id, dto.value ?? null, ip);
   }
 }

@@ -8,13 +8,14 @@ import {
   ApiError,
   blockUser,
   getAdminUserDetail,
+  setMaxActiveListingsOverride,
   unblockUser,
   type AdminUserDetail,
   type ListingStatus,
   type ReportReason,
   type ReportStatus,
 } from '@/lib/api';
-import { Badge, Button, Card, EmptyState, ErrorState, LoadingState, type BadgeTone } from '@/components/ui';
+import { Badge, Button, Card, EmptyState, ErrorState, Input, LoadingState, type BadgeTone } from '@/components/ui';
 import { formatPrice } from '@/lib/format';
 
 const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
@@ -69,6 +70,9 @@ export default function AdminUserDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isActing, setIsActing] = useState(false);
+  const [overrideInput, setOverrideInput] = useState('');
+  const [isSavingOverride, setIsSavingOverride] = useState(false);
+  const [overrideError, setOverrideError] = useState<string | null>(null);
 
   const isAdmin = user?.role === 'admin';
 
@@ -91,6 +95,30 @@ export default function AdminUserDetailPage() {
       load();
     }
   }, [accessToken, isAdmin, load]);
+
+  useEffect(() => {
+    setOverrideInput(detail?.maxActiveListingsOverride != null ? String(detail.maxActiveListingsOverride) : '');
+  }, [detail?.maxActiveListingsOverride]);
+
+  async function handleSaveOverride() {
+    if (!accessToken || !detail) return;
+    const trimmed = overrideInput.trim();
+    const value = trimmed === '' ? null : Number(trimmed);
+    if (value !== null && (!Number.isInteger(value) || value < 1)) {
+      setOverrideError('Введіть додатне ціле число або залиште поле порожнім, щоб скинути.');
+      return;
+    }
+    setOverrideError(null);
+    setIsSavingOverride(true);
+    try {
+      const updated = await setMaxActiveListingsOverride(detail.id, value, accessToken);
+      setDetail((prev) => (prev ? { ...prev, ...updated } : prev));
+    } catch (err) {
+      setOverrideError(err instanceof ApiError ? err.message : 'Не вдалося зберегти ліміт.');
+    } finally {
+      setIsSavingOverride(false);
+    }
+  }
 
   async function handleToggleBlock() {
     if (!accessToken || !detail) return;
@@ -153,6 +181,37 @@ export default function AdminUserDetailPage() {
               >
                 {detail.status === 'blocked' ? 'Розблокувати' : 'Заблокувати'}
               </Button>
+            </div>
+          </Card>
+
+          <Card>
+            <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+              Ліміт активних оголошень
+            </h2>
+            <p className="mb-3 text-sm text-gray-600 dark:text-gray-400">
+              Типовий ліміт — 5 (налаштування <code>listing.max_active_per_user</code>). Заповни, щоб
+              підняти ліміт саме для цього продавця (напр. пілотний продавець зі Кроку 3 наповнення
+              сайту), або залиш порожнім і збережи, щоб скинути до типового.
+            </p>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-40">
+                <Input
+                  label="Індивідуальний ліміт"
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder="типовий (5)"
+                  value={overrideInput}
+                  onChange={(e) => setOverrideInput(e.target.value)}
+                  error={overrideError ?? undefined}
+                />
+              </div>
+              <Button variant="secondary" isLoading={isSavingOverride} onClick={handleSaveOverride}>
+                Зберегти
+              </Button>
+              {detail.maxActiveListingsOverride != null && (
+                <Badge tone="info">Зараз: {detail.maxActiveListingsOverride}</Badge>
+              )}
             </div>
           </Card>
 

@@ -46,6 +46,10 @@ export class User {
   @Column({ type: 'timestamptz', nullable: true })
   lastActiveAt: Date | null;
 
+  /** null = типовий ліміт (SettingsService.getMaxActiveListingsPerUser); адмін підвищує вручну для довірених/пілотних продавців (docs/decisions.md DEC-05). */
+  @Column({ type: 'int', nullable: true })
+  maxActiveListingsOverride: number | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 

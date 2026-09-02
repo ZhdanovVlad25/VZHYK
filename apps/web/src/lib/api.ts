@@ -701,6 +701,8 @@ export interface AdminUserView {
   role: string;
   status: string;
   createdAt: string;
+  /** null = типовий ліміт активних оголошень; адмін підвищує вручну для пілотних продавців. */
+  maxActiveListingsOverride: number | null;
 }
 
 export function searchAdminUsers(
@@ -758,6 +760,15 @@ export function unblockUser(
   token: string,
 ): Promise<AdminUserView> {
   return apiFetch(`/admin/users/${userId}/unblock`, { method: 'POST', token });
+}
+
+/** value: null скидає до типового ліміту (SettingsService.getMaxActiveListingsPerUser). */
+export function setMaxActiveListingsOverride(
+  userId: string,
+  value: number | null,
+  token: string,
+): Promise<AdminUserView> {
+  return apiFetch(`/admin/users/${userId}/max-active-listings`, { method: 'POST', body: { value }, token });
 }
 
 // ---- Admin: audit log ----
