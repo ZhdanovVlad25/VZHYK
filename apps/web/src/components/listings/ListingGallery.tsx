@@ -33,7 +33,7 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
 
   if (media.length === 0) {
     return (
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800 sm:aspect-square">
         <div className="flex h-full w-full items-center justify-center text-sm text-gray-400 dark:text-gray-500">Без фото</div>
       </div>
     );
@@ -43,7 +43,7 @@ export function ListingGallery({ media, title }: ListingGalleryProps) {
 
   return (
     <div>
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800">
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800 sm:aspect-square">
         <Image
           src={active.url}
           alt={`${title} — фото ${activeIndex + 1} з ${media.length}`}

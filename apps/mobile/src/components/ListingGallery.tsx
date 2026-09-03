@@ -128,7 +128,10 @@ function createStyles(colors: ColorScheme) {
   return StyleSheet.create({
   imageBox: {
     width: SCREEN_WIDTH,
-    aspectRatio: 1,
+    // 1:1 на всю ширину екрана займав майже половину видимого простору на відкритті картки
+    // (виміряно на веб-версії тієї ж галереї — 44% висоти viewport) — 4:3 нижче, лишає більше
+    // місця під назву/ціну без скролу.
+    aspectRatio: 4 / 3,
     backgroundColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
