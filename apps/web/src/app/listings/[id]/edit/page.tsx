@@ -89,6 +89,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const router = useRouter();
   const { user, isLoading: authLoading, accessToken } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const saveStatusRef = useRef<HTMLDivElement>(null);
 
   const [listing, setListing] = useState<Listing | null>(null);
   const [media, setMedia] = useState<Media[]>([]);
@@ -322,6 +323,15 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const isTitleValid = title.trim().length >= TITLE_MIN_LENGTH;
   const isDescriptionValid = description.trim().length >= DESCRIPTION_MIN_LENGTH;
   const canSave = isTitleValid && isDescriptionValid && Boolean(locationId) && Boolean(sellerType);
+
+  // Кнопка "Зберегти зміни" — внизу довгої форми, а плашка результату рендериться вгорі
+  // картки — без автоскролу користувач після кліку лишався дивитись на кнопку і не бачив,
+  // що взагалі щось відбулось (звіт тестувальника: "натиснув зберігати внизу і нічого").
+  useEffect(() => {
+    if (saveMessage || saveError) {
+      saveStatusRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [saveMessage, saveError]);
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -572,16 +582,18 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         <Card className="mb-4">
           <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Деталі оголошення</h2>
 
-          {saveMessage && (
-            <Alert tone="success" className="mb-4">
-              {saveMessage}
-            </Alert>
-          )}
-          {saveError && (
-            <Alert tone="danger" title="Помилка" className="mb-4">
-              {saveError}
-            </Alert>
-          )}
+          <div ref={saveStatusRef}>
+            {saveMessage && (
+              <Alert tone="success" className="mb-4">
+                {saveMessage}
+              </Alert>
+            )}
+            {saveError && (
+              <Alert tone="danger" title="Помилка" className="mb-4">
+                {saveError}
+              </Alert>
+            )}
+          </div>
 
           <Form ariaLabel="Редагування оголошення" onSubmit={handleSave}>
             {categoryLabel && (

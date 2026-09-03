@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -8,6 +8,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  type LayoutChangeEvent,
   Switch,
   Text,
   TextInput,
@@ -115,6 +116,8 @@ export function EditListingScreen({ route }: Props) {
   const [regionId, setRegionId] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
 
+  const scrollRef = useRef<ScrollView>(null);
+  const saveStatusY = useRef(0);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
@@ -171,6 +174,15 @@ export function EditListingScreen({ route }: Props) {
 
   const selectedRegion = useMemo(() => regions.find((r) => r.id === regionId) ?? null, [regions, regionId]);
   const citiesInRegion = selectedRegion?.cities ?? [];
+
+  // Кнопка "Зберегти зміни" — внизу довгої форми, а плашка результату рендериться вище неї —
+  // без автоскролу після сабміту юзер лишався дивитись на кнопку і не бачив жодної реакції
+  // (звіт тестувальника: "натиснув зберігати внизу і нічого").
+  useEffect(() => {
+    if (saveMessage || saveError) {
+      scrollRef.current?.scrollTo({ y: Math.max(saveStatusY.current - 16, 0), animated: true });
+    }
+  }, [saveMessage, saveError]);
 
   const isEditable = listing ? !NOT_EDITABLE_STATUSES.includes(listing.status) : false;
   const isOwner = Boolean(user) && Boolean(listing) && listing?.userId === user?.id;
@@ -353,7 +365,7 @@ export function EditListingScreen({ route }: Props) {
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.statusRow}>
           <View style={styles.statusBadge}>
             <Text style={styles.statusBadgeText}>{STATUS_LABELS[listing.status]}</Text>
@@ -433,16 +445,18 @@ export function EditListingScreen({ route }: Props) {
               </Text>
             )}
 
-            {saveMessage && (
-              <View style={styles.successBox}>
-                <Text style={styles.successText}>{saveMessage}</Text>
-              </View>
-            )}
-            {saveError && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{saveError}</Text>
-              </View>
-            )}
+            <View onLayout={(e: LayoutChangeEvent) => { saveStatusY.current = e.nativeEvent.layout.y; }}>
+              {saveMessage && (
+                <View style={styles.successBox}>
+                  <Text style={styles.successText}>{saveMessage}</Text>
+                </View>
+              )}
+              {saveError && (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{saveError}</Text>
+                </View>
+              )}
+            </View>
 
             <ChipSelect
               label="Тип оголошення"
