@@ -20,7 +20,9 @@ export default function OpengraphImage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#238A80',
+          // Темніший відтінок бренду (не той самий teal, що сам логотип) — інакше квадрат
+          // лого зливається з фоном і не читається як окрема іконка (звіт користувача).
+          background: '#0F433E',
           fontFamily: 'sans-serif',
         }}
       >
@@ -29,7 +31,7 @@ export default function OpengraphImage() {
             width: 220,
             height: 220,
             borderRadius: 44,
-            border: '6px solid rgba(255,255,255,0.25)',
+            boxShadow: '0 12px 40px rgba(0,0,0,0.35)',
             display: 'flex',
             marginBottom: 32,
           }}
