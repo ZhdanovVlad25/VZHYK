@@ -15,7 +15,7 @@ import { JsonLogger } from './shared/json-logger';
 // глобально для всього процесу, а не per-provider.
 setDefaultResultOrder('ipv4first');
 
-function resolveCorsOrigin(): boolean | string {
+function resolveCorsOrigin(): boolean | string | string[] {
   if (process.env.NODE_ENV !== 'production') {
     return true; // dev/test: довільний origin (localhost:3000, Playwright, різні порти) — зручність важливіша
   }
@@ -26,7 +26,11 @@ function resolveCorsOrigin(): boolean | string {
       "WEB_ORIGIN не задано — обов'язковий у production для звуження CORS (docs/security.md).",
     );
   }
-  return webOrigin;
+  // Кома-розділений список — потрібно на перехідний період, коли сайт доступний і зі
+  // старого Railway-домену, і з власного (vzhyk.in.ua). Одиночне значення (без коми)
+  // лишається валідним рядком, як і раніше.
+  const origins = webOrigin.split(',').map((o) => o.trim()).filter(Boolean);
+  return origins.length > 1 ? origins : origins[0];
 }
 
 async function bootstrap() {
