@@ -54,7 +54,10 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleCallback(@Req() req: Request, @Res() res: Response) {
     const tokens = await this.auth.loginWithGoogle(req.user as GoogleProfile);
-    const webOrigin = this.config.get<string>('WEB_ORIGIN') || 'http://localhost:3000';
+    // WEB_ORIGIN може містити кілька origin через кому (main.ts resolveCorsOrigin, для CORS
+    // на перехідний період зі старим Railway-доменом) — редирект бере ПЕРШИЙ, це основний,
+    // "справжній" домен сайту (vzhyk.in.ua), а не випадковий/старий.
+    const webOrigin = (this.config.get<string>('WEB_ORIGIN') || 'http://localhost:3000').split(',')[0].trim();
     const redirectUrl = new URL('/auth/google/callback', webOrigin);
     redirectUrl.searchParams.set('accessToken', tokens.accessToken);
     redirectUrl.searchParams.set('refreshToken', tokens.refreshToken);
