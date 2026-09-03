@@ -1,11 +1,12 @@
 import * as SecureStore from 'expo-secure-store';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AuthTokens,
   AuthUser,
   getMyProfile,
   loginWithGoogleIdToken as apiLoginWithGoogleIdToken,
   requestOtp as apiRequestOtp,
+  setAuthTokenHandlers,
   setUnauthorizedHandler,
   verifyOtp as apiVerifyOtp,
 } from './api';
@@ -51,12 +52,17 @@ async function readStoredAuth(): Promise<StoredAuth | null> {
 /**
  * Токен живе лише в SecureStore (шифроване сховище ОС) — той самий підхід, що
  * localStorage у web-версії (apps/web/src/lib/auth-context.tsx), просто безпечніший
- * носій. Немає /auth/refresh на бекенді в цьому зрізі — сесія природно завершується
- * через 15 хв (TTL access token), без автопродовження.
+ * носій. Access token живе 15 хв, але api.ts сам оновлює його через POST /auth/refresh
+ * при 401 (30-денний refreshToken) — юзер лишається залогіненим, поки не спливе саме
+ * refreshToken (чи не заблокують акаунт).
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<StoredAuth | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Дозволяє api.ts (поза React-деревом) завжди читати АКТУАЛЬНИЙ refreshToken з колбеку,
+  // зареєстрованого один раз.
+  const authRef = useRef(auth);
+  authRef.current = auth;
 
   useEffect(() => {
     readStoredAuth().then((stored) => {
@@ -131,6 +137,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUnauthorizedHandler(logout);
     return () => setUnauthorizedHandler(null);
   }, [logout]);
+
+  useEffect(() => {
+    setAuthTokenHandlers({
+      getRefreshToken: () => authRef.current?.refreshToken ?? null,
+      onTokensRefreshed: (accessToken, refreshToken) => {
+        setAuth((prev) => {
+          if (!prev) return prev;
+          const next = { ...prev, accessToken, refreshToken };
+          SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+          return next;
+        });
+      },
+    });
+    return () => setAuthTokenHandlers(null);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({

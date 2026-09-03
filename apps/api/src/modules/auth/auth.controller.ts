@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { RequestOtpDto } from './dto/request-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { GoogleMobileLoginDto } from './dto/google-mobile-login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from '../../shared/guards/jwt-auth.guard';
 import { CurrentUser, AuthenticatedUser } from '../../shared/decorators/current-user.decorator';
 
@@ -76,6 +77,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.auth.me(user.id);
+  }
+
+  /** Без цього access token (15 хв) визначав фактичну тривалість сесії попри 30-денний refreshToken. */
+  @Post('refresh')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  refresh(@Body() dto: RefreshTokenDto) {
+    return this.auth.refresh(dto.refreshToken);
   }
 
   /**

@@ -1,11 +1,12 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AuthUser,
   getMe,
   getMyProfile,
   requestOtp as apiRequestOtp,
+  setAuthTokenHandlers,
   setUnauthorizedHandler,
   verifyOtp as apiVerifyOtp,
 } from './api';
@@ -43,12 +44,18 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 /**
  * Токен живе лише в localStorage (без httpOnly cookie) — публічні сторінки (home/search/
  * listing detail) рендеряться на сервері анонімно, автентифіковані дані підвантажуються
- * лише в client-компонентах. Немає /auth/refresh на бекенді в цьому зрізі — сесія
- * природно завершується через 15 хв (TTL access token), без автопродовження.
+ * лише в client-компонентах. Access token живе 15 хв, але api.ts сам оновлює його через
+ * POST /auth/refresh при 401 (30-денний refreshToken) — юзер лишається залогіненим, поки
+ * не спливе саме refreshToken (чи не заблокують акаунт).
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<StoredAuth | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Дозволяє api.ts (поза React-деревом) завжди читати АКТУАЛЬНИЙ refreshToken з колбеку,
+  // зареєстрованого один раз — без цього ref довелось би пере-реєструвати handler при
+  // кожній зміні auth, що конфліктувало б із самим reload'ом токенів після refresh.
+  const authRef = useRef(auth);
+  authRef.current = auth;
 
   useEffect(() => {
     try {
@@ -132,6 +139,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUnauthorizedHandler(logout);
     return () => setUnauthorizedHandler(null);
   }, [logout]);
+
+  useEffect(() => {
+    setAuthTokenHandlers({
+      getRefreshToken: () => authRef.current?.refreshToken ?? null,
+      onTokensRefreshed: (accessToken, refreshToken) => {
+        setAuth((prev) => {
+          if (!prev) return prev;
+          const next = { ...prev, accessToken, refreshToken };
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+          return next;
+        });
+      },
+    });
+    return () => setAuthTokenHandlers(null);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({

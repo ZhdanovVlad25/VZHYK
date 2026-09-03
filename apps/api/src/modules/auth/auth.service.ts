@@ -21,6 +21,8 @@ import { SMS_PROVIDER_TOKEN, SmsProvider } from '../../providers/sms/sms-provide
 const OTP_TTL_SECONDS = 300; // 5 хв, docs/security.md §1
 const OTP_MAX_ATTEMPTS = 5;
 
+export const REFRESH_JWT_SERVICE = 'REFRESH_JWT_SERVICE';
+
 /**
  * Auth foundation: Phone OTP + Google OAuth architecture, session issuance.
  * Rate limiting (3/15хв на номер, 10/год на IP) реалізується через ThrottlerGuard
@@ -33,6 +35,7 @@ export class AuthService {
     @InjectRepository(OtpCode) private readonly otpCodes: Repository<OtpCode>,
     @InjectRepository(Profile) private readonly profiles: Repository<Profile>,
     private readonly jwt: JwtService,
+    @Inject(REFRESH_JWT_SERVICE) private readonly refreshJwt: JwtService,
     private readonly config: ConfigService,
     @Inject(SMS_PROVIDER_TOKEN) private readonly sms: SmsProvider,
   ) {}
@@ -218,10 +221,34 @@ export class AuthService {
 
     const payload = { sub: user.id, role: user.role, phone: user.phone };
     const accessToken = await this.jwt.signAsync(payload, { expiresIn: '15m' });
-    const refreshToken = await this.jwt.signAsync(payload, { expiresIn: '30d' });
-    // Продакшн: refreshToken зберігається у httpOnly secure cookie + revoke-list у Redis
-    // (docs/security.md §1) — додається разом з sessions-модулем у наступному кроці Phase 1.
+    // Окремий секрет (REFRESH_JWT_SERVICE) — інакше refreshToken пройшов би й JwtAuthGuard
+    // (той самий payload, лише довше живе), тобто працював би як access token де завгодно.
+    const refreshToken = await this.refreshJwt.signAsync(payload, { expiresIn: '30d' });
+    // Продакшн: revoke-list у Redis для дострокового відкликання (docs/security.md §1) —
+    // поки що чиста ротація без списку відкликаних: старий refreshToken просто перестає
+    // перевірятись при наступному /auth/refresh, бо клієнт вже зберіг новий.
     return { accessToken, refreshToken, user: { id: user.id, role: user.role, phone: user.phone } };
+  }
+
+  /**
+   * Access token живе лише 15 хв — без цього ендпоінта будь-яка сесія природньо
+   * закінчувалась через 15 хв бездіяльності токена попри 30-денний refreshToken, що просто
+   * лежав невикористаним у сховищі клієнта. Ротує обидва токени (issueTokens) — той самий
+   * підхід, що verifyOtp()/loginWithGoogle().
+   */
+  async refresh(refreshToken: string) {
+    let payload: { sub: string };
+    try {
+      payload = await this.refreshJwt.verifyAsync(refreshToken);
+    } catch {
+      throw new UnauthorizedException({ code: 'REFRESH_TOKEN_INVALID', message: 'Сесія застаріла, увійдіть повторно' });
+    }
+
+    const user = await this.users.findOne({ where: { id: payload.sub } });
+    if (!user) {
+      throw new UnauthorizedException({ code: 'REFRESH_TOKEN_INVALID', message: 'Сесія застаріла, увійдіть повторно' });
+    }
+    return this.issueTokens(user);
   }
 
   async me(userId: string) {

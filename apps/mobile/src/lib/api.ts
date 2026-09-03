@@ -15,12 +15,44 @@ export class ApiError extends Error {
 }
 
 /**
- * Access token живе 15 хв без автопродовження (auth-context.tsx) — рано чи пізно будь-який
- * запит поверне 401. AuthProvider підписується сюди, щоб одразу скинути стару сесію.
+ * Access token живе 15 хв — без /auth/refresh (нижче) будь-який запит рано чи пізно повернув
+ * би 401 і AuthProvider одразу скидав би сесію, попри те, що 30-денний refreshToken ще
+ * валідний. onUnauthorized лишається "останньою лінією" — спрацьовує лише якщо сам
+ * refreshToken теж уже недійсний (сплив або відкликаний блокуванням юзера).
  */
 let onUnauthorized: (() => void) | null = null;
 export function setUnauthorizedHandler(handler: (() => void) | null) {
   onUnauthorized = handler;
+}
+
+interface AuthTokenHandlers {
+  getRefreshToken: () => string | null;
+  onTokensRefreshed: (accessToken: string, refreshToken: string) => void;
+}
+let authTokenHandlers: AuthTokenHandlers | null = null;
+export function setAuthTokenHandlers(handlers: AuthTokenHandlers | null) {
+  authTokenHandlers = handlers;
+}
+
+/** Дедуп: кілька паралельних 401 не мають бити /auth/refresh кілька разів — другий виклик отримав би вже "з'їдений" ротацією refreshToken. */
+let refreshInFlight: Promise<string | null> | null = null;
+async function tryRefreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+  const refreshToken = authTokenHandlers?.getRefreshToken();
+  if (!refreshToken) return null;
+
+  refreshInFlight = (async () => {
+    try {
+      const tokens = await apiFetch<AuthTokens>('/auth/refresh', { method: 'POST', body: { refreshToken } });
+      authTokenHandlers?.onTokensRefreshed(tokens.accessToken, tokens.refreshToken);
+      return tokens.accessToken;
+    } catch {
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
 }
 
 interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
@@ -31,6 +63,7 @@ interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
 async function apiFetch<T>(
   path: string,
   options: ApiFetchOptions = {},
+  isRetryAfterRefresh = false,
 ): Promise<T> {
   const { token, body, headers, ...rest } = options;
 
@@ -51,6 +84,13 @@ async function apiFetch<T>(
   const json = await res.json().catch(() => null);
 
   if (!res.ok) {
+    if (res.status === 401 && token && !isRetryAfterRefresh) {
+      const newAccessToken = await tryRefreshAccessToken();
+      if (newAccessToken) {
+        return apiFetch<T>(path, { ...options, token: newAccessToken }, true);
+      }
+    }
+
     const err = json?.error ?? {};
     if (res.status === 401) {
       onUnauthorized?.();
