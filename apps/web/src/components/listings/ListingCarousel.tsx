@@ -15,6 +15,9 @@ const DESKTOP_PER_PAGE = 4;
 export function ListingCarousel({ items }: { items: SearchResultItem[] }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [activePage, setActivePage] = useState(0);
+  // 0..1 позиція скролу — очі-пагінація "дивляться" в бік скролу (гейміфікація за проханням:
+  // "нехай будуть як очі у вжика, рухались за об'явами коли листаєш").
+  const [scrollFraction, setScrollFraction] = useState(0);
   const pageCount = Math.max(1, Math.ceil(items.length / DESKTOP_PER_PAGE));
 
   useEffect(() => {
@@ -26,9 +29,11 @@ export function ListingCarousel({ items }: { items: SearchResultItem[] }) {
       const maxScroll = el.scrollWidth - el.clientWidth;
       if (maxScroll <= 0) {
         setActivePage(0);
+        setScrollFraction(0);
         return;
       }
       const fraction = el.scrollLeft / maxScroll;
+      setScrollFraction(fraction);
       setActivePage(Math.round(fraction * (pageCount - 1)));
     }
     el.addEventListener('scroll', onScroll, { passive: true });
@@ -86,17 +91,21 @@ export function ListingCarousel({ items }: { items: SearchResultItem[] }) {
                 // лише клікабельна зона довкола (span всередині), як ThemeToggle/LanguageToggle.
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center"
               >
+                {/* "Око вжика" — жовтий сокет (той самий highlight-400, що й лого) + чорна
+                    зіниця, яка зсувається вбік під час свайпу каруселі (та сама scrollFraction
+                    для всіх очей одразу — синхронний рух, наче вжик стежить за оголошеннями). */}
                 <span
                   aria-hidden="true"
-                  // Раніше неактивні крапки були маленькими круглими (w-2), а активна — єдина
-                  // видовжена "таблетка" (w-6) — виглядало як помилка форми серед іншого ряду
-                  // круглих крапок. Тепер усі крапки однакової форми-таблетки, розрізняються
-                  // лише кольором/насиченістю (звіт: "негарно виглядає при листанні").
                   className={cn(
-                    'h-2 w-6 rounded-full transition-colors',
-                    page === activePage ? 'bg-brand-600' : 'bg-gray-300 hover:bg-gray-400',
+                    'flex h-5 w-5 items-center justify-center rounded-md transition-colors',
+                    page === activePage ? 'bg-highlight-500' : 'bg-highlight-400/50 hover:bg-highlight-400',
                   )}
-                />
+                >
+                  <span
+                    className="block h-2 w-2 rounded-full bg-gray-900 transition-transform duration-150 ease-out"
+                    style={{ transform: `translateX(${(scrollFraction - 0.5) * 6}px)` }}
+                  />
+                </span>
               </button>
             ))}
           </div>
