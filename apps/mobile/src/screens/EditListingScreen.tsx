@@ -28,6 +28,7 @@ import {
   publishListing,
   renewListing,
   updateListing,
+  updateListingMedia,
   uploadListingMedia,
   type ListingType,
   type SellerType,
@@ -94,6 +95,7 @@ export function EditListingScreen({ route }: Props) {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [settingMainMediaId, setSettingMainMediaId] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
   const [isSavingAutoRenew, setIsSavingAutoRenew] = useState(false);
@@ -169,6 +171,20 @@ export function EditListingScreen({ route }: Props) {
 
   const isEditable = listing ? !NOT_EDITABLE_STATUSES.includes(listing.status) : false;
   const isOwner = Boolean(user) && Boolean(listing) && listing?.userId === user?.id;
+
+  async function handleSetMainMedia(mediaId: string) {
+    if (!accessToken) return;
+    setActionError(null);
+    setSettingMainMediaId(mediaId);
+    try {
+      await updateListingMedia(listingId, mediaId, { isMain: true }, accessToken);
+      setMedia((prev) => prev.map((m) => ({ ...m, isMain: m.id === mediaId })));
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Не вдалося зробити фото головним.');
+    } finally {
+      setSettingMainMediaId(null);
+    }
+  }
 
   async function choosePhotoSource() {
     setActionError(null);
@@ -329,7 +345,24 @@ export function EditListingScreen({ route }: Props) {
           <Text style={styles.label}>Фото</Text>
           <View style={styles.photoGrid}>
             {media.map((m) => (
-              <Image key={m.id} source={{ uri: m.url }} style={styles.photo} />
+              <View key={m.id} style={styles.photoWrap}>
+                <Image source={{ uri: m.url }} style={[styles.photo, m.isMain && styles.photoMain]} />
+                {m.isMain ? (
+                  <View style={styles.mainBadge}>
+                    <Text style={styles.mainBadgeText}>Головне</Text>
+                  </View>
+                ) : (
+                  <Pressable
+                    style={styles.makeMainButton}
+                    onPress={() => handleSetMainMedia(m.id)}
+                    disabled={settingMainMediaId !== null}
+                  >
+                    <Text style={styles.makeMainButtonText}>
+                      {settingMainMediaId === m.id ? '…' : 'Зробити головним'}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
             ))}
           </View>
           <Pressable style={styles.secondaryButton} onPress={choosePhotoSource} disabled={isUploading}>
@@ -473,7 +506,30 @@ function createStyles(colors: ColorScheme) {
   currencyField: { flexShrink: 0 },
   switchRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  photoWrap: { position: 'relative' },
   photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 12, backgroundColor: colors.border },
+  photoMain: { borderWidth: 2, borderColor: colors.brand[600] },
+  mainBadge: {
+    position: 'absolute',
+    left: 4,
+    top: 4,
+    backgroundColor: colors.brand[600],
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  mainBadgeText: { color: colors.buttonText, fontSize: 9, fontWeight: '700' },
+  makeMainButton: {
+    position: 'absolute',
+    left: 3,
+    right: 3,
+    bottom: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 3,
+    alignItems: 'center',
+  },
+  makeMainButtonText: { color: '#FFFFFF', fontSize: 9, fontWeight: '600', textAlign: 'center' },
   primaryButton: { backgroundColor: colors.accent[600], borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center' },
   primaryButtonDisabled: { opacity: 0.5 },
   primaryButtonText: { color: colors.buttonText, fontWeight: '600', fontSize: 15 },

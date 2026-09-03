@@ -77,6 +77,9 @@ export function AddListingScreen() {
   const [sellerType, setSellerType] = useState<SellerType | null>(null);
   const [pendingPhotos, setPendingPhotos] = useState<ImagePickerAsset[]>([]);
   const [isPickingPhoto, setIsPickingPhoto] = useState(false);
+  // Бекенд сам робить ПЕРШЕ завантажене фото головним (media.service.ts) — тож "обрати
+  // головне" тут means "завантажити це фото першим", без окремого PATCH після створення.
+  const [mainPhotoUri, setMainPhotoUri] = useState<string | null>(null);
 
   const [suggestion, setSuggestion] = useState<CategorySuggestion | null>(null);
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
@@ -161,6 +164,7 @@ export function AddListingScreen() {
 
   function removePendingPhoto(uri: string) {
     setPendingPhotos((prev) => prev.filter((p) => p.uri !== uri));
+    setMainPhotoUri((prev) => (prev === uri ? null : prev));
   }
 
   async function handleSubmit(publishNow: boolean) {
@@ -185,8 +189,14 @@ export function AddListingScreen() {
         },
         accessToken,
       );
+      const orderedPhotos = mainPhotoUri
+        ? [
+            ...pendingPhotos.filter((p) => p.uri === mainPhotoUri),
+            ...pendingPhotos.filter((p) => p.uri !== mainPhotoUri),
+          ]
+        : pendingPhotos;
       let failedPhotoCount = 0;
-      for (const asset of pendingPhotos) {
+      for (const asset of orderedPhotos) {
         await uploadListingMedia(listing.id, assetToRNFile(asset), accessToken).catch(() => {
           failedPhotoCount += 1;
         });
@@ -216,6 +226,7 @@ export function AddListingScreen() {
       setAutoRenew(false);
       setSellerType(null);
       setPendingPhotos([]);
+      setMainPhotoUri(null);
       // Alert, не setError — екран переходить на EditListing одразу, банер помилки тут ніхто б не побачив.
       if (failedPhotoCount > 0) {
         Alert.alert(
@@ -351,14 +362,26 @@ export function AddListingScreen() {
           <Text style={styles.label}>Фото</Text>
           {pendingPhotos.length > 0 && (
             <View style={styles.photoGrid}>
-              {pendingPhotos.map((asset) => (
-                <View key={asset.uri} style={styles.photoWrap}>
-                  <Image source={{ uri: asset.uri }} style={styles.photo} />
-                  <Pressable style={styles.photoRemove} onPress={() => removePendingPhoto(asset.uri)}>
-                    <Text style={styles.photoRemoveText}>×</Text>
-                  </Pressable>
-                </View>
-              ))}
+              {pendingPhotos.map((asset) => {
+                const isMain = asset.uri === mainPhotoUri || (!mainPhotoUri && pendingPhotos[0]?.uri === asset.uri);
+                return (
+                  <View key={asset.uri} style={styles.photoWrap}>
+                    <Image source={{ uri: asset.uri }} style={[styles.photo, isMain && styles.photoMain]} />
+                    <Pressable style={styles.photoRemove} onPress={() => removePendingPhoto(asset.uri)}>
+                      <Text style={styles.photoRemoveText}>×</Text>
+                    </Pressable>
+                    {isMain ? (
+                      <View style={styles.mainBadge}>
+                        <Text style={styles.mainBadgeText}>Головне</Text>
+                      </View>
+                    ) : (
+                      <Pressable style={styles.makeMainButton} onPress={() => setMainPhotoUri(asset.uri)}>
+                        <Text style={styles.makeMainButtonText}>Зробити головним</Text>
+                      </Pressable>
+                    )}
+                  </View>
+                );
+              })}
             </View>
           )}
           <Pressable style={styles.secondaryButton} onPress={handleAddPhoto} disabled={isPickingPhoto}>
@@ -488,6 +511,28 @@ function createStyles(colors: ColorScheme) {
   photoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   photoWrap: { position: 'relative' },
   photo: { width: PHOTO_SIZE, height: PHOTO_SIZE, borderRadius: 12, backgroundColor: colors.border },
+  photoMain: { borderWidth: 2, borderColor: colors.brand[600] },
+  mainBadge: {
+    position: 'absolute',
+    left: 4,
+    top: 4,
+    backgroundColor: colors.brand[600],
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  mainBadgeText: { color: colors.buttonText, fontSize: 9, fontWeight: '700' },
+  makeMainButton: {
+    position: 'absolute',
+    left: 3,
+    right: 3,
+    bottom: 3,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingVertical: 3,
+    alignItems: 'center',
+  },
+  makeMainButtonText: { color: '#FFFFFF', fontSize: 9, fontWeight: '600', textAlign: 'center' },
   photoRemove: {
     position: 'absolute',
     top: -6,

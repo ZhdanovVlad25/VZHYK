@@ -15,6 +15,7 @@ import {
   publishListing,
   renewListing,
   updateListing,
+  updateListingMedia,
   uploadListingMedia,
   type Category,
   type CategoryAttribute,
@@ -29,6 +30,7 @@ import { AttributeFields, type AttributeValues } from '@/components/listings/Att
 import { AutoRenewToggle } from '@/components/listings/AutoRenewToggle';
 import { SellerTypeToggle } from '@/components/listings/SellerTypeToggle';
 import { Alert, Badge, Button, Card, Dropdown, ErrorState, Form, Input, LoadingState, Textarea } from '@/components/ui';
+import { cn } from '@/lib/cn';
 import { formatPrice } from '@/lib/format';
 import { getConditionOptions } from '@/lib/listing-condition';
 import { getListingTypeLabel, getListingTypeOptions } from '@/lib/listing-type';
@@ -95,6 +97,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [settingMainMediaId, setSettingMainMediaId] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
   const [isSavingAutoRenew, setIsSavingAutoRenew] = useState(false);
@@ -223,6 +226,20 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function handleSetMainMedia(mediaId: string) {
+    if (!accessToken) return;
+    setActionError(null);
+    setSettingMainMediaId(mediaId);
+    try {
+      await updateListingMedia(params.id, mediaId, { isMain: true }, accessToken);
+      setMedia((prev) => prev.map((m) => ({ ...m, isMain: m.id === mediaId })));
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Не вдалося зробити фото головним.');
+    } finally {
+      setSettingMainMediaId(null);
     }
   }
 
@@ -452,13 +469,31 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         <h2 className="mb-3 text-sm font-semibold text-gray-900 dark:text-gray-100">Фото</h2>
         <div className="mb-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
           {media.map((m) => (
-            // eslint-disable-next-line @next/next/no-img-element -- presigned S3/MinIO URL
-            <img
-              key={m.id}
-              src={m.url}
-              alt=""
-              className="aspect-square w-full rounded-xl border border-gray-200 object-cover dark:border-gray-700"
-            />
+            <div key={m.id} className="relative">
+              {/* eslint-disable-next-line @next/next/no-img-element -- presigned S3/MinIO URL */}
+              <img
+                src={m.url}
+                alt=""
+                className={cn(
+                  'aspect-square w-full rounded-xl border object-cover',
+                  m.isMain ? 'border-2 border-brand-600 dark:border-brand-400' : 'border-gray-200 dark:border-gray-700',
+                )}
+              />
+              {m.isMain ? (
+                <span className="absolute left-1 top-1 rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow">
+                  Головне
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleSetMainMedia(m.id)}
+                  disabled={settingMainMediaId !== null}
+                  className="absolute inset-x-1 bottom-1 rounded-lg bg-black/60 px-1.5 py-1 text-[10px] font-medium text-white hover:bg-black/75 disabled:opacity-50"
+                >
+                  {settingMainMediaId === m.id ? '…' : 'Зробити головним'}
+                </button>
+              )}
+            </div>
           ))}
         </div>
         {/* Нативна кнопка file-інпуту показує текст мовою браузера (не контролюється CSS/HTML) —

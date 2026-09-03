@@ -356,6 +356,16 @@ export function getListingMedia(id: string): Promise<Media[]> {
   return apiFetch(`/listings/${id}/media`);
 }
 
+/** isMain: true — робить це фото головним (бекенд сам знімає isMain з решти фото оголошення). */
+export function updateListingMedia(
+  listingId: string,
+  mediaId: string,
+  dto: { isMain?: boolean; sortOrder?: number },
+  token: string,
+): Promise<Media> {
+  return apiFetch(`/listings/${listingId}/media/${mediaId}`, { method: 'PATCH', body: dto, token });
+}
+
 export function search(
   params: SearchParams,
   revalidate?: number,

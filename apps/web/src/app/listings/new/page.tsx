@@ -24,6 +24,7 @@ import { AttributeFields, type AttributeValues } from '@/components/listings/Att
 import { AutoRenewToggle } from '@/components/listings/AutoRenewToggle';
 import { SellerTypeToggle } from '@/components/listings/SellerTypeToggle';
 import { Alert, Button, Card, Dropdown, Form, Input, LoadingState, Textarea } from '@/components/ui';
+import { cn } from '@/lib/cn';
 import { getConditionOptions } from '@/lib/listing-condition';
 import { getListingTypeOptions, isJobCategory } from '@/lib/listing-type';
 
@@ -76,6 +77,9 @@ export default function NewListingPage() {
   // звільняючи старі; для кількох реальних фото з телефону (по кілька МБ кожне) це
   // швидко з'їдало пам'ять і на iOS Safari могло вбивати вкладку під час набору тексту).
   const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
+  // Бекенд сам робить ПЕРШЕ завантажене фото головним (media.service.ts) — тож "обрати
+  // головне" тут means "завантажити це фото першим", без окремого PATCH після створення.
+  const [mainPhotoIndex, setMainPhotoIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -226,6 +230,11 @@ export default function NewListingPage() {
 
   function removePendingPhoto(index: number) {
     setPendingPhotos((prev) => prev.filter((_, i) => i !== index));
+    setMainPhotoIndex((prev) => {
+      if (index < prev) return prev - 1;
+      if (index === prev) return 0;
+      return prev;
+    });
   }
 
   async function submit(publishNow: boolean) {
@@ -261,8 +270,12 @@ export default function NewListingPage() {
         },
         accessToken,
       );
+      const orderedPhotos =
+        mainPhotoIndex > 0
+          ? [pendingPhotos[mainPhotoIndex], ...pendingPhotos.filter((_, i) => i !== mainPhotoIndex)]
+          : pendingPhotos;
       let failedPhotoCount = 0;
-      for (const file of pendingPhotos) {
+      for (const file of orderedPhotos) {
         await uploadListingMedia(listing.id, file, accessToken).catch(() => {
           failedPhotoCount += 1;
         });
@@ -470,7 +483,10 @@ export default function NewListingPage() {
                     <img
                       src={photoPreviewUrls[index]}
                       alt=""
-                      className="h-full w-full rounded-xl border border-gray-200 object-cover dark:border-gray-700"
+                      className={cn(
+                        'h-full w-full rounded-xl border object-cover',
+                        index === mainPhotoIndex ? 'border-2 border-brand-600 dark:border-brand-400' : 'border-gray-200 dark:border-gray-700',
+                      )}
                     />
                     <button
                       type="button"
@@ -484,6 +500,19 @@ export default function NewListingPage() {
                     >
                       ×
                     </button>
+                    {index === mainPhotoIndex ? (
+                      <span className="absolute left-1 top-1 rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow">
+                        Головне
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setMainPhotoIndex(index)}
+                        className="absolute inset-x-1 bottom-1 rounded-lg bg-black/60 px-1.5 py-1 text-[10px] font-medium text-white hover:bg-black/75"
+                      >
+                        Зробити головним
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
