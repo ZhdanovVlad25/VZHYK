@@ -22,6 +22,7 @@ import {
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
 import { AutoRenewToggle } from '@/components/listings/AutoRenewToggle';
+import { ModerationSubmittedOverlay } from '@/components/listings/ModerationSubmittedOverlay';
 import { SellerTypeToggle } from '@/components/listings/SellerTypeToggle';
 import { Alert, Button, Card, Dropdown, Form, Input, LoadingState, Textarea } from '@/components/ui';
 import { cn } from '@/lib/cn';
@@ -85,6 +86,7 @@ export default function NewListingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submittedListingId, setSubmittedListingId] = useState<string | null>(null);
   // Раніше "Опублікувати" на порожній Категорії/Області/Місті просто нічого не робила
   // (disabled-кнопка без пояснення) — аудит 27.08 знайшов це як критичну знахідку.
   // Тепер кнопка завжди клікабельна, а перша спроба сабміту вмикає видимі помилки
@@ -310,7 +312,15 @@ export default function NewListingPage() {
         );
       }
       if (publishError) window.alert(publishError);
-      router.push(`/listings/${listing.id}/edit`);
+
+      // Повноекранне підтвердження лише коли реально дійшло до модерації (publishNow, без
+      // publishError і без allPhotosFailed) — "Зберегти як чернетку" чи невдала публікація
+      // нікуди на модерацію не відправляють, там одразу редагування, як і раніше.
+      if (publishNow && !publishError && !allPhotosFailed) {
+        setSubmittedListingId(listing.id);
+      } else {
+        router.push(`/listings/${listing.id}/edit`);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не вдалося створити оголошення. Спробуйте ще раз.');
     } finally {
@@ -326,6 +336,12 @@ export default function NewListingPage() {
 
   if (authLoading || categoryTree === null) {
     return <LoadingState label="Завантаження…" />;
+  }
+
+  if (submittedListingId) {
+    return (
+      <ModerationSubmittedOverlay onContinue={() => router.push(`/listings/${submittedListingId}/edit`)} />
+    );
   }
 
   return (

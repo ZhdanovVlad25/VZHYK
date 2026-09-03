@@ -29,6 +29,7 @@ import {
 } from '@/lib/api';
 import { AttributeFields, type AttributeValues } from '@/components/listings/AttributeFields';
 import { AutoRenewToggle } from '@/components/listings/AutoRenewToggle';
+import { ModerationSubmittedOverlay } from '@/components/listings/ModerationSubmittedOverlay';
 import { SellerTypeToggle } from '@/components/listings/SellerTypeToggle';
 import { Alert, Badge, Button, Card, Dropdown, ErrorState, Form, Input, LoadingState, Textarea } from '@/components/ui';
 import { cn } from '@/lib/cn';
@@ -102,6 +103,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [settingMainMediaId, setSettingMainMediaId] = useState<string | null>(null);
   const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showModerationOverlay, setShowModerationOverlay] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
   const [isSavingAutoRenew, setIsSavingAutoRenew] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -286,6 +288,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
        */
       await publishListing(params.id, accessToken);
       await load();
+      setShowModerationOverlay(true);
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Не вдалося опублікувати оголошення.');
     } finally {
@@ -469,7 +472,11 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
+    <>
+      {showModerationOverlay && (
+        <ModerationSubmittedOverlay onContinue={() => setShowModerationOverlay(false)} />
+      )}
+      <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="mb-4 flex items-center gap-2">
         <Badge tone={listing.status === 'DRAFT' ? 'neutral' : listing.status === 'ACTIVE' ? 'success' : 'warning'}>
           {STATUS_LABELS[listing.status] ?? listing.status}
@@ -706,6 +713,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
           Опублікувати
         </Button>
       )}
-    </div>
+      </div>
+    </>
   );
 }
