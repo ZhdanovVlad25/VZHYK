@@ -88,9 +88,13 @@ export function ListingCarousel({ items }: { items: SearchResultItem[] }) {
               >
                 <span
                   aria-hidden="true"
+                  // Раніше неактивні крапки були маленькими круглими (w-2), а активна — єдина
+                  // видовжена "таблетка" (w-6) — виглядало як помилка форми серед іншого ряду
+                  // круглих крапок. Тепер усі крапки однакової форми-таблетки, розрізняються
+                  // лише кольором/насиченістю (звіт: "негарно виглядає при листанні").
                   className={cn(
-                    'h-2 rounded-full transition-all',
-                    page === activePage ? 'w-6 bg-brand-600' : 'w-2 bg-gray-300 hover:bg-gray-400',
+                    'h-2 w-6 rounded-full transition-colors',
+                    page === activePage ? 'bg-brand-600' : 'bg-gray-300 hover:bg-gray-400',
                   )}
                 />
               </button>
