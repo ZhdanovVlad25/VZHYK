@@ -723,6 +723,7 @@ export interface ModerationQueueItem {
     userId: string;
     status: ListingStatus;
     ownerRiskScore: number;
+    mainMediaUrl: string | null;
   } | null;
 }
 

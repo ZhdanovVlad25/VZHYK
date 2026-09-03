@@ -212,15 +212,22 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
-    if (!files || files.length === 0 || !accessToken) return;
+    if (!files || files.length === 0 || !accessToken || !listing) return;
     setActionError(null);
     setIsUploading(true);
+    const wasActive = listing.status === 'ACTIVE';
     try {
       for (const file of Array.from(files)) {
         await uploadListingMedia(params.id, file, accessToken);
       }
-      const fresh = await getListingMedia(params.id);
+      const [fresh, freshListing] = await Promise.all([getListingMedia(params.id), getListing(params.id, accessToken)]);
       setMedia(fresh);
+      // Нове фото на ACTIVE оголошенні теж повертає на модерацію (media.service.ts upload()) —
+      // без перезавантаження listing тут статус-бейдж лишався б застарілим до наступного refresh.
+      setListing(freshListing);
+      if (wasActive && freshListing.status === 'PENDING_MODERATION') {
+        setSaveMessage('Фото додано. Оголошення знову на модерації.');
+      }
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Не вдалося завантажити фото.');
     } finally {
@@ -318,8 +325,15 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         },
         accessToken,
       );
+      // Бекенд сам повертає ACTIVE → PENDING_MODERATION при зміні контенту (listings.service.ts
+      // update()) — тут лише пояснюємо це в повідомленні, щоб зміна статусу не виглядала збоєм.
+      const wentBackToModeration = listing.status === 'ACTIVE' && updated.status === 'PENDING_MODERATION';
       setListing(updated);
-      setSaveMessage('Збережено');
+      setSaveMessage(
+        wentBackToModeration
+          ? 'Збережено. Оголошення знову на модерації — зміни в опублікованому оголошенні перевіряються повторно.'
+          : 'Збережено',
+      );
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : 'Не вдалося зберегти зміни.');
     } finally {

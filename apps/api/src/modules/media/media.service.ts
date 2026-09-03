@@ -25,7 +25,7 @@ export class MediaService {
     listingId: string,
     file: Express.Multer.File | undefined,
   ): Promise<Media & { url: string }> {
-    await this.listings.findOwnedListing(userId, listingId);
+    const listing = await this.listings.findOwnedListing(userId, listingId);
     this.assertValidImage(file);
     const validFile = file as Express.Multer.File;
 
@@ -49,6 +49,8 @@ export class MediaService {
         sortOrder: existingCount,
       }),
     );
+
+    await this.listings.returnToModerationIfActive(listing);
 
     return { ...saved, url: stored.url };
   }

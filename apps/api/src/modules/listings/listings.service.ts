@@ -101,6 +101,23 @@ export class ListingsService {
     const priceChanging = dto.price !== undefined && dto.price !== listing.price;
     const oldPrice = listing.price;
 
+    // Редагування контенту вже ACTIVE оголошення повертає його на модерацію — інакше продавець
+    // міг би непомітно підмінити опис/фото/ціну вже після схвалення. autoRenew навмисно НЕ
+    // рахується контентом (лише перемикач, викликається окремим PATCH без інших полів).
+    const isContentEdit = [
+      dto.listingType,
+      dto.title,
+      dto.description,
+      dto.price,
+      dto.currency,
+      dto.isNegotiable,
+      dto.condition,
+      dto.locationId,
+      dto.sellerType,
+      dto.attributes,
+    ].some((v) => v !== undefined);
+    const needsReModeration = listing.status === 'ACTIVE' && isContentEdit;
+
     Object.assign(listing, {
       listingType: dto.listingType ?? listing.listingType,
       title: dto.title ?? listing.title,
@@ -114,7 +131,16 @@ export class ListingsService {
       sellerType: dto.sellerType ?? listing.sellerType,
     });
 
+    if (needsReModeration) {
+      listing.status = 'PENDING_MODERATION';
+    }
+
     const saved = await this.saveWithConflictHandling(listing);
+
+    if (needsReModeration) {
+      await this.search.remove(saved.id);
+      await this.moderation.createCaseForListing(saved);
+    }
 
     if (priceChanging) {
       await this.priceHistory.save(
@@ -132,6 +158,19 @@ export class ListingsService {
       : await this.attributeValues.find({ where: { listingId: saved.id } });
 
     return { ...saved, attributes };
+  }
+
+  /**
+   * Нове фото на ACTIVE оголошенні — той самий принцип, що редагування контенту в update():
+   * не можна непомітно підмінити фото вже після схвалення модератором. Викликається з
+   * MediaService.upload() (окремий ендпоінт, не проходить через update()/UpdateListingDto).
+   */
+  async returnToModerationIfActive(listing: Listing): Promise<void> {
+    if (listing.status !== 'ACTIVE') return;
+    listing.status = 'PENDING_MODERATION';
+    const saved = await this.saveWithConflictHandling(listing);
+    await this.search.remove(saved.id);
+    await this.moderation.createCaseForListing(saved);
   }
 
   async publish(userId: string, id: string): Promise<Listing> {

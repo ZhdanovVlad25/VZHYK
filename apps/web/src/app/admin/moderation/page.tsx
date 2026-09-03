@@ -130,19 +130,33 @@ export default function ModerationQueuePage() {
                 </div>
 
                 {item.listing ? (
-                  <>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Link href={listingDetailHref(item.listing)} className="font-medium text-gray-900 hover:underline dark:text-gray-100">
-                        {item.listing.title}
-                      </Link>
-                      {item.listing.ownerRiskScore > 0 && (
-                        <Badge tone={item.listing.ownerRiskScore >= 15 ? 'danger' : 'warning'}>
-                          Risk score: {item.listing.ownerRiskScore}
-                        </Badge>
-                      )}
+                  <div className="flex gap-3">
+                    {item.listing.mainMediaUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- presigned S3/MinIO URL, коротко живе (не варто next/image кешу)
+                      <img
+                        src={item.listing.mainMediaUrl}
+                        alt=""
+                        className="h-16 w-16 shrink-0 rounded-lg border border-gray-200 object-cover dark:border-gray-700"
+                      />
+                    ) : (
+                      <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[11px] text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500">
+                        Без фото
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Link href={listingDetailHref(item.listing)} className="font-medium text-gray-900 hover:underline dark:text-gray-100">
+                          {item.listing.title}
+                        </Link>
+                        {item.listing.ownerRiskScore > 0 && (
+                          <Badge tone={item.listing.ownerRiskScore >= 15 ? 'danger' : 'warning'}>
+                            Risk score: {item.listing.ownerRiskScore}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{formatPrice(item.listing.price, item.listing.currency)}</p>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{formatPrice(item.listing.price, item.listing.currency)}</p>
-                  </>
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-400 dark:text-gray-500">Оголошення видалено</p>
                 )}

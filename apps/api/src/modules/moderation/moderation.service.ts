@@ -1,11 +1,13 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ModerationCase } from './moderation-case.entity';
 import { Listing } from '../listings/listing.entity';
+import { Media } from '../media/media.entity';
 import { BANNED_WORDS, ModerationCaseStatus, ModerationDecision } from './moderation.constants';
 import { LISTING_EXPIRY_DAYS } from '../listings/listing.constants';
 import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-provider.interface';
+import { STORAGE_PROVIDER, StorageProvider } from '../../providers/storage/storage-provider.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 import { RiskService } from '../risk/risk.service';
 import { SettingsService } from '../settings/settings.service';
@@ -21,6 +23,8 @@ export interface ModerationQueueItem extends Omit<ModerationCase, 'listing'> {
     status: Listing['status'];
     /** docs/moderation.md §4 — "Модератор бачить: ... risk score". 0, якщо сигналів ще не було. */
     ownerRiskScore: number;
+    /** Модератор має бачити фото просто в черзі, без переходу на сторінку оголошення. null — фото ще не завантажили. */
+    mainMediaUrl: string | null;
   } | null;
 }
 
@@ -34,7 +38,9 @@ export class ModerationService {
   constructor(
     @InjectRepository(ModerationCase) private readonly cases: Repository<ModerationCase>,
     @InjectRepository(Listing) private readonly listings: Repository<Listing>,
+    @InjectRepository(Media) private readonly media: Repository<Media>,
     @Inject(SEARCH_PROVIDER) private readonly search: SearchProvider,
+    @Inject(STORAGE_PROVIDER) private readonly storage: StorageProvider,
     private readonly auditLog: AuditLogService,
     private readonly risk: RiskService,
     private readonly settings: SettingsService,
@@ -83,6 +89,28 @@ export class ModerationService {
     const byId = new Map(listings.map((l) => [l.id, l]));
     const riskScores = await this.risk.getScores([...new Set(listings.map((l) => l.userId))]);
 
+    // Одна фотка на оголошення (isMain першою) — той самий batch-патерн, що
+    // allParticipants у ChatsService.listChats(), уникає N+1 на список довжини черги.
+    const mediaRows = await this.media.find({
+      where: { listingId: In(listingIds) },
+      order: { isMain: 'DESC', sortOrder: 'ASC' },
+    });
+    const mainMediaByListingId = new Map<string, Media>();
+    for (const row of mediaRows) {
+      // listingId nullable на рівні entity (медіа чат-повідомлень) — тут завжди не-null,
+      // бо запит вище фільтрує саме за listingId IN (...).
+      if (row.listingId && !mainMediaByListingId.has(row.listingId)) {
+        mainMediaByListingId.set(row.listingId, row);
+      }
+    }
+    const mainMediaUrlByListingId = new Map(
+      await Promise.all(
+        [...mainMediaByListingId.entries()].map(
+          async ([listingId, m]) => [listingId, await this.storage.getSignedUrl(m.storageKey)] as const,
+        ),
+      ),
+    );
+
     return cases.map((c) => {
       const listing = byId.get(c.listingId);
       return {
@@ -96,6 +124,7 @@ export class ModerationService {
               userId: listing.userId,
               status: listing.status,
               ownerRiskScore: riskScores.get(listing.userId) ?? 0,
+              mainMediaUrl: mainMediaUrlByListingId.get(listing.id) ?? null,
             }
           : null,
       };

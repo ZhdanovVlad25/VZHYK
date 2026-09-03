@@ -187,16 +187,24 @@ export function EditListingScreen({ route }: Props) {
   }
 
   async function choosePhotoSource() {
+    if (!listing) return;
     setActionError(null);
     setIsUploading(true);
+    const wasActive = listing.status === 'ACTIVE';
     try {
       const assets = await pickPhotos();
       if (assets.length === 0 || !accessToken) return;
       for (const asset of assets) {
         await uploadListingMedia(listingId, assetToRNFile(asset), accessToken).catch(() => null);
       }
-      const fresh = await getListingMedia(listingId);
+      const [fresh, freshListing] = await Promise.all([getListingMedia(listingId), getListing(listingId, accessToken)]);
       setMedia(fresh);
+      // Нове фото на ACTIVE оголошенні повертає його на модерацію (media.service.ts upload()) —
+      // без перезавантаження listing статус-бейдж лишався б застарілим.
+      setListing(freshListing);
+      if (wasActive && freshListing.status === 'PENDING_MODERATION') {
+        setSaveMessage('Фото додано. Оголошення знову на модерації.');
+      }
     } catch (err) {
       setActionError(err instanceof ApiError || err instanceof Error ? err.message : 'Не вдалося завантажити фото.');
     } finally {
@@ -270,8 +278,15 @@ export function EditListingScreen({ route }: Props) {
         },
         accessToken,
       );
+      // Бекенд сам повертає ACTIVE → PENDING_MODERATION при зміні контенту (listings.service.ts
+      // update()) — тут лише пояснюємо це в повідомленні, щоб зміна статусу не виглядала збоєм.
+      const wentBackToModeration = listing.status === 'ACTIVE' && updated.status === 'PENDING_MODERATION';
       setListing(updated);
-      setSaveMessage('Збережено');
+      setSaveMessage(
+        wentBackToModeration
+          ? 'Збережено. Оголошення знову на модерації — зміни в опублікованому оголошенні перевіряються повторно.'
+          : 'Збережено',
+      );
     } catch (err) {
       setSaveError(err instanceof ApiError ? err.message : 'Не вдалося зберегти зміни.');
     } finally {
