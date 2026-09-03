@@ -129,9 +129,9 @@ function createStyles(colors: ColorScheme) {
   imageBox: {
     width: SCREEN_WIDTH,
     // 1:1 на всю ширину екрана займав майже половину видимого простору на відкритті картки
-    // (виміряно на веб-версії тієї ж галереї — 44% висоти viewport) — 4:3 нижче, лишає більше
-    // місця під назву/ціну без скролу.
-    aspectRatio: 4 / 3,
+    // (виміряно на веб-версії тієї ж галереї — 44% висоти viewport). 4:3 (0.75) все одно
+    // сприймався користувачем як завеликий на живому сайті — 16:9 (0.5625) нижче.
+    aspectRatio: 16 / 9,
     backgroundColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
