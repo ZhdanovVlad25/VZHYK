@@ -119,7 +119,11 @@ export default function MyListingsPage() {
             const href = listingDetailHref(listing);
             return (
               <li key={listing.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                {/* flex-col на мобільному — на вузькому екрані flex-wrap двох нерівних блоків
+                    (контент + кнопки) розкладав їх у непередбачуваному порядку (кнопки могли
+                    опинитись між бейджем і текстом дати). Зверху вниз завжди: бейдж → назва →
+                    ціна, потім кнопки окремим рядком на всю ширину. */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="mb-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                       <Badge tone={STATUS_TONES[listing.status]}>{STATUS_LABELS[listing.status]}</Badge>
@@ -133,14 +137,15 @@ export default function MyListingsPage() {
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-2">
-                    <Link href={href}>
-                      <Button size="sm" variant="secondary">
+                    <Link href={href} className="flex-1 sm:flex-none">
+                      <Button size="sm" variant="secondary" className="w-full sm:w-auto">
                         {listing.status === 'DRAFT' ? 'Редагувати' : 'Переглянути'}
                       </Button>
                     </Link>
                     <Button
                       size="sm"
                       variant="danger"
+                      className="flex-1 sm:flex-none"
                       isLoading={deletingId === listing.id}
                       onClick={() => handleDelete(listing)}
                     >

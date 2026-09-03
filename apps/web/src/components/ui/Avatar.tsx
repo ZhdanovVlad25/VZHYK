@@ -34,7 +34,7 @@ export function Avatar({ url, size = 'md', className }: AvatarProps) {
     <div
       aria-hidden="true"
       className={cn(
-        'flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-gray-400',
+        'flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 text-gray-400 dark:bg-gray-700 dark:text-gray-500',
         sizeClasses[size],
         className,
       )}
