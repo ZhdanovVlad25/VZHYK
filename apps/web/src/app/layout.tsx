@@ -108,7 +108,17 @@ export default function RootLayout({
                 контенту (min-height:auto за замовчуванням) і сторінки типу /chats з overflow-y-auto
                 всередині не отримують реальних меж для скролу.
               */}
-              <main id="main-content" className="flex min-h-0 flex-1 flex-col">
+              {/*
+                [&>*]:w-full — кожна сторінка рендерить свій корінь як "mx-auto max-w-Nxl ...".
+                Flex-item з margin:auto по cross-axis (тут — горизонтальній, бо flex-col) НЕ
+                стретчиться під align-items:stretch (це в спеці: auto-margin відключає stretch),
+                тож без явної ширини сторінка лягала за власним fit-content-розміром замість
+                100% контейнера — на мобільному це виявлялось як горизонтальний overflow і
+                "роздутий" вигляд усього контенту (сторінка фактично рендерилась на ~870px
+                замість реальних ~375px viewport). Знайдено через звіт "фото величезне", що
+                насправді було симптомом цього, а не самої галереї.
+              */}
+              <main id="main-content" className="flex min-h-0 flex-1 flex-col [&>*]:w-full">
                 {children}
               </main>
               <Footer />
