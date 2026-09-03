@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -20,6 +21,7 @@ import {
   Listing,
   Media,
   Region,
+  deleteListingMedia,
   getCategoryTree,
   getCities,
   getListing,
@@ -96,6 +98,7 @@ export function EditListingScreen({ route }: Props) {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [settingMainMediaId, setSettingMainMediaId] = useState<string | null>(null);
+  const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
   const [isSavingAutoRenew, setIsSavingAutoRenew] = useState(false);
@@ -183,6 +186,33 @@ export function EditListingScreen({ route }: Props) {
       setActionError(err instanceof ApiError ? err.message : 'Не вдалося зробити фото головним.');
     } finally {
       setSettingMainMediaId(null);
+    }
+  }
+
+  function confirmDeleteMedia(mediaId: string) {
+    if (media.length <= 1) {
+      setActionError('Не можна видалити останнє фото — оголошенню потрібне хоча б одне.');
+      return;
+    }
+    Alert.alert('Видалити фото?', 'Цю дію не можна скасувати.', [
+      { text: 'Скасувати', style: 'cancel' },
+      { text: 'Видалити', style: 'destructive', onPress: () => handleDeleteMedia(mediaId) },
+    ]);
+  }
+
+  async function handleDeleteMedia(mediaId: string) {
+    if (!accessToken) return;
+    setActionError(null);
+    setDeletingMediaId(mediaId);
+    try {
+      await deleteListingMedia(listingId, mediaId, accessToken);
+      // Бекенд сам призначає нове головне фото, якщо видалене було головним
+      // (media.service.ts remove()) — рефетч замість локального патчу, щоб не гадати, яке саме.
+      setMedia(await getListingMedia(listingId));
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Не вдалося видалити фото.');
+    } finally {
+      setDeletingMediaId(null);
     }
   }
 
@@ -377,6 +407,14 @@ export function EditListingScreen({ route }: Props) {
                     </Text>
                   </Pressable>
                 )}
+                <Pressable
+                  style={styles.deletePhotoButton}
+                  onPress={() => confirmDeleteMedia(m.id)}
+                  disabled={deletingMediaId !== null}
+                  accessibilityLabel="Видалити фото"
+                >
+                  <Text style={styles.deletePhotoButtonText}>{deletingMediaId === m.id ? '…' : '✕'}</Text>
+                </Pressable>
               </View>
             ))}
           </View>
@@ -545,6 +583,18 @@ function createStyles(colors: ColorScheme) {
     alignItems: 'center',
   },
   makeMainButtonText: { color: '#FFFFFF', fontSize: 9, fontWeight: '600', textAlign: 'center' },
+  deletePhotoButton: {
+    position: 'absolute',
+    right: 3,
+    top: 3,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deletePhotoButtonText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
   primaryButton: { backgroundColor: colors.accent[600], borderRadius: 12, paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center' },
   primaryButtonDisabled: { opacity: 0.5 },
   primaryButtonText: { color: colors.buttonText, fontWeight: '600', fontSize: 15 },

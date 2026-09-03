@@ -404,6 +404,10 @@ export function updateListingMedia(
   return apiFetch(`/listings/${listingId}/media/${mediaId}`, { method: 'PATCH', body: dto, token });
 }
 
+export function deleteListingMedia(listingId: string, mediaId: string, token: string): Promise<void> {
+  return apiFetch(`/listings/${listingId}/media/${mediaId}`, { method: 'DELETE', token });
+}
+
 export function search(params: SearchParams): Promise<SearchResult> {
   const qs = new URLSearchParams();
   if (params.q) qs.set('q', params.q);

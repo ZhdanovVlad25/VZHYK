@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import {
   ApiError,
+  deleteListingMedia,
   getCategoryAttributes,
   getCategoryTree,
   getCities,
@@ -98,6 +99,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [settingMainMediaId, setSettingMainMediaId] = useState<string | null>(null);
+  const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
   const [isSavingAutoRenew, setIsSavingAutoRenew] = useState(false);
@@ -247,6 +249,27 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       setActionError(err instanceof ApiError ? err.message : 'Не вдалося зробити фото головним.');
     } finally {
       setSettingMainMediaId(null);
+    }
+  }
+
+  async function handleDeleteMedia(mediaId: string) {
+    if (!accessToken) return;
+    if (media.length <= 1) {
+      setActionError('Не можна видалити останнє фото — оголошенню потрібне хоча б одне.');
+      return;
+    }
+    if (!window.confirm('Видалити це фото?')) return;
+    setActionError(null);
+    setDeletingMediaId(mediaId);
+    try {
+      await deleteListingMedia(params.id, mediaId, accessToken);
+      // Бекенд сам призначає нове головне фото, якщо видалене було головним
+      // (media.service.ts remove()) — рефетч замість локального патчу, щоб не гадати, яке саме.
+      setMedia(await getListingMedia(params.id));
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Не вдалося видалити фото.');
+    } finally {
+      setDeletingMediaId(null);
     }
   }
 
@@ -507,6 +530,15 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
                   {settingMainMediaId === m.id ? '…' : 'Зробити головним'}
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => handleDeleteMedia(m.id)}
+                disabled={deletingMediaId !== null}
+                aria-label="Видалити фото"
+                className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs font-bold text-white hover:bg-red-600 disabled:opacity-50"
+              >
+                {deletingMediaId === m.id ? '…' : '✕'}
+              </button>
             </div>
           ))}
         </div>

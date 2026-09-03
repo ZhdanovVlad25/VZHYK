@@ -132,6 +132,16 @@ export class MediaService {
 
     await this.storage.delete(item.storageKey);
     await this.media.remove(item);
+
+    // Видалили головне фото — без цього listingId лишався б без жодного isMain=true рядка,
+    // і картка/пошук (postgres-fts-search.provider.ts мейн-фото-підзапит) показували б "Без фото"
+    // попри те, що інші фото ще лишились.
+    if (item.isMain) {
+      const next = await this.media.findOne({ where: { listingId }, order: { sortOrder: 'ASC' } });
+      if (next) {
+        await this.media.update(next.id, { isMain: true });
+      }
+    }
   }
 
   private async getOwnedMediaOrThrow(listingId: string, mediaId: string): Promise<Media> {
