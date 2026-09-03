@@ -26,21 +26,27 @@ export default function OpengraphImage() {
       >
         <div
           style={{
-            width: 180,
-            height: 180,
-            borderRadius: 36,
-            background: '#238A80',
+            width: 220,
+            height: 220,
+            borderRadius: 44,
             border: '6px solid rgba(255,255,255,0.25)',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             marginBottom: 32,
           }}
         >
-          <div style={{ display: 'flex', gap: 16 }}>
-            <div style={{ width: 56, height: 56, borderRadius: 14, background: '#F0C94A' }} />
-            <div style={{ width: 56, height: 56, borderRadius: 14, background: '#F0C94A' }} />
-          </div>
+          <svg width="220" height="220" viewBox="0 0 200 200">
+            <rect x="0" y="0" width="200" height="200" rx="40" fill="#238A80" />
+            <rect x="25" y="45" width="70" height="70" rx="16" fill="#F0C94A" />
+            <rect x="105" y="45" width="70" height="70" rx="16" fill="#F0C94A" />
+            <circle cx="65" cy="90" r="14" fill="#1A1A1A" />
+            <circle cx="61" cy="86" r="3" fill="#FFFFFF" />
+            <circle cx="135" cy="90" r="14" fill="#1A1A1A" />
+            <circle cx="131" cy="86" r="3" fill="#FFFFFF" />
+            <ellipse cx="100" cy="140" rx="16" ry="10" fill="#1A1A1A" />
+            <circle cx="94" cy="136" r="3" fill="#FFFFFF" />
+            <rect x="0" y="170" width="200" height="14" fill="#E13B32" />
+            <rect x="0" y="184" width="200" height="16" fill="#9B241D" />
+          </svg>
         </div>
         <div style={{ display: 'flex', fontSize: 96, fontWeight: 800, color: '#fff' }}>Вжик</div>
         <div style={{ display: 'flex', fontSize: 34, color: 'rgba(255,255,255,0.9)', marginTop: 12 }}>
