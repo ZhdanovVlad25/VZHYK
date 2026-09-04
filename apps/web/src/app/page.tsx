@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getCategoryTree, search } from '@/lib/api';
 import { ListingCard } from '@/components/listings/ListingCard';
-import { EmptyState } from '@/components/ui';
+import { Button, EmptyState } from '@/components/ui';
 
 // Ротація світлих tint-фонів з палітри маскота (docs/design.md) — без цього
 // категорії губилися на білому тлі суцільною сірою рамкою.
@@ -70,6 +70,17 @@ export default async function HomePage() {
             {listings.items.map((item) => (
               <ListingCard key={item.id} item={item} />
             ))}
+          </div>
+        )}
+
+        {/* Головна показує лише перші 15 — посилання "Переглянути всі" вгорі секції легко
+            проґавити, не долистуючи назад. Та сама дія внизу, одразу після того, як
+            користувач долистав сітку до кінця (звіт: "не поміщаються всі оголошення"). */}
+        {listings.items.length > 0 && (
+          <div className="mt-6 flex justify-center">
+            <Link href="/search?sort=newest">
+              <Button variant="secondary">Переглянути всі оголошення →</Button>
+            </Link>
           </div>
         )}
       </section>

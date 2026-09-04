@@ -125,6 +125,19 @@ export function HomeScreen() {
             )}
           </>
         }
+        // Посилання "Переглянути всі" у ListHeaderComponent легко проґавити, не гортаючи
+        // назад — той самий CTA внизу списку, одразу після того, як юзер долистав сітку
+        // до кінця (звіт: "не поміщаються всі оголошення").
+        ListFooterComponent={
+          listings && listings.length > 0 ? (
+            <Pressable
+              style={styles.viewAllFooterButton}
+              onPress={() => navigation.navigate('Search', {})}
+            >
+              <Text style={styles.viewAllFooterText}>{t('viewAll')}</Text>
+            </Pressable>
+          ) : null
+        }
       />
     </View>
   );
@@ -144,6 +157,16 @@ function createStyles(colors: ColorScheme) {
     chipText: { fontWeight: '500', fontSize: 13 },
     newestHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12, marginTop: 4 },
     viewAll: { color: colors.accent[600], fontSize: 14, fontWeight: '700' },
+    viewAllFooterButton: {
+      alignSelf: 'center',
+      marginTop: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+    },
+    viewAllFooterText: { color: colors.accent[600], fontSize: 14, fontWeight: '700' },
     errorBox: { marginTop: 24, alignItems: 'center', gap: 10 },
     errorText: { color: colors.accent[600], textAlign: 'center' },
     retryButton: { backgroundColor: colors.accent[600], borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
