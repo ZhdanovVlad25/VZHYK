@@ -685,6 +685,10 @@ export interface Report {
   description: string | null;
   status: ReportStatus;
   createdAt: string;
+  /** Лише в адмінському списку (getAdminReports) — людинозрозуміла ціль скарги. */
+  targetLabel?: string;
+  /** Лише в адмінському списку — пов'язане оголошення (сама ціль LISTING, або CHAT про оголошення). */
+  targetListingId?: string | null;
 }
 
 export interface CreateReportDto {

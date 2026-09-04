@@ -1,10 +1,12 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, IsNull, Repository } from 'typeorm';
+import { FindOptionsWhere, In, IsNull, Repository } from 'typeorm';
 import { Report } from './report.entity';
 import { Listing } from '../listings/listing.entity';
 import { User } from '../users/user.entity';
 import { ChatParticipant } from '../chat/chat-participant.entity';
+import { Chat } from '../chat/chat.entity';
+import { Profile } from '../profiles/profile.entity';
 import { CreateReportDto } from './dto/create-report.dto';
 import { ReportResolutionStatus } from './dto/resolve-report.dto';
 import { REPORT_STATUSES, REPORT_TARGET_TYPES, ReportStatus, ReportTargetType } from './report.constants';
@@ -14,6 +16,13 @@ import { RateLimitService } from '../../shared/rate-limit.service';
 
 const REPORT_CREATE_DAILY_LIMIT = 10; // docs/security.md §6
 
+/** targetLabel — людинозрозуміла ціль скарги (назва оголошення / ім'я юзера / учасники+оголошення чату).
+ * targetListingId — пов'язане оголошення, коли є (сама ціль LISTING, або CHAT про оголошення) — щоб фронт міг дати посилання. */
+export interface AdminReportItem extends Report {
+  targetLabel: string;
+  targetListingId: string | null;
+}
+
 /** docs/api.md §10 Reports — створення скарги + перелік своїх. Admin-черга — нижче (§12). */
 @Injectable()
 export class ReportsService {
@@ -22,6 +31,8 @@ export class ReportsService {
     @InjectRepository(Listing) private readonly listings: Repository<Listing>,
     @InjectRepository(User) private readonly users: Repository<User>,
     @InjectRepository(ChatParticipant) private readonly chatParticipants: Repository<ChatParticipant>,
+    @InjectRepository(Chat) private readonly chats: Repository<Chat>,
+    @InjectRepository(Profile) private readonly profiles: Repository<Profile>,
     private readonly risk: RiskService,
     private readonly auditLog: AuditLogService,
     private readonly rateLimit: RateLimitService,
@@ -65,8 +76,14 @@ export class ReportsService {
     return this.reports.find({ where: { reporterId }, order: { createdAt: 'DESC' } });
   }
 
-  /** docs/api.md §12 GET /admin/reports — обробка скарг (moderator/admin). */
-  async adminList(status?: string, targetType?: string): Promise<Report[]> {
+  /**
+   * docs/api.md §12 GET /admin/reports — обробка скарг (moderator/admin).
+   * targetId сам по собі (голий UUID) нічого не каже модератору, на яке саме оголошення чи
+   * чат подана скарга — довантажуємо людинозрозумілий targetLabel (+ targetListingId для
+   * CHAT, щоб можна було перейти хоча б на пов'язане оголошення, раз прямого перегляду
+   * чужого чату в адмінці нема).
+   */
+  async adminList(status?: string, targetType?: string): Promise<AdminReportItem[]> {
     const where: FindOptionsWhere<Report> = {};
 
     if (status) {
@@ -85,7 +102,78 @@ export class ReportsService {
       where.targetType = normalized as ReportTargetType;
     }
 
-    return this.reports.find({ where, order: { createdAt: 'DESC' }, take: 100 });
+    const reports = await this.reports.find({ where, order: { createdAt: 'DESC' }, take: 100 });
+    return this.attachTargetLabels(reports);
+  }
+
+  private async attachTargetLabels(reports: Report[]): Promise<AdminReportItem[]> {
+    if (reports.length === 0) return [];
+
+    const listingIds = new Set<string>();
+    const userIds = new Set<string>();
+    const chatIds = new Set<string>();
+    for (const r of reports) {
+      if (r.targetType === 'LISTING') listingIds.add(r.targetId);
+      if (r.targetType === 'USER') userIds.add(r.targetId);
+      if (r.targetType === 'CHAT') chatIds.add(r.targetId);
+    }
+
+    const chatRows = chatIds.size
+      ? await this.chats.find({ where: { id: In([...chatIds]) } })
+      : [];
+    for (const chat of chatRows) {
+      if (chat.listingId) listingIds.add(chat.listingId);
+    }
+
+    const participantRows = chatIds.size
+      ? await this.chatParticipants.find({ where: { chatId: In([...chatIds]) } })
+      : [];
+    for (const p of participantRows) userIds.add(p.userId);
+
+    const [listingRows, userRows, profileRows] = await Promise.all([
+      listingIds.size ? this.listings.find({ where: { id: In([...listingIds]) } }) : [],
+      userIds.size ? this.users.find({ where: { id: In([...userIds]) } }) : [],
+      userIds.size ? this.profiles.find({ where: { userId: In([...userIds]) } }) : [],
+    ]);
+
+    const listingTitleById = new Map(listingRows.map((l) => [l.id, l.title]));
+    const userById = new Map(userRows.map((u) => [u.id, u]));
+    const profileById = new Map(profileRows.map((p) => [p.userId, p]));
+    const chatById = new Map(chatRows.map((c) => [c.id, c]));
+    const participantsByChatId = new Map<string, string[]>();
+    for (const p of participantRows) {
+      const list = participantsByChatId.get(p.chatId) ?? [];
+      list.push(p.userId);
+      participantsByChatId.set(p.chatId, list);
+    }
+
+    function userLabel(userId: string): string {
+      const profile = profileById.get(userId);
+      if (profile?.displayName) return profile.displayName;
+      const user = userById.get(userId);
+      return user?.phone ?? user?.email ?? `${userId.slice(0, 8)}…`;
+    }
+
+    return reports.map((r): AdminReportItem => {
+      if (r.targetType === 'LISTING') {
+        const title = listingTitleById.get(r.targetId);
+        return { ...r, targetLabel: title ?? 'Оголошення видалено', targetListingId: r.targetId };
+      }
+      if (r.targetType === 'USER') {
+        return { ...r, targetLabel: userLabel(r.targetId), targetListingId: null };
+      }
+      // CHAT
+      const chat = chatById.get(r.targetId);
+      const listingTitle = chat?.listingId ? listingTitleById.get(chat.listingId) : null;
+      const participantIds = participantsByChatId.get(r.targetId) ?? [];
+      const names = participantIds.map(userLabel).join(' ↔ ');
+      const label = [listingTitle ? `про «${listingTitle}»` : null, names || null].filter(Boolean).join(', ');
+      return {
+        ...r,
+        targetLabel: label || 'Чат видалено',
+        targetListingId: chat?.listingId ?? null,
+      };
+    });
   }
 
   /**

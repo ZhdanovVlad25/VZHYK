@@ -161,12 +161,22 @@ export default function AdminReportsPage() {
 
                 <p className="text-sm text-gray-700 dark:text-gray-300">
                   {TARGET_TYPE_LABELS[item.targetType]}:{' '}
-                  {item.targetType === 'LISTING' ? (
-                    <Link href={`/listings/${item.targetId}`} className="text-brand-600 hover:underline dark:text-brand-400">
-                      {item.targetId.slice(0, 8)}
+                  {item.targetType === 'USER' ? (
+                    <Link
+                      href={`/admin/users/${item.targetId}`}
+                      className="text-brand-600 hover:underline dark:text-brand-400"
+                    >
+                      {item.targetLabel ?? item.targetId.slice(0, 8)}
+                    </Link>
+                  ) : item.targetListingId ? (
+                    <Link
+                      href={`/listings/${item.targetListingId}`}
+                      className="text-brand-600 hover:underline dark:text-brand-400"
+                    >
+                      {item.targetLabel ?? item.targetId.slice(0, 8)}
                     </Link>
                   ) : (
-                    <span className="text-gray-500 dark:text-gray-400">{item.targetId.slice(0, 8)}</span>
+                    <span className="text-gray-500 dark:text-gray-400">{item.targetLabel ?? item.targetId.slice(0, 8)}</span>
                   )}
                 </p>
                 {item.description && <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{item.description}</p>}
