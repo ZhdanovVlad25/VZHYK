@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import {
   ApiError,
+  deleteAvatar,
   getCities,
   getMyProfile,
   linkPhone,
@@ -35,6 +36,7 @@ export default function ProfilePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isDeletingAvatar, setIsDeletingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
 
   // "Додати номер телефону" — окремий міні-флоу поза основною формою (не хочемо, щоб Enter
@@ -98,6 +100,21 @@ export default function ProfilePage() {
     } finally {
       setIsUploadingAvatar(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  async function handleDeleteAvatar() {
+    if (!accessToken) return;
+    setAvatarError(null);
+    setIsDeletingAvatar(true);
+    try {
+      const updated = await deleteAvatar(accessToken);
+      setProfile(updated);
+      setAvatarUrl(updated.avatarUrl);
+    } catch (err) {
+      setAvatarError(err instanceof ApiError ? err.message : 'Не вдалося видалити фото.');
+    } finally {
+      setIsDeletingAvatar(false);
     }
   }
 
@@ -199,18 +216,33 @@ export default function ProfilePage() {
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={handleAvatarSelected}
-              disabled={isUploadingAvatar}
+              disabled={isUploadingAvatar || isDeletingAvatar}
               className="sr-only"
             />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              isLoading={isUploadingAvatar}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {profile?.avatarUrl ? 'Змінити фото' : 'Додати фото'}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                isLoading={isUploadingAvatar}
+                disabled={isDeletingAvatar}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {profile?.avatarUrl ? 'Змінити фото' : 'Додати фото'}
+              </Button>
+              {profile?.avatarUrl && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  isLoading={isDeletingAvatar}
+                  disabled={isUploadingAvatar}
+                  onClick={handleDeleteAvatar}
+                >
+                  Видалити
+                </Button>
+              )}
+            </div>
             {avatarError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{avatarError}</p>}
           </div>
         </div>

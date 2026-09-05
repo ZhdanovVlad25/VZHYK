@@ -393,6 +393,10 @@ export async function uploadAvatar(file: File, token: string): Promise<MyProfile
   return json as MyProfile;
 }
 
+export function deleteAvatar(token: string): Promise<MyProfile> {
+  return apiFetch('/profiles/me/avatar', { method: 'DELETE', token });
+}
+
 export function getListingMedia(id: string): Promise<Media[]> {
   return apiFetch(`/listings/${id}/media`);
 }

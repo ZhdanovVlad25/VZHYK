@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { ProfilesService } from './profiles.service';
@@ -43,6 +43,11 @@ export class ProfilesController {
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_MEDIA_SIZE_BYTES } }))
   uploadAvatar(@CurrentUser() user: AuthenticatedUser, @UploadedFile() file: Express.Multer.File | undefined) {
     return this.profiles.updateAvatar(user.id, file);
+  }
+
+  @Delete('me/avatar')
+  removeAvatar(@CurrentUser() user: AuthenticatedUser) {
+    return this.profiles.removeAvatar(user.id);
   }
 
   @Get('me/listings')

@@ -114,6 +114,19 @@ export class ProfilesService {
     return { ...saved, avatarUrl: uploaded.url };
   }
 
+  /** Прибрати фото профілю без заміни — до цього єдиним шляхом "позбутись" аватарки була заміна на іншу. */
+  async removeAvatar(userId: string): Promise<MyProfileView> {
+    const profile = await this.getOrCreateOwn(userId);
+
+    if (profile.avatarMediaId) {
+      await this.media.removeOwned(userId, profile.avatarMediaId).catch(() => undefined);
+      profile.avatarMediaId = null;
+      await this.profiles.save(profile);
+    }
+
+    return { ...profile, avatarUrl: null };
+  }
+
   async getMemberSince(userId: string): Promise<Date> {
     const user = await this.users.findOne({ where: { id: userId, deletedAt: IsNull() } });
     if (!user) {

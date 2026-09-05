@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -17,7 +18,18 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { ApiError, City, MyProfile, ProfileStats, getCities, getMyProfile, getMyProfileStats, updateProfile, uploadAvatar } from '../lib/api';
+import {
+  ApiError,
+  City,
+  MyProfile,
+  ProfileStats,
+  deleteAvatar,
+  getCities,
+  getMyProfile,
+  getMyProfileStats,
+  updateProfile,
+  uploadAvatar,
+} from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { useLanguage } from '../lib/language-context';
 import { useTheme } from '../lib/theme-context';
@@ -95,6 +107,7 @@ export function ProfileScreen() {
   const [editBio, setEditBio] = useState('');
   const [editCityId, setEditCityId] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isDeletingAvatar, setIsDeletingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSaveMessage, setProfileSaveMessage] = useState<string | null>(null);
@@ -170,6 +183,30 @@ export function ProfileScreen() {
     } finally {
       setIsUploadingAvatar(false);
     }
+  }
+
+  function handleAvatarDelete() {
+    Alert.alert('Видалити фото профілю?', undefined, [
+      { text: 'Скасувати', style: 'cancel' },
+      {
+        text: 'Видалити',
+        style: 'destructive',
+        onPress: async () => {
+          if (!accessToken) return;
+          setAvatarError(null);
+          setIsDeletingAvatar(true);
+          try {
+            const updated = await deleteAvatar(accessToken);
+            setProfile(updated);
+            setAvatarUrl(updated.avatarUrl);
+          } catch (err) {
+            setAvatarError(err instanceof ApiError ? err.message : 'Не вдалося видалити фото.');
+          } finally {
+            setIsDeletingAvatar(false);
+          }
+        },
+      },
+    ]);
   }
 
   async function handleSaveProfile() {
@@ -278,13 +315,24 @@ export function ProfileScreen() {
 
           <View style={styles.avatarRow}>
             <Avatar url={avatarUrl} size="lg" />
-            <Pressable style={styles.avatarButton} onPress={handleAvatarPick} disabled={isUploadingAvatar}>
-              {isUploadingAvatar ? (
-                <ActivityIndicator color={colors.accent[700]} size="small" />
-              ) : (
-                <Text style={styles.avatarButtonText}>{profile?.avatarUrl ? 'Змінити фото' : 'Додати фото'}</Text>
+            <View style={styles.avatarButtonGroup}>
+              <Pressable style={styles.avatarButton} onPress={handleAvatarPick} disabled={isUploadingAvatar || isDeletingAvatar}>
+                {isUploadingAvatar ? (
+                  <ActivityIndicator color={colors.accent[700]} size="small" />
+                ) : (
+                  <Text style={styles.avatarButtonText}>{profile?.avatarUrl ? 'Змінити фото' : 'Додати фото'}</Text>
+                )}
+              </Pressable>
+              {profile?.avatarUrl && (
+                <Pressable style={styles.avatarButton} onPress={handleAvatarDelete} disabled={isUploadingAvatar || isDeletingAvatar}>
+                  {isDeletingAvatar ? (
+                    <ActivityIndicator color={colors.accent[600]} size="small" />
+                  ) : (
+                    <Text style={styles.avatarDeleteButtonText}>Видалити</Text>
+                  )}
+                </Pressable>
               )}
-            </Pressable>
+            </View>
           </View>
           {avatarError && <Text style={styles.errorTextInline}>{avatarError}</Text>}
 
@@ -540,6 +588,7 @@ function createStyles(colors: ColorScheme) {
     consentText: { flex: 1, fontSize: 13, color: colors.text, lineHeight: 18 },
     consentLink: { color: colors.accent[600], fontWeight: '600' },
     avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+    avatarButtonGroup: { flexDirection: 'row', gap: 8 },
     statsCard: {
       backgroundColor: colors.white,
       borderWidth: 1,
@@ -569,6 +618,7 @@ function createStyles(colors: ColorScheme) {
       backgroundColor: colors.white,
     },
     avatarButtonText: { color: colors.accent[700], fontWeight: '600', fontSize: 13 },
+    avatarDeleteButtonText: { color: colors.accent[600], fontWeight: '600', fontSize: 13 },
     errorTextInline: { color: colors.accent[600], fontSize: 12 },
     successBox: {
       backgroundColor: colors.brand[50],
