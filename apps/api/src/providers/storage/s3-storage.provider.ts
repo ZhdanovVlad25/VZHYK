@@ -11,7 +11,13 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { FileMeta, StorageProvider, StoredFile } from './storage-provider.interface';
 
-const SIGNED_URL_TTL_SECONDS = 3600;
+// Головна/категорії — ISR (revalidate=60, apps/web/src/app/page.tsx), але це лише МІНІМУМ
+// свіжості ПІД ЧАС трафіку: stale-while-revalidate віддає стару закешовану сторінку (зі старими
+// підписаними URL) тому самому візиту, що й запускає фоновий regen, а без відвідувань довше за
+// TTL сторінка просто лишається як є як завгодно довго. При колишньому TTL=3600 (1г) перший
+// візит після паузи в трафіку бачив фото, що не вантажаться (410/403 на прострочений підпис) —
+// саме тому оновлення сторінки "лагодило" (регенерація вже встигала завершитись до перезаходу).
+const SIGNED_URL_TTL_SECONDS = 86_400;
 
 /** S3-compatible реалізація (AWS S3 / MinIO для dev) — конфіг через S3_* env (.env.example). */
 @Injectable()
