@@ -34,6 +34,21 @@ const STATUS_FILTER_OPTIONS = [
   ...(Object.keys(STATUS_LABELS) as ModerationCaseStatus[]).map((s) => ({ value: s, label: STATUS_LABELS[s] })),
 ];
 
+const OPEN_STATUSES = new Set<ModerationCaseStatus>(['PENDING', 'NEEDS_REVIEW']);
+
+/** У фільтрі "Усі" бекенд віддає найстаріше спочатку без огляду на статус — давно вирішені
+ * справи опинялись вище нових, ще не розглянутих (звіт: "ті, що треба підтвердити, мають
+ * бути вище"). Тут же й НЕ ламає фільтр за конкретним статусом — тоді всі елементи в одній
+ * групі, сортування зводиться до звичайного за датою. */
+function sortQueueForDisplay(items: ModerationQueueItem[]): ModerationQueueItem[] {
+  return [...items].sort((a, b) => {
+    const aOpen = OPEN_STATUSES.has(a.status) ? 0 : 1;
+    const bOpen = OPEN_STATUSES.has(b.status) ? 0 : 1;
+    if (aOpen !== bOpen) return aOpen - bOpen;
+    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+  });
+}
+
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(
     new Date(iso),
@@ -119,7 +134,7 @@ export default function ModerationQueuePage() {
         <EmptyState title="Черга порожня" description="Немає справ у цьому статусі." />
       ) : (
         <ul className="flex flex-col gap-3">
-          {items.map((item) => {
+          {sortQueueForDisplay(items).map((item) => {
             const isOpen = item.status === 'PENDING' || item.status === 'NEEDS_REVIEW';
             return (
               <li key={item.id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-900">
