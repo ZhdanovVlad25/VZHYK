@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
 
 export type AvatarSize = 'sm' | 'md' | 'lg';
@@ -18,13 +21,23 @@ export interface AvatarProps {
 
 /** Фото профілю, якщо є (`url`), інакше нейтральна сіра заглушка-силует (голова+плечі) — без кольору/ініціалів, щоб не виглядало як реальний контакт. */
 export function Avatar({ url, size = 'md', className }: AvatarProps) {
-  if (url) {
+  // Підписаний URL міг протухнути або вказувати на видалений файл — без цього браузер
+  // замість заглушки-силуету показував би власну іконку "зламане зображення".
+  const [failed, setFailed] = useState(false);
+
+  // Новий URL (напр. після повторного завантаження фото) заслуговує нової спроби.
+  useEffect(() => {
+    setFailed(false);
+  }, [url]);
+
+  if (url && !failed) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- presigned S3/MinIO URL, той самий патерн, що фото оголошень
       <img
         src={url}
         alt=""
         aria-hidden="true"
+        onError={() => setFailed(true)}
         className={cn('shrink-0 rounded-full object-cover', sizeClasses[size], className)}
       />
     );
