@@ -58,15 +58,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   authRef.current = auth;
 
   useEffect(() => {
+    let stored: StoredAuth | null = null;
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        setAuth(JSON.parse(raw) as StoredAuth);
+        stored = JSON.parse(raw) as StoredAuth;
+        setAuth(stored);
       }
     } catch {
       window.localStorage.removeItem(STORAGE_KEY);
     }
     setIsLoading(false);
+
+    // avatarUrl — підписаний S3/R2 URL, дійсний 24 години (s3-storage.provider.ts
+    // SIGNED_URL_TTL_SECONDS); кешоване в localStorage значення протухає за довшої сесії,
+    // тому при відновленні сесії підвантажуємо свіжий профіль замість довіри кешу.
+    if (stored) {
+      getMyProfile(stored.accessToken)
+        .then((profile) => {
+          setAuth((prev) => {
+            if (!prev) return prev;
+            const next = { ...prev, displayName: profile.displayName ?? null, avatarUrl: profile.avatarUrl ?? null };
+            window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+            return next;
+          });
+        })
+        .catch(() => undefined);
+    }
   }, []);
 
   const requestOtp = useCallback(async (phone: string) => {
