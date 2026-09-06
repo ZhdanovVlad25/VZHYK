@@ -45,4 +45,10 @@ describe('RateLimitService', () => {
 
     await expect(service.consume('key-1', 5, 60)).resolves.toBeUndefined();
   });
+
+  it('fail-open: не кидає 500, коли Redis недоступний', async () => {
+    redis.incr.mockRejectedValue(new Error('connection refused'));
+
+    await expect(service.consume('key-1', 5, 60)).resolves.toBeUndefined();
+  });
 });

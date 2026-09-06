@@ -1,6 +1,7 @@
-import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../providers/redis.provider';
+import { captureException } from './sentry';
 
 /**
  * docs/security.md §6 — per-user ліміти (listings create, chat messages, reports),
@@ -12,13 +13,29 @@ import { REDIS_CLIENT } from '../providers/redis.provider';
  */
 @Injectable()
 export class RateLimitService {
+  private readonly logger = new Logger(RateLimitService.name);
+
   constructor(@Inject(REDIS_CLIENT) private readonly redis: Redis) {}
 
-  /** Кидає 429 RATE_LIMIT_EXCEEDED, якщо ключ перевищив ліміт у поточному вікні. */
+  /**
+   * Кидає 429 RATE_LIMIT_EXCEEDED, якщо ключ перевищив ліміт у поточному вікні.
+   *
+   * Fail-open при недоступності Redis: раніше будь-який збій INCR/EXPIRE (напр. рестарт
+   * Redis на Railway) пропускав необроблений виняток аж до AllExceptionsFilter — юзер
+   * бачив "Внутрішня помилка сервера" замість того, щоб просто створити оголошення. Ліміт
+   * на зловживання не настільки критичний, щоб через нього падав основний функціонал.
+   */
   async consume(key: string, limit: number, windowSeconds: number): Promise<void> {
-    const count = await this.redis.incr(key);
-    if (count === 1) {
-      await this.redis.expire(key, windowSeconds);
+    let count: number;
+    try {
+      count = await this.redis.incr(key);
+      if (count === 1) {
+        await this.redis.expire(key, windowSeconds);
+      }
+    } catch (err) {
+      this.logger.warn(`Redis недоступний для rate-limit "${key}", пропускаємо перевірку: ${(err as Error).message}`);
+      captureException(err);
+      return;
     }
     if (count > limit) {
       throw new HttpException(
