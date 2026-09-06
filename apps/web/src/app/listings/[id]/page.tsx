@@ -147,12 +147,28 @@ export default async function ListingDetailPage({
     ? [mainMedia, ...media.filter((m) => m.id !== mainMedia.id)]
     : media;
 
+  // Google Search Console (структуровані дані Product): бренд заповнюємо лише коли він
+  // реально відомий (категорія має атрибут "brand", і продавець його вказав) — не
+  // вигадуємо GTIN/бренд для товарів, де його немає. hasMerchantReturnPolicy — чесно
+  // "повернення не передбачено": Вжик — C2C-дошка оголошень без сервісу повернень
+  // (на відміну від review/aggregateRating — тих не додаємо, бо оголошення не має власних
+  // відгуків, лише окремий рейтинг продавця, і видавати його за рейтинг товару було б
+  // недостовірними структурованими даними).
+  const brandAttribute = categoryAttributes.find((attr) => attr.key === 'brand');
+  const brandValue = brandAttribute
+    ? listing.attributes.find((attr) => attr.categoryAttributeId === brandAttribute.id)?.value
+    : undefined;
+
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: listing.title,
     description: listing.description ?? undefined,
     image: mainMedia ? [mainMedia.url] : undefined,
+    brand:
+      typeof brandValue === 'string' && brandValue
+        ? { '@type': 'Brand', name: brandValue }
+        : undefined,
     offers: {
       '@type': 'Offer',
       price: listing.price ?? undefined,
@@ -162,6 +178,10 @@ export default async function ListingDetailPage({
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
       url: `${SITE_URL}${buildListingHref(listing.id, listing.title)}`,
+      hasMerchantReturnPolicy: {
+        '@type': 'MerchantReturnPolicy',
+        returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted',
+      },
     },
   };
 
