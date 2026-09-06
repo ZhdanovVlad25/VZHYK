@@ -13,6 +13,17 @@ export default defineRailway(() => {
   const api = service("api", {
     source: github("ZhdanovVlad25/VZHYK"),
     build: { builder: "DOCKERFILE", dockerfilePath: "apps/api/Dockerfile" },
+    // Раніше міграції не запускались автоматично ніде (docker-compose.prod.yml — окремий
+    // self-hosted шлях, не цей Railway-деплой) — нова міграція, змержена в main, просто
+    // ніколи не діставалась до продакшн-БД, попри задеплоєний код, що вже на неї покладався
+    // (напр. AddJobListingTypes1754802700000: без прогону enum listing_type_enum лишався
+    // старим, і публікація будь-якого оголошення в "Робота" падала з 500). preDeployCommand
+    // виконується в тому самому контейнері з тим самим env (DATABASE_URL і т.д.) ПЕРЕД тим,
+    // як новий реліз почне приймати трафік. Проти dist/database/data-source.js (не
+    // src/... через typeorm-ts-node-commonjs) — production-стадія Dockerfile копіює лише
+    // dist, без вихідників/ts-node; перевірено живцем локально проти чистого Postgres 16
+    // тим самим `npx typeorm migration:run -d dist/database/data-source.js`.
+    preDeployCommand: "npx typeorm migration:run -d dist/database/data-source.js",
     env: {
       NODE_ENV: "production",
       DATABASE_URL: Postgres.env.DATABASE_URL,
