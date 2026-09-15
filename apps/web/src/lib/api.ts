@@ -892,6 +892,7 @@ export interface AdminUpdateListingDto {
   description?: string;
   price?: number;
   currency?: string;
+  categoryId?: string;
 }
 
 export function searchAdminListings(

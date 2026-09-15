@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import {
   ApiError,
+  getCategoryTree,
   listingDetailHref,
   searchAdminListings,
   updateAdminListing,
+  type Category,
   type Listing,
   type ListingStatus,
 } from '@/lib/api';
@@ -64,11 +66,23 @@ function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso));
 }
 
+/** Той самий "topCategory + його безпосередня дитина" контракт, що listings/new — категорія
+ * оголошення завжди або сама top-рівнева (без дітей), або одна з children топ-категорії. */
+function findCategoryPath(categories: Category[], id: string): { topId: string; subId: string | null } | null {
+  for (const top of categories) {
+    if (top.id === id) return { topId: top.id, subId: null };
+    if (top.children.some((c) => c.id === id)) return { topId: top.id, subId: id };
+  }
+  return null;
+}
+
 interface EditFormState {
   title: string;
   description: string;
   price: string;
   currency: string;
+  topCategoryId: string | null;
+  subCategoryId: string | null;
 }
 
 export default function AdminListingsPage() {
@@ -80,10 +94,25 @@ export default function AdminListingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Listing | null>(null);
-  const [editForm, setEditForm] = useState<EditFormState>({ title: '', description: '', price: '', currency: 'UAH' });
+  const [editForm, setEditForm] = useState<EditFormState>({
+    title: '',
+    description: '',
+    price: '',
+    currency: 'UAH',
+    topCategoryId: null,
+    subCategoryId: null,
+  });
   const [isSaving, setIsSaving] = useState(false);
+  const [categoryTree, setCategoryTree] = useState<Category[]>([]);
 
   const isAdmin = user?.role === 'admin';
+
+  useEffect(() => {
+    getCategoryTree().then(setCategoryTree).catch(() => setCategoryTree([]));
+  }, []);
+
+  const editTopCategory = categoryTree.find((c) => c.id === editForm.topCategoryId) ?? null;
+  const editSubCategories = editTopCategory?.children ?? [];
 
   const load = useCallback(
     async (searchOverride?: string) => {
@@ -136,18 +165,22 @@ export default function AdminListingsPage() {
   }
 
   function openEdit(listing: Listing) {
+    const path = findCategoryPath(categoryTree, listing.categoryId);
     setEditing(listing);
     setEditForm({
       title: listing.title,
       description: listing.description ?? '',
       price: listing.price !== null ? String(listing.price) : '',
       currency: listing.currency,
+      topCategoryId: path?.topId ?? null,
+      subCategoryId: path?.subId ?? null,
     });
   }
 
   async function handleSaveEdit(e: FormEvent) {
     e.preventDefault();
     if (!accessToken || !editing) return;
+    const categoryId = editSubCategories.length > 0 ? editForm.subCategoryId : editForm.topCategoryId;
     setIsSaving(true);
     try {
       const updated = await updateAdminListing(
@@ -157,6 +190,7 @@ export default function AdminListingsPage() {
           description: editForm.description,
           price: editForm.price ? Number(editForm.price) : undefined,
           currency: editForm.currency,
+          categoryId: categoryId ?? undefined,
         },
         accessToken,
       );
@@ -275,6 +309,20 @@ export default function AdminListingsPage() {
             value={editForm.currency}
             onChange={(value) => setEditForm((f) => ({ ...f, currency: value }))}
           />
+          <Dropdown
+            label="Категорія"
+            options={categoryTree.map((c) => ({ value: c.id, label: c.nameUk }))}
+            value={editForm.topCategoryId}
+            onChange={(value) => setEditForm((f) => ({ ...f, topCategoryId: value, subCategoryId: null }))}
+          />
+          {editSubCategories.length > 0 && (
+            <Dropdown
+              label="Підкатегорія"
+              options={editSubCategories.map((c) => ({ value: c.id, label: c.nameUk }))}
+              value={editForm.subCategoryId}
+              onChange={(value) => setEditForm((f) => ({ ...f, subCategoryId: value }))}
+            />
+          )}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
               Скасувати

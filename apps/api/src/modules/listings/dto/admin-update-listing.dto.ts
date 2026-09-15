@@ -1,5 +1,6 @@
 import { IsIn, IsNumber, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
 import { LISTING_CURRENCIES, ListingCurrency } from '../listing.constants';
+import { IsUuidLike } from '../../../shared/validators/is-uuid-like.decorator';
 
 const ADMIN_LISTING_STATUSES = ['ACTIVE', 'BLOCKED'] as const;
 type AdminListingStatus = (typeof ADMIN_LISTING_STATUSES)[number];
@@ -29,4 +30,9 @@ export class AdminUpdateListingDto {
   @IsOptional()
   @IsIn(LISTING_CURRENCIES)
   currency?: ListingCurrency;
+
+  /** Переміщення в іншу (кінцеву) категорію — напр. виправити помилково обрану власником. */
+  @IsOptional()
+  @IsUuidLike()
+  categoryId?: string;
 }

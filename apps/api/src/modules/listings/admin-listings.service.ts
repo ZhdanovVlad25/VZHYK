@@ -4,6 +4,7 @@ import { FindOptionsWhere, ILike, IsNull, OptimisticLockVersionMismatchError, Re
 import { Listing } from './listing.entity';
 import { AdminUpdateListingDto } from './dto/admin-update-listing.dto';
 import { LISTING_STATUSES, ListingStatus } from './listing.constants';
+import { Category } from '../categories/category.entity';
 import { SEARCH_PROVIDER, SearchProvider } from '../../providers/search/search-provider.interface';
 import { AuditLogService } from '../audit-log/audit-log.service';
 
@@ -12,6 +13,7 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 export class AdminListingsService {
   constructor(
     @InjectRepository(Listing) private readonly listings: Repository<Listing>,
+    @InjectRepository(Category) private readonly categories: Repository<Category>,
     @Inject(SEARCH_PROVIDER) private readonly searchProvider: SearchProvider,
     private readonly auditLog: AuditLogService,
   ) {}
@@ -53,7 +55,13 @@ export class AdminListingsService {
       description: listing.description,
       price: listing.price,
       currency: listing.currency,
+      categoryId: listing.categoryId,
     };
+
+    if (dto.categoryId !== undefined && dto.categoryId !== listing.categoryId) {
+      await this.assertCategoryListable(dto.categoryId);
+      listing.categoryId = dto.categoryId;
+    }
 
     if (dto.status !== undefined) {
       if (dto.status === 'BLOCKED') {
@@ -99,11 +107,34 @@ export class AdminListingsService {
         description: saved.description,
         price: saved.price,
         currency: saved.currency,
+        categoryId: saved.categoryId,
       },
       ip,
     });
 
     return saved;
+  }
+
+  /**
+   * Той самий "лише кінцева категорія" контракт, що ListingsService.assertCategoryListable
+   * при створенні — інакше адмін міг би перенести оголошення в категорію з підкатегоріями,
+   * де воно ніколи б не показувалось у формі редагування/фільтрах атрибутів.
+   * Значення атрибутів (listing_attribute_values) навмисно не чіпаємо: перенесення категорій
+   * тут — точкове виправлення помилки власника (напр. невірна категорія при створенні),
+   * а не масовий рефлоу атрибутів; більшість категорій узагалі без власних атрибутів.
+   */
+  private async assertCategoryListable(categoryId: string): Promise<void> {
+    const category = await this.categories.findOne({ where: { id: categoryId, deletedAt: IsNull(), isActive: true } });
+    if (!category) {
+      throw new NotFoundException({ code: 'CATEGORY_NOT_FOUND', message: 'Категорію не знайдено' });
+    }
+    const childrenCount = await this.categories.count({ where: { parentId: categoryId, deletedAt: IsNull() } });
+    if (childrenCount > 0) {
+      throw new BadRequestException({
+        code: 'CATEGORY_NOT_LISTABLE',
+        message: 'Оголошення можна переносити лише в кінцеву категорію (без підкатегорій)',
+      });
+    }
   }
 
   private async saveWithConflictHandling(listing: Listing): Promise<Listing> {

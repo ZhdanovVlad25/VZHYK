@@ -1,23 +1,30 @@
 import { AdminListingsService } from '../src/modules/listings/admin-listings.service';
 import { Listing } from '../src/modules/listings/listing.entity';
 
-type MockRepo = { find: jest.Mock; findOne: jest.Mock; save: jest.Mock };
+type MockRepo = { find: jest.Mock; findOne: jest.Mock; save: jest.Mock; count: jest.Mock };
 
 function mockRepo(): MockRepo {
-  return { find: jest.fn().mockResolvedValue([]), findOne: jest.fn(), save: jest.fn(async (e) => e) };
+  return {
+    find: jest.fn().mockResolvedValue([]),
+    findOne: jest.fn(),
+    save: jest.fn(async (e) => e),
+    count: jest.fn().mockResolvedValue(0),
+  };
 }
 
 describe('AdminListingsService', () => {
   let listings: MockRepo;
+  let categories: MockRepo;
   let search: { index: jest.Mock; remove: jest.Mock };
   let auditLog: { record: jest.Mock };
   let service: AdminListingsService;
 
   beforeEach(() => {
     listings = mockRepo();
+    categories = mockRepo();
     search = { index: jest.fn().mockResolvedValue(undefined), remove: jest.fn().mockResolvedValue(undefined) };
     auditLog = { record: jest.fn().mockResolvedValue(undefined) };
-    service = new AdminListingsService(listings as never, search as never, auditLog as never);
+    service = new AdminListingsService(listings as never, categories as never, search as never, auditLog as never);
   });
 
   describe('search', () => {
@@ -115,6 +122,47 @@ describe('AdminListingsService', () => {
       expect(result.status).toBe('SOLD');
       expect(search.remove).not.toHaveBeenCalled();
       expect(search.index).not.toHaveBeenCalled();
+    });
+
+    it('переносить у іншу кінцеву категорію', async () => {
+      listings.findOne.mockResolvedValue({
+        id: 'l-1', status: 'ACTIVE', title: 't', description: null, price: 100, currency: 'UAH', categoryId: 'cat-old',
+      });
+      categories.findOne.mockResolvedValue({ id: 'cat-new' });
+      categories.count.mockResolvedValue(0);
+
+      const result = await service.update('admin-1', 'l-1', { categoryId: 'cat-new' }, null);
+
+      expect(result.categoryId).toBe('cat-new');
+      expect(auditLog.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          before: expect.objectContaining({ categoryId: 'cat-old' }),
+          after: expect.objectContaining({ categoryId: 'cat-new' }),
+        }),
+      );
+    });
+
+    it('кидає CATEGORY_NOT_FOUND для неіснуючої/неактивної категорії', async () => {
+      listings.findOne.mockResolvedValue({
+        id: 'l-1', status: 'ACTIVE', title: 't', description: null, price: 100, currency: 'UAH', categoryId: 'cat-old',
+      });
+      categories.findOne.mockResolvedValue(null);
+
+      await expect(service.update('admin-1', 'l-1', { categoryId: 'missing' }, null)).rejects.toMatchObject({
+        response: { code: 'CATEGORY_NOT_FOUND' },
+      });
+    });
+
+    it('кидає CATEGORY_NOT_LISTABLE для категорії з підкатегоріями', async () => {
+      listings.findOne.mockResolvedValue({
+        id: 'l-1', status: 'ACTIVE', title: 't', description: null, price: 100, currency: 'UAH', categoryId: 'cat-old',
+      });
+      categories.findOne.mockResolvedValue({ id: 'cat-parent' });
+      categories.count.mockResolvedValue(3);
+
+      await expect(service.update('admin-1', 'l-1', { categoryId: 'cat-parent' }, null)).rejects.toMatchObject({
+        response: { code: 'CATEGORY_NOT_LISTABLE' },
+      });
     });
   });
 });

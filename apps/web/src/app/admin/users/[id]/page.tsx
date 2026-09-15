@@ -62,6 +62,20 @@ function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso));
 }
 
+/** "high_report_count×1 (15) + duplicate_listings×3 (24)" — розбивка Risk score біля бейджа, щоб не гортати список Risk-сигналів нижче заради того, з чого складається сума. */
+function summarizeRiskSignals(signals: { signalType: string; weight: number }[]): string {
+  const byType = new Map<string, { count: number; total: number }>();
+  for (const s of signals) {
+    const entry = byType.get(s.signalType) ?? { count: 0, total: 0 };
+    entry.count += 1;
+    entry.total += s.weight;
+    byType.set(s.signalType, entry);
+  }
+  return Array.from(byType.entries())
+    .map(([type, { count, total }]) => `${type}×${count} (${total})`)
+    .join(' + ');
+}
+
 export default function AdminUserDetailPage() {
   const params = useParams<{ id: string }>();
   const userId = params.id;
@@ -170,6 +184,9 @@ export default function AdminUserDetailPage() {
                     <Badge tone={detail.riskScore >= 15 ? 'danger' : 'warning'}>Risk score: {detail.riskScore}</Badge>
                   )}
                 </div>
+                {detail.riskScore > 0 && (
+                  <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">{summarizeRiskSignals(detail.riskSignals)}</p>
+                )}
                 <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{detail.phone ?? detail.email ?? detail.id}</p>
                 {detail.profile.displayName && <p className="text-sm text-gray-600 dark:text-gray-400">{detail.profile.displayName}</p>}
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Зареєстрований {formatDate(detail.createdAt)}</p>
