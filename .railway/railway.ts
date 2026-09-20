@@ -62,7 +62,9 @@ export default defineRailway(() => {
       WEB_ORIGIN: "https://www.vzhyk.in.ua,https://web-production-baba8.up.railway.app",
       GOOGLE_OAUTH_CLIENT_ID: preserve(),
       GOOGLE_OAUTH_CLIENT_SECRET: preserve(),
-      GOOGLE_OAUTH_CALLBACK_URL: "https://api-production-ee5b.up.railway.app/api/v1/auth/google/callback",
+      // Кастомний домен api.vzhyk.in.ua (SSL verified) — раніше сирий Railway-URL, через що
+      // Google на екрані вибору акаунта показував користувачу технічний домен замість бренду.
+      GOOGLE_OAUTH_CALLBACK_URL: "https://api.vzhyk.in.ua/api/v1/auth/google/callback",
       // Той самий Sentry DSN, що й web — один невеликий проєкт на обидва сервіси поки що.
       SENTRY_DSN: preserve(),
       // "Модерація поштою" (moderation-email.service.ts) — лист з фото/описом і кнопками
