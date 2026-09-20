@@ -56,7 +56,10 @@ export default defineRailway(() => {
       S3_ACCESS_KEY: preserve(),
       S3_SECRET_KEY: preserve(),
       S3_FORCE_PATH_STYLE: "true",
-      WEB_ORIGIN: "https://web-production-baba8.up.railway.app",
+      // Кома-розділений список (main.ts resolveCorsOrigin) — кастомний домен першим (WEB_ORIGIN
+      // читається і тут для CORS, і в auth.controller.ts googleCallback() для redirect — бере
+      // .split(',')[0], тож порядок важливий), Railway-домен другим на перехідний період.
+      WEB_ORIGIN: "https://www.vzhyk.in.ua,https://web-production-baba8.up.railway.app",
       GOOGLE_OAUTH_CLIENT_ID: preserve(),
       GOOGLE_OAUTH_CLIENT_SECRET: preserve(),
       GOOGLE_OAUTH_CALLBACK_URL: "https://api-production-ee5b.up.railway.app/api/v1/auth/google/callback",
@@ -79,8 +82,12 @@ export default defineRailway(() => {
     env: {
       NODE_ENV: "production",
       NEXT_PUBLIC_API_URL: "https://api-production-ee5b.up.railway.app/api/v1",
-      NEXT_PUBLIC_SITE_URL: "https://web-production-baba8.up.railway.app",
+      // Кастомний домен (docs: домен verified, SSL live) — не сирий Railway-URL.
+      NEXT_PUBLIC_SITE_URL: "https://www.vzhyk.in.ua",
       NEXT_PUBLIC_SENTRY_DSN: preserve(),
+      // Google Search Console verification meta-тег (layout.tsx metadata.verification.google) —
+      // не в IaC-файлі раніше, тому план бачив її як "зайву" й хотів видалити.
+      GOOGLE_SITE_VERIFICATION: preserve(),
     },
   });
 
