@@ -4,7 +4,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { ChatProvider, useChatContext } from './chat-context';
+import { useChatContext } from '@/lib/chat-context';
 import { Avatar, Badge, Button, EmptyState, ErrorState, LoadingState } from '@/components/ui';
 import { cn } from '@/lib/cn';
 
@@ -133,14 +133,12 @@ export default function ChatsLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ChatProvider>
-      <div className="mx-auto w-full min-h-0 flex-1 max-w-6xl flex flex-col border-x border-gray-200 dark:border-gray-700 md:flex-row">
-        <ChatSidebar hiddenOnMobile={isThreadOpen} />
-        {/* flex flex-col тут навмисно (не лише flex-1) — дитина (ChatThreadPage) використовує
-            свій власний flex-1/min-h-0 для розтягування на всю висоту; без display:flex тут
-            той механізм не працює й composer "зависає" по центру замість дна екрана. */}
-        <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col', !isThreadOpen && 'hidden md:flex')}>{children}</div>
-      </div>
-    </ChatProvider>
+    <div className="mx-auto w-full min-h-0 flex-1 max-w-6xl flex flex-col border-x border-gray-200 dark:border-gray-700 md:flex-row">
+      <ChatSidebar hiddenOnMobile={isThreadOpen} />
+      {/* flex flex-col тут навмисно (не лише flex-1) — дитина (ChatThreadPage) використовує
+          свій власний flex-1/min-h-0 для розтягування на всю висоту; без display:flex тут
+          той механізм не працює й composer "зависає" по центру замість дна екрана. */}
+      <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col', !isThreadOpen && 'hidden md:flex')}>{children}</div>
+    </div>
   );
 }

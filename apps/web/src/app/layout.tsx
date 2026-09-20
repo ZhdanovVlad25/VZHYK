@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Rubik, Unbounded } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
+import { ChatProvider } from '@/lib/chat-context';
 import { ThemeProvider } from '@/lib/theme-context';
 import { LanguageProvider } from '@/lib/language-context';
 import { Header } from '@/components/layout/Header';
@@ -99,29 +100,33 @@ export default function RootLayout({
         <ThemeProvider>
           <LanguageProvider>
             <AuthProvider>
-              <Header />
-              {/*
-                flex-1 min-h-0 — реальна доступна висота під хедер, БЕЗ хардкоду його пікселів
-                (був h-[calc(100vh-65px)] у chats/layout.tsx: ламався, коли хедер переносився на
-                2 рядки через адмін-навігацію й ставав вищим за 65px — інпут чату виїжджав за
-                межі екрана). min-h-0 обов'язковий — інакше flex-item не стискається нижче
-                контенту (min-height:auto за замовчуванням) і сторінки типу /chats з overflow-y-auto
-                всередині не отримують реальних меж для скролу.
-              */}
-              {/*
-                [&>*]:w-full — кожна сторінка рендерить свій корінь як "mx-auto max-w-Nxl ...".
-                Flex-item з margin:auto по cross-axis (тут — горизонтальній, бо flex-col) НЕ
-                стретчиться під align-items:stretch (це в спеці: auto-margin відключає stretch),
-                тож без явної ширини сторінка лягала за власним fit-content-розміром замість
-                100% контейнера — на мобільному це виявлялось як горизонтальний overflow і
-                "роздутий" вигляд усього контенту (сторінка фактично рендерилась на ~870px
-                замість реальних ~375px viewport). Знайдено через звіт "фото величезне", що
-                насправді було симптомом цього, а не самої галереї.
-              */}
-              <main id="main-content" className="flex min-h-0 flex-1 flex-col [&>*]:w-full">
-                {children}
-              </main>
-              <Footer />
+              {/* Глобально (не лише в /chats) — щоб хедер міг показати бейдж непрочитаних
+                  повідомлень будь-де на сайті, не тільки після заходу в самі чати. */}
+              <ChatProvider>
+                <Header />
+                {/*
+                  flex-1 min-h-0 — реальна доступна висота під хедер, БЕЗ хардкоду його пікселів
+                  (був h-[calc(100vh-65px)] у chats/layout.tsx: ламався, коли хедер переносився на
+                  2 рядки через адмін-навігацію й ставав вищим за 65px — інпут чату виїжджав за
+                  межі екрана). min-h-0 обов'язковий — інакше flex-item не стискається нижче
+                  контенту (min-height:auto за замовчуванням) і сторінки типу /chats з overflow-y-auto
+                  всередині не отримують реальних меж для скролу.
+                */}
+                {/*
+                  [&>*]:w-full — кожна сторінка рендерить свій корінь як "mx-auto max-w-Nxl ...".
+                  Flex-item з margin:auto по cross-axis (тут — горизонтальній, бо flex-col) НЕ
+                  стретчиться під align-items:stretch (це в спеці: auto-margin відключає stretch),
+                  тож без явної ширини сторінка лягала за власним fit-content-розміром замість
+                  100% контейнера — на мобільному це виявлялось як горизонтальний overflow і
+                  "роздутий" вигляд усього контенту (сторінка фактично рендерилась на ~870px
+                  замість реальних ~375px viewport). Знайдено через звіт "фото величезне", що
+                  насправді було симптомом цього, а не самої галереї.
+                */}
+                <main id="main-content" className="flex min-h-0 flex-1 flex-col [&>*]:w-full">
+                  {children}
+                </main>
+                <Footer />
+              </ChatProvider>
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { useChatContext } from '../chat-context';
+import { useChatContext } from '@/lib/chat-context';
 import { ApiError, blockChat, getChatMessages, sendChatMessage, type Message } from '@/lib/api';
 import { Avatar, Badge, Button, ErrorState, LoadingState } from '@/components/ui';
 import { ReportButton } from '@/components/shared/ReportButton';

@@ -13,6 +13,7 @@ import { MyListingsScreen } from '../screens/MyListingsScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SavedSearchesScreen } from '../screens/SavedSearchesScreen';
 import { SearchScreen } from '../screens/SearchScreen';
+import { useChatContext } from '../lib/chat-context';
 import { useLanguage } from '../lib/language-context';
 import { useTheme } from '../lib/theme-context';
 import type { RootStackParamList, TabParamList } from './types';
@@ -50,6 +51,10 @@ const TAB_LABEL_KEYS: Record<keyof TabParamList, TranslationKey> = {
 function TabNavigator() {
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const { chats } = useChatContext();
+  // Раніше єдиним сигналом про нові повідомлення був сам екран "Чати" — бейдж на таб-барі
+  // видно з будь-якого екрана застосунку (звіт: "треба якийсь ідентифікатор про нові чати").
+  const unreadTotal = chats.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return (
     <Tab.Navigator
@@ -70,7 +75,11 @@ function TabNavigator() {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
       <Tab.Screen name="Add" component={AddListingScreen} />
-      <Tab.Screen name="Chats" component={ChatsScreen} />
+      <Tab.Screen
+        name="Chats"
+        component={ChatsScreen}
+        options={{ tabBarBadge: unreadTotal > 0 ? (unreadTotal > 9 ? '9+' : unreadTotal) : undefined }}
+      />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );

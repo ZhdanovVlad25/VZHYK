@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/cn';
 import { useAuth } from '@/lib/auth-context';
+import { useChatContext } from '@/lib/chat-context';
 import { useLanguage } from '@/lib/language-context';
 import type { TranslationKey } from '@/lib/i18n';
 import { Avatar } from '@/components/ui';
@@ -21,9 +22,13 @@ const ITEMS: { href: string; labelKey: TranslationKey }[] = [
 export function ProfileMenu() {
   const pathname = usePathname();
   const { user, displayName, avatarUrl, logout } = useAuth();
+  const { chats } = useChatContext();
   const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  // До цього єдиним сигналом про нове повідомлення був захід у /chats — на решті сайту
+  // жодного індикатора не було (звіт: "треба якийсь ідентифікатор, що в чатах написали").
+  const unreadTotal = chats.reduce((sum, c) => sum + c.unreadCount, 0);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -53,11 +58,22 @@ export function ProfileMenu() {
         onClick={() => setIsOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={isOpen}
+        aria-label={unreadTotal > 0 ? `${displayName ?? t('yourProfile')}, ${unreadTotal} непрочитаних повідомлень` : undefined}
         // 44px — мінімальна рекомендована зона дотику для пальця (аудит 27.08: py-1 навколо
         // Avatar size="sm" (32px) ≈ 40px висоти).
         className="flex min-h-[44px] items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
       >
-        <Avatar name={displayName} url={avatarUrl} size="sm" />
+        <span className="relative shrink-0">
+          <Avatar name={displayName} url={avatarUrl} size="sm" />
+          {unreadTotal > 0 && (
+            <span
+              aria-hidden="true"
+              className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white dark:ring-gray-950"
+            >
+              {unreadTotal > 9 ? '9+' : unreadTotal}
+            </span>
+          )}
+        </span>
         {/* На <400px ім'я + CTA-кнопка + гамбургер разом ширші за екран (аудит 27.08:
             document.scrollWidth 455px при viewport 342px, обрізало гамбургер) — на
             мобільному лишається тільки аватар, повне ім'я видно у відкритому меню нижче. */}
@@ -91,13 +107,18 @@ export function ProfileMenu() {
               role="menuitem"
               onClick={() => setIsOpen(false)}
               className={cn(
-                'block rounded-lg px-3 py-2 text-sm',
+                'flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm',
                 pathname?.startsWith(item.href)
                   ? 'bg-brand-50 text-brand-700 dark:bg-brand-900 dark:text-brand-200'
                   : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800',
               )}
             >
               {t(item.labelKey)}
+              {item.href === '/chats' && unreadTotal > 0 && (
+                <span className="flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-500 px-1 text-xs font-bold leading-none text-white">
+                  {unreadTotal > 9 ? '9+' : unreadTotal}
+                </span>
+              )}
             </Link>
           ))}
 
