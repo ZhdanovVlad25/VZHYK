@@ -1,4 +1,4 @@
-import { IsIn, IsNumber, IsOptional, IsString, MaxLength, Min, MinLength } from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString, IsUUID, MaxLength, Min, MinLength } from 'class-validator';
 import { LISTING_CURRENCIES, ListingCurrency } from '../listing.constants';
 
 const ADMIN_LISTING_STATUSES = ['ACTIVE', 'BLOCKED'] as const;
@@ -29,4 +29,9 @@ export class AdminUpdateListingDto {
   @IsOptional()
   @IsIn(LISTING_CURRENCIES)
   currency?: ListingCurrency;
+
+  /** Виправлення неправильно обраної продавцем категорії (звіт: оголошення заведене не туди). */
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
 }

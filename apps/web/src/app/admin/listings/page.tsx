@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import {
   ApiError,
+  getCategoryTree,
   listingDetailHref,
   searchAdminListings,
   updateAdminListing,
+  type Category,
   type Listing,
   type ListingStatus,
 } from '@/lib/api';
@@ -69,6 +71,22 @@ interface EditFormState {
   description: string;
   price: string;
   currency: string;
+  categoryId: string;
+}
+
+/** Лише кінцеві категорії (без дітей) — та сама вимога, що на створенні оголошення
+ * (assertCategoryListable у listings.service.ts / admin-listings.service.ts). */
+function flattenLeafCategoryOptions(categories: Category[]): { value: string; label: string }[] {
+  const options: { value: string; label: string }[] = [];
+  for (const parent of categories) {
+    if (parent.children.length === 0) {
+      options.push({ value: parent.id, label: parent.nameUk });
+    }
+    for (const child of parent.children) {
+      options.push({ value: child.id, label: `${parent.nameUk} → ${child.nameUk}` });
+    }
+  }
+  return options;
 }
 
 export default function AdminListingsPage() {
@@ -80,8 +98,13 @@ export default function AdminListingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Listing | null>(null);
-  const [editForm, setEditForm] = useState<EditFormState>({ title: '', description: '', price: '', currency: 'UAH' });
+  const [editForm, setEditForm] = useState<EditFormState>({ title: '', description: '', price: '', currency: 'UAH', categoryId: '' });
   const [isSaving, setIsSaving] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    getCategoryTree().then(setCategories).catch(() => setCategories([]));
+  }, []);
 
   const isAdmin = user?.role === 'admin';
 
@@ -142,6 +165,7 @@ export default function AdminListingsPage() {
       description: listing.description ?? '',
       price: listing.price !== null ? String(listing.price) : '',
       currency: listing.currency,
+      categoryId: listing.categoryId,
     });
   }
 
@@ -157,6 +181,7 @@ export default function AdminListingsPage() {
           description: editForm.description,
           price: editForm.price ? Number(editForm.price) : undefined,
           currency: editForm.currency,
+          categoryId: editForm.categoryId !== editing.categoryId ? editForm.categoryId : undefined,
         },
         accessToken,
       );
@@ -274,6 +299,12 @@ export default function AdminListingsPage() {
             options={CURRENCY_OPTIONS}
             value={editForm.currency}
             onChange={(value) => setEditForm((f) => ({ ...f, currency: value }))}
+          />
+          <Dropdown
+            label="Категорія"
+            options={flattenLeafCategoryOptions(categories)}
+            value={editForm.categoryId}
+            onChange={(value) => setEditForm((f) => ({ ...f, categoryId: value }))}
           />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
