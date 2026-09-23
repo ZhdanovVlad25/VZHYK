@@ -62,15 +62,22 @@ export class ModerationEmailService {
     const approveUrl = this.buildActionUrl(moderationCase.id, 'APPROVED', moderator.id, secret);
     const rejectUrl = this.buildActionUrl(moderationCase.id, 'REJECTED', moderator.id, secret);
 
+    // Фото — спільні для обох каналів, один запит на медіа замість дублювання в кожному.
+    const photos = await this.media.find({ where: { listingId: listing.id }, order: { sortOrder: 'ASC' } });
+    const photoUrls = await Promise.all(
+      photos.slice(0, MAX_PHOTOS_IN_EMAIL).map((p) => this.storage.getSignedUrl(p.storageKey)),
+    );
+
     await Promise.allSettled([
-      this.sendEmailNotification(listing, moderationCase, approveUrl, rejectUrl),
-      this.sendTelegramNotification(listing, moderationCase, approveUrl, rejectUrl),
+      this.sendEmailNotification(listing, moderationCase, photoUrls, approveUrl, rejectUrl),
+      this.sendTelegramNotification(listing, moderationCase, photoUrls, approveUrl, rejectUrl),
     ]);
   }
 
   private async sendEmailNotification(
     listing: Listing,
     moderationCase: ModerationCase,
+    photoUrls: string[],
     approveUrl: string,
     rejectUrl: string,
   ): Promise<void> {
@@ -78,11 +85,6 @@ export class ModerationEmailService {
     if (!to) return;
 
     try {
-      const photos = await this.media.find({ where: { listingId: listing.id }, order: { sortOrder: 'ASC' } });
-      const photoUrls = await Promise.all(
-        photos.slice(0, MAX_PHOTOS_IN_EMAIL).map((p) => this.storage.getSignedUrl(p.storageKey)),
-      );
-
       await this.email.send(
         to,
         `На модерації: ${listing.title}`,
@@ -94,10 +96,13 @@ export class ModerationEmailService {
   }
 
   /** TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID не задано — просто пропускаємо, той самий
-   * "необов'язковий канал" контракт, що email (MODERATION_NOTIFY_EMAIL). */
+   * "необов'язковий канал" контракт, що email (MODERATION_NOTIFY_EMAIL). Фото — через
+   * sendPhoto з caption (Telegram підвантажує саме за URL, не треба качати й пересилати
+   * файл самим), без фото — звичайний sendMessage, той самий текст+кнопки. */
   private async sendTelegramNotification(
     listing: Listing,
     moderationCase: ModerationCase,
+    photoUrls: string[],
     approveUrl: string,
     rejectUrl: string,
   ): Promise<void> {
@@ -105,39 +110,62 @@ export class ModerationEmailService {
     const chatId = this.config.get<string>('TELEGRAM_CHAT_ID');
     if (!token || !chatId) return;
 
-    const lines = [
-      `🆕 <b>На модерації:</b> ${escapeHtml(listing.title)}`,
-      `💰 ${listing.price ?? '—'} ${escapeHtml(listing.currency)}`,
-    ];
-    if (moderationCase.autoFlagReason) {
-      lines.push(`⚠️ ${escapeHtml(moderationCase.autoFlagReason)}`);
-    }
+    const caption = this.buildTelegramCaption(listing, moderationCase);
+    const replyMarkup = {
+      inline_keyboard: [
+        [
+          { text: '✅ Схвалити', url: approveUrl },
+          { text: '❌ Відхилити', url: rejectUrl },
+        ],
+      ],
+    };
+    const mainPhotoUrl = photoUrls[0];
 
     try {
-      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: lines.join('\n'),
-          parse_mode: 'HTML',
-          // Ті самі підписані approve/rejectUrl, що й у листі — тап з телефону, без входу в адмінку.
-          reply_markup: {
-            inline_keyboard: [
-              [
-                { text: '✅ Схвалити', url: approveUrl },
-                { text: '❌ Відхилити', url: rejectUrl },
-              ],
-            ],
-          },
-        }),
-      });
+      const res = mainPhotoUrl
+        ? await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              photo: mainPhotoUrl,
+              caption,
+              parse_mode: 'HTML',
+              reply_markup: replyMarkup,
+            }),
+          })
+        : await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text: caption, parse_mode: 'HTML', reply_markup: replyMarkup }),
+          });
       if (!res.ok) {
         this.logger.error(`Telegram API повернув ${res.status}: ${await res.text()}`);
       }
     } catch (err) {
       this.logger.error(`Не вдалось надіслати Telegram-сповіщення: ${(err as Error).message}`);
     }
+  }
+
+  /** Caption фото в Telegram обмежений 1024 символами — опис ріжемо з запасом під
+   * заголовок/ціну/причину перевірки, а не рахуємо точний залишок. */
+  private buildTelegramCaption(listing: Listing, moderationCase: ModerationCase): string {
+    const MAX_DESCRIPTION_LENGTH = 700;
+    const lines = [
+      `🆕 <b>${escapeHtml(listing.title)}</b>`,
+      `💰 ${listing.price ?? '—'} ${escapeHtml(listing.currency)}`,
+    ];
+    if (listing.description) {
+      const truncated =
+        listing.description.length > MAX_DESCRIPTION_LENGTH
+          ? `${listing.description.slice(0, MAX_DESCRIPTION_LENGTH)}…`
+          : listing.description;
+      lines.push('', escapeHtml(truncated));
+    }
+    if (moderationCase.autoFlagReason) {
+      lines.push('', `⚠️ ${escapeHtml(moderationCase.autoFlagReason)}`);
+    }
+    return lines.join('\n');
   }
 
   /**
