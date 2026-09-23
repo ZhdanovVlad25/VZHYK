@@ -37,6 +37,7 @@ import { AutoRenewToggle } from '../components/AutoRenewToggle';
 import { ChipSelect } from '../components/ChipSelect';
 import { DropdownSelect } from '../components/DropdownSelect';
 import { LoadingScreen } from '../components/LoadingScreen';
+import { ModerationSubmittedOverlay } from '../components/ModerationSubmittedOverlay';
 import {
   CONDITION_OPTIONS,
   CURRENCY_OPTIONS,
@@ -87,6 +88,7 @@ export function AddListingScreen() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [submittedListingId, setSubmittedListingId] = useState<string | null>(null);
 
   useEffect(() => {
     getCategoryTree().then(setCategoryTree).catch(() => setCategoryTree([]));
@@ -202,8 +204,12 @@ export function AddListingScreen() {
         });
       }
 
+      // Якщо ВСІ фото не завантажились — не публікуємо мовчки без жодного фото (аудит 27.08,
+      // той самий контракт, що apps/web/src/app/listings/new/page.tsx).
+      const allPhotosFailed = pendingPhotos.length > 0 && failedPhotoCount === pendingPhotos.length;
+
       let publishError: string | null = null;
-      if (publishNow) {
+      if (publishNow && !allPhotosFailed) {
         try {
           await publishListing(listing.id, accessToken);
         } catch (err) {
@@ -237,7 +243,15 @@ export function AddListingScreen() {
         );
       }
       if (publishError) Alert.alert('Не вдалося опублікувати', publishError);
-      navigation.navigate('EditListing', { listingId: listing.id });
+
+      // Повноекранне підтвердження лише коли реально дійшло до модерації — "Зберегти як
+      // чернетку" чи невдала публікація нікуди на модерацію не відправляють, там одразу
+      // редагування, як і раніше.
+      if (publishNow && !publishError && !allPhotosFailed) {
+        setSubmittedListingId(listing.id);
+      } else {
+        navigation.navigate('EditListing', { listingId: listing.id });
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Не вдалося створити оголошення. Спробуйте ще раз.');
     } finally {
@@ -266,7 +280,14 @@ export function AddListingScreen() {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <>
+      <ModerationSubmittedOverlay
+        visible={submittedListingId !== null}
+        onContinue={() => {
+          if (submittedListingId) navigation.navigate('EditListing', { listingId: submittedListingId });
+        }}
+      />
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Нове оголошення</Text>
 
@@ -439,7 +460,8 @@ export function AddListingScreen() {
           </Pressable>
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </>
   );
 }
 

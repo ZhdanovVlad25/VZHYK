@@ -68,6 +68,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     readStoredAuth().then((stored) => {
       setAuth(stored);
       setIsLoading(false);
+
+      // avatarUrl — підписаний S3/R2 URL, дійсний 24 години (s3-storage.provider.ts
+      // SIGNED_URL_TTL_SECONDS); значення в SecureStore протухає за довшої сесії, тому
+      // при відновленні підвантажуємо свіжий профіль замість довіри кешу (RN-порт
+      // web auth-context.tsx).
+      if (stored) {
+        getMyProfile(stored.accessToken)
+          .then((profile) => {
+            setAuth((prev) => {
+              if (!prev) return prev;
+              const next = { ...prev, displayName: profile.displayName ?? null, avatarUrl: profile.avatarUrl ?? null };
+              SecureStore.setItemAsync(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+              return next;
+            });
+          })
+          .catch(() => undefined);
+      }
     });
   }, []);
 

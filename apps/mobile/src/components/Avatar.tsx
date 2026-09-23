@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useTheme } from '../lib/theme-context';
@@ -12,11 +13,19 @@ type AvatarProps = {
 export function Avatar({ url, size = 'md' }: AvatarProps) {
   const { colors } = useTheme();
   const px = SIZES[size];
+  // Підписаний URL міг протухнути або вказувати на видалений файл — без цього RN Image
+  // лишався б порожнім/биним замість заглушки-силуету (RN-порт web Avatar.tsx).
+  const [failed, setFailed] = useState(false);
 
-  if (url) {
+  useEffect(() => {
+    setFailed(false);
+  }, [url]);
+
+  if (url && !failed) {
     return (
       <Image
         source={{ uri: url }}
+        onError={() => setFailed(true)}
         style={[styles.image, { width: px, height: px, borderRadius: px / 2, backgroundColor: colors.border }]}
       />
     );

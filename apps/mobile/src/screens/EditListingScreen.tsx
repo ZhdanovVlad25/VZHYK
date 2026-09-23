@@ -45,6 +45,7 @@ import { AutoRenewToggle } from '../components/AutoRenewToggle';
 import { ChipSelect } from '../components/ChipSelect';
 import { DropdownSelect } from '../components/DropdownSelect';
 import { LoadingScreen } from '../components/LoadingScreen';
+import { ModerationSubmittedOverlay } from '../components/ModerationSubmittedOverlay';
 import {
   CONDITION_OPTIONS,
   CURRENCY_OPTIONS,
@@ -101,6 +102,7 @@ export function EditListingScreen({ route }: Props) {
   const [settingMainMediaId, setSettingMainMediaId] = useState<string | null>(null);
   const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showModerationOverlay, setShowModerationOverlay] = useState(false);
   const [isRenewing, setIsRenewing] = useState(false);
   const [isSavingAutoRenew, setIsSavingAutoRenew] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -261,6 +263,7 @@ export function EditListingScreen({ route }: Props) {
     try {
       await publishListing(listingId, accessToken);
       await load();
+      setShowModerationOverlay(true);
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Не вдалося опублікувати оголошення.');
     } finally {
@@ -364,7 +367,9 @@ export function EditListingScreen({ route }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <>
+      <ModerationSubmittedOverlay visible={showModerationOverlay} onContinue={() => setShowModerationOverlay(false)} />
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView ref={scrollRef} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <View style={styles.statusRow}>
           <View style={styles.statusBadge}>
@@ -536,7 +541,8 @@ export function EditListingScreen({ route }: Props) {
           </Pressable>
         )}
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </>
   );
 }
 
