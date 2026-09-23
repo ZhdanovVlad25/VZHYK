@@ -74,6 +74,10 @@ export default defineRailway(() => {
       GMAIL_APP_PASSWORD: preserve(),
       MODERATION_NOTIFY_EMAIL: "zhdanov.vlad.work@gmail.com",
       MODERATION_EMAIL_SECRET: preserve(),
+      // Telegram-сповіщення про нову справу на модерації (moderation-email.service.ts
+      // sendTelegramNotification) — той самий необов'язковий канал, що email, паралельно.
+      TELEGRAM_BOT_TOKEN: preserve(),
+      TELEGRAM_CHAT_ID: "531788003",
       API_PUBLIC_URL: "https://api-production-ee5b.up.railway.app",
     },
   });

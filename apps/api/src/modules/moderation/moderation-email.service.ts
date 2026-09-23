@@ -41,29 +41,47 @@ export class ModerationEmailService {
     private readonly config: ConfigService,
   ) {}
 
-  /** Викликається з ModerationService.createCaseForListing() — best-effort, не блокує публікацію оголошення. */
+  /**
+   * Викликається з ModerationService.createCaseForListing() — best-effort, не блокує
+   * публікацію оголошення. Email і Telegram — незалежні канали (Promise.allSettled):
+   * збій одного не має гасити інший, обидва не мають ламати публікацію оголошення власником.
+   */
   async notifyNewCase(listing: Listing, moderationCase: ModerationCase): Promise<void> {
-    const to = this.config.get<string>('MODERATION_NOTIFY_EMAIL');
     const secret = this.config.get<string>('MODERATION_EMAIL_SECRET');
-    if (!to || !secret) {
-      this.logger.warn('MODERATION_NOTIFY_EMAIL/MODERATION_EMAIL_SECRET не задано — email-сповіщення пропущено');
+    if (!secret) {
+      this.logger.warn('MODERATION_EMAIL_SECRET не задано — сповіщення про модерацію пропущено');
       return;
     }
 
-    try {
-      const moderator = await this.resolveModerator();
-      if (!moderator) {
-        this.logger.warn('Немає жодного admin-користувача — email-сповіщення про модерацію пропущено');
-        return;
-      }
+    const moderator = await this.resolveModerator().catch(() => null);
+    if (!moderator) {
+      this.logger.warn('Немає жодного admin-користувача — сповіщення про модерацію пропущено');
+      return;
+    }
 
+    const approveUrl = this.buildActionUrl(moderationCase.id, 'APPROVED', moderator.id, secret);
+    const rejectUrl = this.buildActionUrl(moderationCase.id, 'REJECTED', moderator.id, secret);
+
+    await Promise.allSettled([
+      this.sendEmailNotification(listing, moderationCase, approveUrl, rejectUrl),
+      this.sendTelegramNotification(listing, moderationCase, approveUrl, rejectUrl),
+    ]);
+  }
+
+  private async sendEmailNotification(
+    listing: Listing,
+    moderationCase: ModerationCase,
+    approveUrl: string,
+    rejectUrl: string,
+  ): Promise<void> {
+    const to = this.config.get<string>('MODERATION_NOTIFY_EMAIL');
+    if (!to) return;
+
+    try {
       const photos = await this.media.find({ where: { listingId: listing.id }, order: { sortOrder: 'ASC' } });
       const photoUrls = await Promise.all(
         photos.slice(0, MAX_PHOTOS_IN_EMAIL).map((p) => this.storage.getSignedUrl(p.storageKey)),
       );
-
-      const approveUrl = this.buildActionUrl(moderationCase.id, 'APPROVED', moderator.id, secret);
-      const rejectUrl = this.buildActionUrl(moderationCase.id, 'REJECTED', moderator.id, secret);
 
       await this.email.send(
         to,
@@ -71,8 +89,54 @@ export class ModerationEmailService {
         this.buildHtml(listing, moderationCase, photoUrls, approveUrl, rejectUrl),
       );
     } catch (err) {
-      // Best-effort — збій відправки email не має ламати публікацію оголошення власником.
       this.logger.error(`Не вдалось надіслати email про модерацію: ${(err as Error).message}`);
+    }
+  }
+
+  /** TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID не задано — просто пропускаємо, той самий
+   * "необов'язковий канал" контракт, що email (MODERATION_NOTIFY_EMAIL). */
+  private async sendTelegramNotification(
+    listing: Listing,
+    moderationCase: ModerationCase,
+    approveUrl: string,
+    rejectUrl: string,
+  ): Promise<void> {
+    const token = this.config.get<string>('TELEGRAM_BOT_TOKEN');
+    const chatId = this.config.get<string>('TELEGRAM_CHAT_ID');
+    if (!token || !chatId) return;
+
+    const lines = [
+      `🆕 <b>На модерації:</b> ${escapeHtml(listing.title)}`,
+      `💰 ${listing.price ?? '—'} ${escapeHtml(listing.currency)}`,
+    ];
+    if (moderationCase.autoFlagReason) {
+      lines.push(`⚠️ ${escapeHtml(moderationCase.autoFlagReason)}`);
+    }
+
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: lines.join('\n'),
+          parse_mode: 'HTML',
+          // Ті самі підписані approve/rejectUrl, що й у листі — тап з телефону, без входу в адмінку.
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '✅ Схвалити', url: approveUrl },
+                { text: '❌ Відхилити', url: rejectUrl },
+              ],
+            ],
+          },
+        }),
+      });
+      if (!res.ok) {
+        this.logger.error(`Telegram API повернув ${res.status}: ${await res.text()}`);
+      }
+    } catch (err) {
+      this.logger.error(`Не вдалось надіслати Telegram-сповіщення: ${(err as Error).message}`);
     }
   }
 
