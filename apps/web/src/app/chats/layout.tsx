@@ -87,7 +87,10 @@ function ChatSidebar({ hiddenOnMobile }: { hiddenOnMobile: boolean }) {
                 >
                   <div className="flex items-center gap-2">
                     <div className="relative shrink-0">
-                      <Avatar name={chat.otherDisplayName} size="sm" />
+                      {/* Фото оголошення, а не співрозмовника — саме воно допомагає впізнати,
+                          про яке з кількох оголошень цей чат (звіт: список чатів однакові
+                          силуети, незрозуміло хто є хто). */}
+                      <Avatar name={chat.otherDisplayName} url={chat.listingMainMediaUrl} size="sm" />
                       <span
                         className={cn(
                           'absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white dark:border-gray-950',

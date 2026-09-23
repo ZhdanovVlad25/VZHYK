@@ -55,7 +55,9 @@ export function ChatsScreen() {
           return (
             <Pressable style={styles.row} onPress={() => navigation.navigate('ChatThread', { chatId: item.chatId })}>
               <View style={styles.avatarWrap}>
-                <Avatar size="sm" />
+                {/* Фото оголошення, а не співрозмовника — допомагає впізнати, про яке з
+                    кількох оголошень цей чат (звіт: у списку чатів однакові силуети). */}
+                <Avatar url={item.listingMainMediaUrl} size="sm" />
                 <View style={[styles.presenceDot, isOnline ? styles.presenceOnline : styles.presenceOffline]} />
               </View>
               <View style={styles.rowInfo}>
