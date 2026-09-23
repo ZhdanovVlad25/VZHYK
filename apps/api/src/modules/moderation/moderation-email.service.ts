@@ -96,9 +96,11 @@ export class ModerationEmailService {
   }
 
   /** TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID не задано — просто пропускаємо, той самий
-   * "необов'язковий канал" контракт, що email (MODERATION_NOTIFY_EMAIL). Фото — через
-   * sendPhoto з caption (Telegram підвантажує саме за URL, не треба качати й пересилати
-   * файл самим), без фото — звичайний sendMessage, той самий текст+кнопки. */
+   * "необов'язковий канал" контракт, що email (MODERATION_NOTIFY_EMAIL). Фото — передаємо
+   * файлом (multipart), не URL-рядком: Telegram сам іноді не може підвантажити підписаний
+   * R2-URL ("failed to get HTTP URL content", підтверджено вживу) — тут сервер сам качає
+   * байти й пересилає їх Telegram напряму, як звичайне завантаження. Без фото —
+   * sendMessage, той самий текст+кнопки. */
   private async sendTelegramNotification(
     listing: Listing,
     moderationCase: ModerationCase,
@@ -121,29 +123,58 @@ export class ModerationEmailService {
     };
     const mainPhotoUrl = photoUrls[0];
 
+    if (mainPhotoUrl) {
+      const photoSent = await this.trySendTelegramPhoto(token, chatId, mainPhotoUrl, caption, replyMarkup);
+      if (photoSent) return;
+      // Фото могло не пройти з будь-якої причини (розміри поза лімітом Telegram,
+      // недоступний URL і т.д.) — сповіщення все одно має дійти, просто текстом,
+      // а не губитись мовчки лише через проблему з конкретним файлом.
+    }
+
     try {
-      const res = mainPhotoUrl
-        ? await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              photo: mainPhotoUrl,
-              caption,
-              parse_mode: 'HTML',
-              reply_markup: replyMarkup,
-            }),
-          })
-        : await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: chatId, text: caption, parse_mode: 'HTML', reply_markup: replyMarkup }),
-          });
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: caption, parse_mode: 'HTML', reply_markup: replyMarkup }),
+      });
       if (!res.ok) {
         this.logger.error(`Telegram API повернув ${res.status}: ${await res.text()}`);
       }
     } catch (err) {
       this.logger.error(`Не вдалось надіслати Telegram-сповіщення: ${(err as Error).message}`);
+    }
+  }
+
+  /** true — фото надіслано успішно. false — будь-яка помилка (мережа, ліміти Telegram на
+   * розміри/пропорції фото тощо), виклик falls back на звичайний текст у sendTelegramNotification. */
+  private async trySendTelegramPhoto(
+    token: string,
+    chatId: string,
+    photoUrl: string,
+    caption: string,
+    replyMarkup: unknown,
+  ): Promise<boolean> {
+    try {
+      const photoRes = await fetch(photoUrl);
+      if (!photoRes.ok) throw new Error(`Не вдалось завантажити фото (${photoRes.status})`);
+      const photoBlob = await photoRes.blob();
+
+      const form = new FormData();
+      form.set('chat_id', chatId);
+      form.set('caption', caption);
+      form.set('parse_mode', 'HTML');
+      form.set('reply_markup', JSON.stringify(replyMarkup));
+      form.set('photo', photoBlob, 'listing.jpg');
+
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, { method: 'POST', body: form });
+      if (!res.ok) {
+        this.logger.warn(`Telegram sendPhoto повернув ${res.status}: ${await res.text()} — falls back на текст`);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      this.logger.warn(`Не вдалось надіслати фото в Telegram: ${(err as Error).message} — falls back на текст`);
+      return false;
     }
   }
 
