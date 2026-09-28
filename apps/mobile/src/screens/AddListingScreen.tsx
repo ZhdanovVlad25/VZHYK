@@ -118,8 +118,13 @@ export function AddListingScreen() {
   const categoryId = subCategories.length > 0 ? subCategoryId : topCategoryId;
   const categorySlug =
     (subCategories.length > 0 ? subCategories : topCategories).find((c) => c.id === categoryId)?.slug ?? null;
-  const listingTypeOptions = getListingTypeOptions(categorySlug);
-  const conditionAvailable = !isJobCategory(categorySlug);
+  // categorySlug лишається null, доки не обрано конкретну підкатегорію, але для типу
+  // оголошення/"Стан" досить самої топ-категорії "Робота" — усі її підкатегорії однаково
+  // вакансії/резюме (звіт: тип оголошення на "Робота" перед вибором підкатегорії — ще
+  // загальний список продаю/куплю/...).
+  const jobCategorySlug = categorySlug ?? selectedTop?.slug ?? null;
+  const listingTypeOptions = getListingTypeOptions(jobCategorySlug);
+  const conditionAvailable = !isJobCategory(jobCategorySlug);
 
   // "Робота" пропонує інший набір типів (вакансія/резюме) — перемикання категорії туди-назад
   // мусить скидати вибір і "Стан", інакше лишається невалідне значення з попереднього набору.
@@ -131,7 +136,7 @@ export function AddListingScreen() {
       setCondition(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- лише на зміну доступних варіантів категорії
-  }, [categorySlug]);
+  }, [jobCategorySlug]);
 
   const selectedRegion = useMemo(() => regions.find((r) => r.id === regionId) ?? null, [regions, regionId]);
   const citiesInRegion = selectedRegion?.cities ?? [];

@@ -148,8 +148,12 @@ export default function NewListingPage() {
 
   // "Робота" пропонує зовсім інший набір типів (вакансія/резюме замість продаю/куплю/...) —
   // перемикання категорії туди-назад мусить скидати вибір, інакше лишається невалідний
-  // тип із попереднього набору (напр. "Продаю" на вакансії).
-  const listingTypeOptions = getListingTypeOptions(categorySlug);
+  // тип із попереднього набору (напр. "Продаю" на вакансії). categorySlug лишається null,
+  // доки не обрано конкретну підкатегорію (потрібен для "Стан" — там точність важлива), але
+  // для типу оголошення досить самої топ-категорії "Робота": усі її підкатегорії — вакансії/
+  // резюме без винятків, тож "Продаю/Куплю/..." не мав би з'являтись і на цьому кроці
+  // (звіт: тип оголошення на "Робота" перед вибором підкатегорії — ще загальний список).
+  const listingTypeOptions = getListingTypeOptions(categorySlug ?? selectedTop?.slug ?? null);
   useEffect(() => {
     if (!listingTypeOptions.some((o) => o.value === listingType)) {
       setListingType(listingTypeOptions[0]?.value as ListingType);
