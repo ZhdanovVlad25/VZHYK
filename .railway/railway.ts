@@ -1,4 +1,4 @@
-import { defineRailway, github, postgres, preserve, project, redis, service, volume } from "railway/iac";
+import { defineRailway, github, image, postgres, preserve, project, redis, service, volume } from "railway/iac";
 
 export default defineRailway(() => {
   const Redis = redis("Redis", { region: "ams" });
@@ -6,6 +6,15 @@ export default defineRailway(() => {
   const Postgres = postgres("Postgres", { region: "ams" });
   const postgresVolume = volume("postgres-volume", { alerts: { usage: { "100": {}, "80": {}, "95": {} } }, allowOnlineResize: true, region: "ams", sizeMB: 500 });
   const redisVolume = volume("redis-volume", { alerts: { usage: { "100": {}, "80": {}, "95": {} } }, allowOnlineResize: true, region: "ams", sizeMB: 500 });
+
+  // Окрема БД для Umami (self-hosted аналітика відвідувань/подій) — свідомо не та сама
+  // Postgres, що api, щоб міграції Umami (сам сервіс прогонить їх при старті) не могли
+  // ніяк торкнутись основної схеми продакшн-БД.
+  const UmamiPostgres = postgres("Umami Postgres", { region: "ams" });
+  // 5000MB — те, що Railway реально виставив за замовчуванням при створенні (Postgres-волюми
+  // на цій платформі стартують з 5GB); тримаємо джерело синхронним з живим станом, а не
+  // зменшуємо штучно (config plan позначає зменшення волюма як деструктивну дію).
+  const umamiPostgresVolume = volume("umami-postgres-volume", { allowOnlineResize: true, region: "ams", sizeMB: 5000 });
 
   // Обидва Dockerfile (apps/api/Dockerfile, apps/web/Dockerfile) написані з розрахунком
   // на build-контекст у КОРЕНІ монорепо (COPY package.json, COPY packages, npm workspaces) —
@@ -97,7 +106,20 @@ export default defineRailway(() => {
     },
   });
 
+  // Офіційний образ Umami (postgresql-варіант) — сам прогонить свої міграції на першому
+  // старті проти UmamiPostgres. APP_SECRET ротовано одразу після першого деплою
+  // (railway variable set) — значення з першого apply (було тимчасово в цьому файлі,
+  // потрібне лише тому, що preserve() не може зберегти ще не-існуюче значення) більше
+  // не діє, реальний секрет живе лише на сервісі, не в git-історії.
+  const umami = service("umami", {
+    source: image("ghcr.io/umami-software/umami:postgresql-latest"),
+    env: {
+      DATABASE_URL: UmamiPostgres.env.DATABASE_URL,
+      APP_SECRET: preserve(),
+    },
+  });
+
   return project("fortunate-light", {
-    resources: [Redis, Postgres, postgresVolume, redisVolume, api, web],
+    resources: [Redis, Postgres, postgresVolume, redisVolume, UmamiPostgres, umamiPostgresVolume, api, web, umami],
   });
 });
