@@ -874,12 +874,20 @@ export function getAuditLog(
 
 // ---- Admin: dashboard ----
 
+export interface TrafficStats {
+  pageviews: number;
+  visitors: number;
+  visits: number;
+}
+
 export interface DashboardMetrics {
   users: { total: number; active: number; blocked: number };
   listings: { total: number; byStatus: Record<ListingStatus, number>; bySellerType: Record<SellerType, number> };
   moderation: { pending: number; needsReview: number };
   reports: { pending: number; reviewing: number };
   riskFlaggedUsers: number;
+  /** null — Umami не налаштовано або тимчасово недоступний. */
+  traffic: { last7Days: TrafficStats; last30Days: TrafficStats } | null;
 }
 
 export function getDashboardMetrics(token: string): Promise<DashboardMetrics> {

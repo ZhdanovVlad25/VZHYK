@@ -137,6 +137,40 @@ export default function AdminDashboardPage() {
             <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.riskFlaggedUsers}</p>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">користувачів з risk score понад поріг</p>
           </Card>
+
+          <Card>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Відвідування сайту</h2>
+            {metrics.traffic ? (
+              <>
+                <div className="flex gap-6">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.traffic.last7Days.visitors}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">відвідувачів за 7 днів</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{metrics.traffic.last30Days.visitors}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">за 30 днів</p>
+                  </div>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge tone="neutral">Перегляди (7д): {metrics.traffic.last7Days.pageviews}</Badge>
+                  <Badge tone="neutral">Візити (7д): {metrics.traffic.last7Days.visits}</Badge>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-gray-400">Статистика тимчасово недоступна.</p>
+            )}
+            {/* Детальні розрізи (сторінки, джерела переходів, пристрої) — власний UI Umami,
+                не дублюємо тут; лінк відкриває той самий self-hosted дашборд напряму. */}
+            <a
+              href="https://umami-production-5cee.up.railway.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-block text-sm text-brand-600 hover:underline dark:text-brand-400"
+            >
+              Детальна статистика (сторінки, джерела) →
+            </a>
+          </Card>
         </div>
       ) : null}
     </div>

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Rubik, Unbounded } from 'next/font/google';
+import Script from 'next/script';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth-context';
 import { ChatProvider } from '@/lib/chat-context';
@@ -130,6 +131,16 @@ export default function RootLayout({
             </AuthProvider>
           </LanguageProvider>
         </ThemeProvider>
+        {/* Self-hosted Umami (без env — локальна розробка/прев'ю просто не трекається, нічого
+            не ламається). afterInteractive — не блокує перший paint, а window.umami вже
+            доступний до того, як юзер встигне щось клікнути. */}
+        {process.env.NEXT_PUBLIC_UMAMI_SRC && process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID && (
+          <Script
+            src={process.env.NEXT_PUBLIC_UMAMI_SRC}
+            data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );
