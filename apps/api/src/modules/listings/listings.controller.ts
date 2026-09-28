@@ -51,6 +51,12 @@ export class ListingsController {
     return this.listings.renew(user.id, id);
   }
 
+  @Post(':id/bump')
+  @UseGuards(JwtAuthGuard)
+  bump(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
+    return this.listings.bump(user.id, id);
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)

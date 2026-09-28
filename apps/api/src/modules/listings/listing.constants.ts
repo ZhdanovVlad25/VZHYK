@@ -35,3 +35,7 @@ export const PUBLICLY_VISIBLE_LISTING_STATUSES: ListingStatus[] = ['ACTIVE', 'RE
 
 /** Скільки днів оголошення лишається ACTIVE після схвалення модерацією, перш ніж EXPIRED. */
 export const LISTING_EXPIRY_DAYS = 30;
+
+/** Мінімальний інтервал між ручними "Підняти у списку" (ListingsService.bump()) — без
+ * кулдауну кнопка дозволяла б будь-кому тримати оголошення вічно вгорі спамом кліків. */
+export const LISTING_BUMP_COOLDOWN_HOURS = 24;

@@ -12,6 +12,7 @@ import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 import { AttributeValueInputDto } from './dto/attribute-value-input.dto';
 import {
+  LISTING_BUMP_COOLDOWN_HOURS,
   LISTING_EXPIRY_DAYS,
   LISTING_STATUSES,
   LISTING_TYPES_WITHOUT_REQUIRED_PRICE,
@@ -259,6 +260,35 @@ export class ListingsService {
       await this.search.index(saved.id);
     }
     return saved;
+  }
+
+  /**
+   * "Підняти у списку" — на відміну від renew() НЕ чіпає expiresAt/status, лише повторно
+   * публікує (publishedAt = now) для sort=newest. Кулдаун — LISTING_BUMP_COOLDOWN_HOURS.
+   */
+  async bump(userId: string, id: string): Promise<Listing> {
+    const listing = await this.findOwnedListing(userId, id);
+    if (listing.status !== 'ACTIVE') {
+      throw new BadRequestException({
+        code: 'LISTING_NOT_ACTIVE',
+        message: 'Підняти можна лише активне оголошення',
+      });
+    }
+
+    const cooldownMs = LISTING_BUMP_COOLDOWN_HOURS * 60 * 60 * 1000;
+    // publishedAt завжди заданий для ACTIVE (moderation.service.ts applyDecisionToListing) —
+    // ?? 0 лише як безпечний фолбек, що ніколи не блокує легітимний випадок.
+    const nextBumpAt = new Date((listing.publishedAt?.getTime() ?? 0) + cooldownMs);
+    if (nextBumpAt > new Date()) {
+      throw new BadRequestException({
+        code: 'LISTING_BUMP_COOLDOWN',
+        message: `Піднімати можна раз на ${LISTING_BUMP_COOLDOWN_HOURS} год. Спробуйте пізніше.`,
+        details: { nextBumpAt: nextBumpAt.toISOString() },
+      });
+    }
+
+    listing.publishedAt = new Date();
+    return this.saveWithConflictHandling(listing);
   }
 
   async remove(userId: string, id: string): Promise<void> {

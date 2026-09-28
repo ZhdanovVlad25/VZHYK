@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ApiError, Listing, ListingStatus, deleteListing, getMyListings } from '../lib/api';
+import { ApiError, Listing, ListingStatus, bumpListing, deleteListing, getMyListings } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { useTheme } from '../lib/theme-context';
 import type { ColorScheme } from '../lib/theme';
@@ -33,6 +33,7 @@ export function MyListingsScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bumpingId, setBumpingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!accessToken) return;
@@ -56,6 +57,20 @@ export function MyListingsScreen() {
     setIsRefreshing(true);
     await load();
     setIsRefreshing(false);
+  }
+
+  async function handleBump(listing: Listing) {
+    if (!accessToken) return;
+    setBumpingId(listing.id);
+    setError(null);
+    try {
+      const updated = await bumpListing(listing.id, accessToken);
+      setListings((prev) => prev.map((l) => (l.id === listing.id ? updated : l)));
+    } catch (err) {
+      Alert.alert('Не вдалося підняти', err instanceof ApiError ? err.message : 'Спробуйте ще раз.');
+    } finally {
+      setBumpingId(null);
+    }
   }
 
   function confirmDelete(listing: Listing) {
@@ -111,6 +126,15 @@ export function MyListingsScreen() {
               <Pressable style={styles.editButton} onPress={() => navigation.navigate('EditListing', { listingId: item.id })}>
                 <Text style={styles.editButtonText}>{item.status === 'DRAFT' ? 'Редагувати' : 'Переглянути'}</Text>
               </Pressable>
+              {item.status === 'ACTIVE' && (
+                <Pressable style={styles.editButton} onPress={() => handleBump(item)} disabled={bumpingId === item.id}>
+                  {bumpingId === item.id ? (
+                    <ActivityIndicator color={colors.text} size="small" />
+                  ) : (
+                    <Text style={styles.editButtonText}>↑ Підняти</Text>
+                  )}
+                </Pressable>
+              )}
               <Pressable style={styles.deleteButton} onPress={() => confirmDelete(item)} disabled={deletingId === item.id}>
                 {deletingId === item.id ? (
                   <ActivityIndicator color={colors.accent[600]} size="small" />

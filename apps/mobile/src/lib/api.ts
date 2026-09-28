@@ -497,6 +497,12 @@ export function renewListing(id: string, token: string): Promise<Listing> {
   return apiFetch(`/listings/${id}/renew`, { method: 'POST', token });
 }
 
+/** "Підняти у списку" — не чіпає термін дії, лише повторно публікує (сортування "Нові" —
+ * за publishedAt). Кулдаун на бекенді. */
+export function bumpListing(id: string, token: string): Promise<Listing> {
+  return apiFetch(`/listings/${id}/bump`, { method: 'POST', token });
+}
+
 export function publishListing(id: string, token: string): Promise<Listing> {
   return apiFetch(`/listings/${id}/publish`, { method: 'POST', token });
 }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
-import { ApiError, deleteListing, getMyListings, listingDetailHref, type Listing, type ListingStatus } from '@/lib/api';
+import { ApiError, bumpListing, deleteListing, getMyListings, listingDetailHref, type Listing, type ListingStatus } from '@/lib/api';
 import { Badge, Button, Dropdown, EmptyState, ErrorState, LoadingState, type BadgeTone } from '@/components/ui';
 import { formatPrice, pluralizeViews } from '@/lib/format';
 
@@ -47,6 +47,7 @@ export default function MyListingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [bumpingId, setBumpingId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!accessToken) return;
@@ -67,6 +68,20 @@ export default function MyListingsPage() {
       load();
     }
   }, [accessToken, load]);
+
+  async function handleBump(listing: Listing) {
+    if (!accessToken) return;
+    setBumpingId(listing.id);
+    setError(null);
+    try {
+      const updated = await bumpListing(listing.id, accessToken);
+      setListings((prev) => prev.map((l) => (l.id === listing.id ? updated : l)));
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не вдалося підняти оголошення.');
+    } finally {
+      setBumpingId(null);
+    }
+  }
 
   async function handleDelete(listing: Listing) {
     if (!accessToken) return;
@@ -136,12 +151,23 @@ export default function MyListingsPage() {
                       {formatPrice(listing.price, listing.currency)} · {listing.viewsCount} {pluralizeViews(listing.viewsCount)}
                     </p>
                   </div>
-                  <div className="flex shrink-0 gap-2">
+                  <div className="flex shrink-0 flex-wrap gap-2">
                     <Link href={href} className="flex-1 sm:flex-none">
                       <Button size="sm" variant="secondary" className="w-full sm:w-auto">
                         {listing.status === 'DRAFT' ? 'Редагувати' : 'Переглянути'}
                       </Button>
                     </Link>
+                    {listing.status === 'ACTIVE' && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="flex-1 sm:flex-none"
+                        isLoading={bumpingId === listing.id}
+                        onClick={() => handleBump(listing)}
+                      >
+                        ↑ Підняти у списку
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="danger"
