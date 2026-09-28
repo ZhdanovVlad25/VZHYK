@@ -87,7 +87,14 @@ export default defineRailway(() => {
       // sendTelegramNotification) — той самий необов'язковий канал, що email, паралельно.
       TELEGRAM_BOT_TOKEN: preserve(),
       TELEGRAM_CHAT_ID: "531788003",
-      API_PUBLIC_URL: "https://api-production-ee5b.up.railway.app",
+      // Кастомний домен — той самий leftover, що GOOGLE_OAUTH_CALLBACK_URL мав до фіксу:
+      // моделі "Схвалити"/"Відхилити" в листах/Telegram досі вели на сирий Railway-URL.
+      API_PUBLIC_URL: "https://api.vzhyk.in.ua",
+      // Дашборд адмінки (dashboard.service.ts) звертається до Umami API за реальними
+      // цифрами відвідувань — окремий сервіс, той самий self-hosted "umami" нижче.
+      UMAMI_API_URL: "https://umami-production-5cee.up.railway.app",
+      UMAMI_API_KEY: preserve(),
+      UMAMI_WEBSITE_ID: "713a1217-b54a-4239-8968-f56e279f393d",
     },
   });
 
@@ -103,6 +110,9 @@ export default defineRailway(() => {
       // Google Search Console verification meta-тег (layout.tsx metadata.verification.google) —
       // не в IaC-файлі раніше, тому план бачив її як "зайву" й хотів видалити.
       GOOGLE_SITE_VERIFICATION: preserve(),
+      // Umami tracking script — публічні значення (website ID й так у HTML), не секрет.
+      NEXT_PUBLIC_UMAMI_SRC: "https://umami-production-5cee.up.railway.app/script.js",
+      NEXT_PUBLIC_UMAMI_WEBSITE_ID: "713a1217-b54a-4239-8968-f56e279f393d",
     },
   });
 
