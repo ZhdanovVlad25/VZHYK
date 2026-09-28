@@ -32,7 +32,9 @@ export class ListingExpirationCron {
       const nextExpiry = new Date(Date.now() + LISTING_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
       await this.listings.update(
         dueForAutoRenew.map((l) => l.id),
-        { expiresAt: nextExpiry },
+        // publishedAt = now — той самий "публікується заново вгорі списку" ефект, що й
+        // ручний ListingsService.renew(): sort=newest сортує саме за publishedAt.
+        { expiresAt: nextExpiry, publishedAt: now },
       );
       this.logger.log(`Auto-продовжено ${dueForAutoRenew.length} оголошень`);
     }

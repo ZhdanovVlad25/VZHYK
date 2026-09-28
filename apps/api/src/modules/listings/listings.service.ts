@@ -250,6 +250,10 @@ export class ListingsService {
     const wasExpired = listing.status === 'EXPIRED';
     listing.status = 'ACTIVE';
     listing.expiresAt = new Date(Date.now() + LISTING_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+    // sort=newest сортує за publishedAt (postgres-fts-search.provider.ts) — без цього
+    // "Оновити" продовжував термін дії, але не піднімав оголошення вгору списку
+    // (звіт власника: продовження/спливання 30 днів має публікувати оголошення заново вгорі).
+    listing.publishedAt = new Date();
     const saved = await this.saveWithConflictHandling(listing);
     if (wasExpired) {
       await this.search.index(saved.id);
