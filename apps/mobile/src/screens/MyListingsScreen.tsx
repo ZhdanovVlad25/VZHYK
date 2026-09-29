@@ -20,6 +20,16 @@ function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso));
 }
 
+const BUMP_ELIGIBLE_AFTER_DAYS = 15;
+
+/** Кнопка має сенс лише для оголошень, що вже "просіли" в списку — publishedAt
+ * (а не createdAt) бере до уваги попередні підняття/оновлення. */
+function canBump(listing: Listing): boolean {
+  const since = listing.publishedAt ?? listing.createdAt;
+  const days = (Date.now() - new Date(since).getTime()) / (1000 * 60 * 60 * 24);
+  return days >= BUMP_ELIGIBLE_AFTER_DAYS;
+}
+
 /** "Мої оголошення" — RN-порт apps/web/src/app/my-listings/page.tsx, доступний з таба "Профіль". */
 export function MyListingsScreen() {
   const navigation = useNavigation<AppNavigation>();
@@ -126,7 +136,7 @@ export function MyListingsScreen() {
               <Pressable style={styles.editButton} onPress={() => navigation.navigate('EditListing', { listingId: item.id })}>
                 <Text style={styles.editButtonText}>{item.status === 'DRAFT' ? 'Редагувати' : 'Переглянути'}</Text>
               </Pressable>
-              {item.status === 'ACTIVE' && (
+              {item.status === 'ACTIVE' && canBump(item) && (
                 <Pressable style={styles.editButton} onPress={() => handleBump(item)} disabled={bumpingId === item.id}>
                   {bumpingId === item.id ? (
                     <ActivityIndicator color={colors.text} size="small" />

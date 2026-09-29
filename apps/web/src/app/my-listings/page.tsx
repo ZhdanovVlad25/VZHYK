@@ -40,6 +40,16 @@ function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso));
 }
 
+const BUMP_ELIGIBLE_AFTER_DAYS = 15;
+
+/** Кнопка має сенс лише для оголошень, що вже "просіли" в списку — publishedAt
+ * (а не createdAt) бере до уваги попередні підняття/оновлення. */
+function canBump(listing: Listing): boolean {
+  const since = listing.publishedAt ?? listing.createdAt;
+  const days = (Date.now() - new Date(since).getTime()) / (1000 * 60 * 60 * 24);
+  return days >= BUMP_ELIGIBLE_AFTER_DAYS;
+}
+
 export default function MyListingsPage() {
   const { user, isLoading: authLoading, accessToken } = useAuth();
   const [status, setStatus] = useState('ALL');
@@ -157,7 +167,7 @@ export default function MyListingsPage() {
                         {listing.status === 'DRAFT' ? 'Редагувати' : 'Переглянути'}
                       </Button>
                     </Link>
-                    {listing.status === 'ACTIVE' && (
+                    {listing.status === 'ACTIVE' && canBump(listing) && (
                       <Button
                         size="sm"
                         variant="secondary"
