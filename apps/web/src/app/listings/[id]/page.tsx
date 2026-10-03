@@ -180,6 +180,7 @@ export default async function ListingDetailPage({
       url: `${SITE_URL}${buildListingHref(listing.id, listing.title)}`,
       hasMerchantReturnPolicy: {
         '@type': 'MerchantReturnPolicy',
+        applicableCountry: 'UA',
         returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted',
       },
     },
